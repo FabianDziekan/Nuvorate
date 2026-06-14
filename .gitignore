@@ -1,0 +1,14 @@
+.next/
+node_modules/
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+.obsidian/
+node_modules/
+.pnpm-store/
+node_modules/
+.pnpm-store/
+.obsidian/
+.next/
