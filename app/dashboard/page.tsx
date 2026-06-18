@@ -3,7 +3,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand/logo";
 import { createClient } from "@/lib/supabase/server";
-import { signOut } from "./actions";
+import {
+  generateBusinessAnalysis,
+  generateReviewResponse,
+  signOut,
+} from "./actions";
 
 export const metadata: Metadata = {
   title: "Dashboard | NuvoRate",
@@ -106,7 +110,7 @@ function Icon({
 const navigation = [
   { label: "Pulpit", icon: "dashboard" as const, active: true },
   { label: "Opinie", icon: "reviews" as const },
-  { label: "Analiza", icon: "analysis" as const },
+  { label: "Analiza", icon: "analysis" as const, href: "/analysis" },
   { label: "NFC", icon: "nfc" as const },
   { label: "Powiadomienia", icon: "bell" as const },
   { label: "Ustawienia", icon: "settings" as const },
@@ -118,6 +122,20 @@ type Review = {
   rating: number;
   content: string;
   created_at: string;
+};
+
+type ReviewResponse = {
+  review_id: string;
+  response_text: string;
+};
+
+type BusinessAnalysis = {
+  created_at: string;
+  review_count: number;
+  summary: string;
+  praised_elements: unknown;
+  reported_problems: unknown;
+  recommendations: unknown;
 };
 
 function formatReviewDate(createdAt: string) {
@@ -284,6 +302,31 @@ export default async function DashboardPage() {
     );
   }
 
+  const [
+    { data: reviewResponses, error: reviewResponsesError },
+    { data: businessAnalysis, error: businessAnalysisError },
+  ] = await Promise.all([
+    supabase
+      .from("ai_review_responses")
+      .select("review_id, response_text")
+      .eq("business_id", business.id),
+    supabase
+      .from("ai_business_analyses")
+      .select(
+        "created_at, review_count, summary, praised_elements, reported_problems, recommendations",
+      )
+      .eq("business_id", business.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  if (reviewResponsesError || businessAnalysisError) {
+    throw new Error(
+      "Nie udało się odczytać danych AI. Uruchom migrację 003_ai_features.sql w Supabase.",
+    );
+  }
+
   const ratings = reviewRatings.map((review) => Number(review.rating));
   const totalReviews = reviewsCount ?? ratings.length;
   const averageRating =
@@ -336,6 +379,28 @@ export default async function DashboardPage() {
   const businessCity = business.city ?? "Miasto nieuzupełnione";
   const plan = profile.plan === "business" ? "Business" : "Starter";
   const displayName = user.email?.split("@")[0] ?? "użytkowniku";
+  const responsesByReviewId = new Map(
+    (reviewResponses as ReviewResponse[]).map((response) => [
+      response.review_id,
+      response.response_text,
+    ]),
+  );
+  const latestAnalysis = businessAnalysis as BusinessAnalysis | null;
+  const praisedElements = Array.isArray(latestAnalysis?.praised_elements)
+    ? latestAnalysis.praised_elements.filter(
+        (item): item is string => typeof item === "string",
+      )
+    : [];
+  const reportedProblems = Array.isArray(latestAnalysis?.reported_problems)
+    ? latestAnalysis.reported_problems.filter(
+        (item): item is string => typeof item === "string",
+      )
+    : [];
+  const recommendations = Array.isArray(latestAnalysis?.recommendations)
+    ? latestAnalysis.recommendations.filter(
+        (item): item is string => typeof item === "string",
+      )
+    : [];
 
   return (
     <main className="min-h-screen bg-[#F6F6F9] text-ink">
@@ -358,9 +423,13 @@ export default async function DashboardPage() {
                   : "text-black/45 hover:bg-black/[0.035] hover:text-ink"
               }`;
 
-            if (item.label === "Opinie") {
+            if (item.label === "Opinie" || item.href) {
               return (
-                <Link key={item.label} href="/reviews" className={className}>
+                <Link
+                  key={item.label}
+                  href={item.href ?? "/reviews"}
+                  className={className}
+                >
                   <Icon name={item.icon} className="h-[18px] w-[18px]" />
                   {item.label}
                 </Link>
@@ -449,10 +518,10 @@ export default async function DashboardPage() {
           </div>
           <nav className="flex gap-1 overflow-x-auto border-t border-black/[0.05] px-4 py-2 lg:hidden" aria-label="Mobilna nawigacja dashboardu">
             {navigation.slice(0, 5).map((item) => (
-              item.label === "Opinie" ? (
+              item.label === "Opinie" || item.href ? (
                 <Link
                   key={item.label}
-                  href="/reviews"
+                  href={item.href ?? "/reviews"}
                   className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium ${
                     item.active ? "bg-brand-soft text-brand" : "text-black/40"
                   }`}
@@ -556,33 +625,78 @@ export default async function DashboardPage() {
                     <p className="text-xs font-medium uppercase tracking-[0.12em] text-white/40">
                       Inteligentna analiza
                     </p>
-                    <h2 className="mt-1 text-xl font-semibold">Podsumowanie tygodnia</h2>
+                    <h2 className="mt-1 text-xl font-semibold">Analiza ostatnich 30 dni</h2>
                   </div>
                   <span className="rounded-full bg-brand/20 px-2.5 py-1 text-[10px] font-semibold text-[#B6B7FF]">
                     BUSINESS
                   </span>
                 </div>
-                <p className="relative mt-6 text-sm leading-6 text-white/65">
-                  Klienci najczęściej chwalili obsługę i atmosferę. Trzy opinie
-                  wskazały dłuższy czas oczekiwania.
-                </p>
-                <div className="relative mt-6 space-y-4">
-                  {[
-                    ["Miła obsługa", "82%"],
-                    ["Atmosfera", "71%"],
-                    ["Jakość usług", "64%"],
-                  ].map(([label, value]) => (
-                    <div key={label}>
-                      <div className="flex justify-between text-xs text-white/50">
-                        <span>{label}</span>
-                        <span>{value}</span>
+                {plan === "Business" ? (
+                  latestAnalysis ? (
+                    <div className="relative mt-6">
+                      <p className="text-sm leading-6 text-white/70">
+                        {latestAnalysis.summary}
+                      </p>
+                      <div className="mt-5 space-y-4 text-xs">
+                        <div>
+                          <p className="font-semibold text-[#B6B7FF]">
+                            Najczęściej chwalone
+                          </p>
+                          <ul className="mt-2 space-y-1.5 text-white/55">
+                            {praisedElements.map((item) => (
+                              <li key={item}>• {item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-[#B6B7FF]">
+                            Najczęściej zgłaszane problemy
+                          </p>
+                          <ul className="mt-2 space-y-1.5 text-white/55">
+                            {reportedProblems.map((item) => (
+                              <li key={item}>• {item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-[#B6B7FF]">
+                            Rekomendacje działań
+                          </p>
+                          <ul className="mt-2 space-y-1.5 text-white/55">
+                            {recommendations.map((item) => (
+                              <li key={item}>• {item}</li>
+                            ))}
+                          </ul>
+                        </div>
                       </div>
-                      <div className="mt-2 h-1.5 rounded-full bg-white/10">
-                        <div className="h-full rounded-full bg-brand" style={{ width: value }} />
-                      </div>
+                      <p className="mt-5 text-[10px] text-white/35">
+                        {latestAnalysis.review_count} opinii •{" "}
+                        {new Date(latestAnalysis.created_at).toLocaleDateString(
+                          "pl-PL",
+                        )}
+                      </p>
                     </div>
-                  ))}
-                </div>
+                  ) : (
+                    <p className="relative mt-6 text-sm leading-6 text-white/65">
+                      Wygeneruj pierwszą analizę opinii z ostatnich 30 dni.
+                    </p>
+                  )
+                ) : (
+                  <p className="relative mt-6 text-sm leading-6 text-white/65">
+                    Analiza wszystkich opinii, trendów i rekomendacji jest
+                    dostępna w planie Business.
+                  </p>
+                )}
+                {plan === "Business" && (
+                  <form action={generateBusinessAnalysis} className="relative mt-6">
+                    <button
+                      type="submit"
+                      className="w-full rounded-xl bg-brand px-4 py-3 text-xs font-semibold text-white transition hover:bg-[#4D4EE8]"
+                    >
+                      {latestAnalysis ? "Odśwież analizę" : "Wygeneruj analizę"}
+                    </button>
+                  </form>
+                )}
               </article>
             </section>
 
@@ -626,9 +740,24 @@ export default async function DashboardPage() {
                         </span>
                       </div>
                       <p className="mt-4 min-h-12 text-sm leading-6 text-black/55">{review.content}</p>
-                      <button type="button" className="mt-4 text-xs font-semibold text-brand">
-                        Wygeneruj odpowiedź
-                      </button>
+                      {responsesByReviewId.has(review.id) && (
+                        <div className="mt-4 rounded-xl border border-brand/10 bg-white p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand">
+                            Proponowana odpowiedź
+                          </p>
+                          <p className="mt-2 text-xs leading-5 text-black/55">
+                            {responsesByReviewId.get(review.id)}
+                          </p>
+                        </div>
+                      )}
+                      <form action={generateReviewResponse} className="mt-4">
+                        <input type="hidden" name="reviewId" value={review.id} />
+                        <button type="submit" className="text-xs font-semibold text-brand">
+                          {responsesByReviewId.has(review.id)
+                            ? "Wygeneruj ponownie"
+                            : "Wygeneruj odpowiedź"}
+                        </button>
+                      </form>
                     </article>
                   ))}
                 </div>

@@ -2,7 +2,7 @@
 
 Business to rozszerzony abonament dla firm potrzebujących pełniejszej analizy i bardziej zaawansowanej obsługi reputacji.
 
-- Cena: 199,99 zł miesięcznie.
+- Cena: 229,99 zł miesięcznie.
 - Powinien obejmować zaawansowane statystyki i inteligentną analizę.
 - Jest kierowany do rozwijających się firm i bardziej wymagających zespołów.
 - Powinien wyraźnie pokazywać wartość ponad planem Starter.
@@ -14,4 +14,3 @@ Business to rozszerzony abonament dla firm potrzebujących pełniejszej analizy 
 - [[Inteligentna analiza]]
 - [[Statystyki]]
 - [[Cennik]]
-

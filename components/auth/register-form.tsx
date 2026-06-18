@@ -85,7 +85,7 @@ export function RegisterForm({ initialPlan = "starter" }: { initialPlan?: Plan }
         <div className="grid grid-cols-2 gap-3">
           {[
             { id: "starter" as const, name: "Starter", price: "49,99 zł / mies." },
-            { id: "business" as const, name: "Business", price: "199,99 zł / mies." },
+            { id: "business" as const, name: "Business", price: "229,99 zł / mies." },
           ].map((item) => {
             const selected = plan === item.id;
             return (

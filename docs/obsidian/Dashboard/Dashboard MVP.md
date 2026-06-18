@@ -279,7 +279,7 @@ Starter nie zawiera pełnej inteligentnej analizy, zaawansowanych porównań ani
 
 ## Plan Business
 
-Business za 199,99 zł miesięcznie obejmuje wszystkie funkcje Starter oraz bardziej zaawansowane zarządzanie reputacją.
+Business za 229,99 zł miesięcznie obejmuje wszystkie funkcje Starter oraz bardziej zaawansowane zarządzanie reputacją.
 
 Funkcje dostępne w Business:
 

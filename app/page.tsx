@@ -841,7 +841,7 @@ function Pricing() {
                 Dla firm, które potrzebują głębszych wniosków i inteligentnej analizy.
               </p>
               <div className="mt-8 flex items-end gap-2">
-                <span className="text-5xl font-semibold tracking-[-0.06em]">199,99 zł</span>
+                <span className="text-5xl font-semibold tracking-[-0.06em]">229,99 zł</span>
                 <span className="pb-1 text-sm text-white/40">/ miesiąc</span>
               </div>
             </div>

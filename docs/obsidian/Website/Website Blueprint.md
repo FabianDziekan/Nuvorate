@@ -540,7 +540,7 @@ Cennik ma jasno przedstawić abonament jako główny produkt i pomóc wybrać pl
 
 ### NuvoRate Business
 
-**Cena:** 199,99 zł / miesiąc
+**Cena:** 229,99 zł / miesiąc
 
 **Wyróżnienie:** „Pełna analiza reputacji”
 
@@ -606,7 +606,7 @@ Starter zapewnia podstawowy dashboard, monitoring opinii, statystyki i powiadomi
 
 #### Ile kosztuje NuvoRate?
 
-Plan Starter kosztuje 49,99 zł miesięcznie, a plan Business 199,99 zł miesięcznie. Opcjonalne plakietki NFC są dostępne od 10 zł za sztukę.
+Plan Starter kosztuje 49,99 zł miesięcznie, a plan Business 229,99 zł miesięcznie. Opcjonalne plakietki NFC są dostępne od 10 zł za sztukę.
 
 #### Co zobaczę w dashboardzie?
 
@@ -657,7 +657,7 @@ Ostatnia sekcja ma zebrać główną obietnicę i skierować użytkownika do dec
 
 ### Mikrokomunikat
 
-> Starter od 49,99 zł miesięcznie. Business z inteligentną analizą za 199,99 zł miesięcznie.
+> Starter od 49,99 zł miesięcznie. Business z inteligentną analizą za 229,99 zł miesięcznie.
 
 ### Warstwa wizualna
 

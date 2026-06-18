@@ -110,7 +110,7 @@ function Icon({
 const navigation = [
   { label: "Pulpit", icon: "dashboard" as const, href: "/dashboard" },
   { label: "Opinie", icon: "reviews" as const, href: "/reviews" },
-  { label: "Analiza", icon: "analysis" as const },
+  { label: "Analiza", icon: "analysis" as const, href: "/analysis" },
   { label: "NFC", icon: "nfc" as const },
   { label: "Powiadomienia", icon: "bell" as const },
   { label: "Ustawienia", icon: "settings" as const },
