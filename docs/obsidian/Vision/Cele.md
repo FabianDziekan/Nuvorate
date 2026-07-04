@@ -1,3 +1,9 @@
+---
+tags:
+  - strategia
+  - vision
+---
+
 # Cele
 
 Cele NuvoRate przekładają wizję produktu na mierzalne rezultaty dla klientów i firmy.
@@ -8,10 +14,10 @@ Cele NuvoRate przekładają wizję produktu na mierzalne rezultaty dla klientów
 - Rozwijać konwersję ze Starter do Business.
 - Traktować NFC jako wsparcie abonamentu, a nie główny produkt.
 
-## Powiązane
+## Powiązane notatki
 
 - [[Misja]]
 - [[Wizja]]
 - [[MVP]]
 - [[Statystyki]]
-
+- [[Vision MOC]]

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand/logo";
+import { Pagination } from "@/components/ui/pagination";
+import { getPlanLabel, isPaidPlan, normalizePlan } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/dashboard/actions";
 
@@ -10,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 type ReviewsPageProps = {
-  searchParams: Promise<{ rating?: string }>;
+  searchParams: Promise<{ page?: string; rating?: string }>;
 };
 
 type Review = {
@@ -28,6 +30,7 @@ type ReviewsIcon =
   | "dashboard"
   | "logout"
   | "nfc"
+  | "responses"
   | "reviews"
   | "settings";
 
@@ -76,6 +79,13 @@ function Icon({
         <circle cx="12" cy="12" r="1" fill="currentColor" />
       </>
     ),
+    responses: (
+      <>
+        <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
+        <path d="m8 10 2 2 4-4" />
+        <path d="M8 15h7" />
+      </>
+    ),
     reviews: (
       <>
         <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
@@ -94,8 +104,10 @@ function Icon({
   return (
     <svg
       aria-hidden="true"
-      className={className}
+      className={`${className} shrink-0`}
       viewBox="0 0 24 24"
+      width="20"
+      height="20"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"
@@ -111,12 +123,14 @@ const navigation = [
   { label: "Pulpit", icon: "dashboard" as const, href: "/dashboard" },
   { label: "Opinie", icon: "reviews" as const, href: "/reviews" },
   { label: "Analiza", icon: "analysis" as const, href: "/analysis" },
-  { label: "NFC", icon: "nfc" as const },
+  { label: "Odpowiedzi", icon: "responses" as const, href: "/responses" },
+  { label: "NFC", icon: "nfc" as const, href: "/nfc" },
   { label: "Powiadomienia", icon: "bell" as const },
-  { label: "Ustawienia", icon: "settings" as const },
+  { label: "Ustawienia", icon: "settings" as const, href: "/settings" },
 ];
 
 const ratingFilters = ["all", "5", "4", "3", "2", "1"] as const;
+const reviewsPerPage = 10;
 
 function formatReviewDate(createdAt: string) {
   return new Intl.DateTimeFormat("pl-PL", {
@@ -144,6 +158,21 @@ function formatSource(source: string) {
   return source;
 }
 
+function buildReviewsHref(rating: string, page: number) {
+  const params = new URLSearchParams();
+
+  if (rating !== "all") {
+    params.set("rating", rating);
+  }
+
+  if (page > 1) {
+    params.set("page", String(page));
+  }
+
+  const query = params.toString();
+  return query ? `/reviews?${query}` : "/reviews";
+}
+
 export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
   const params = await searchParams;
   const selectedRating = ratingFilters.includes(
@@ -151,6 +180,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
   )
     ? params.rating!
     : "all";
+  const requestedPage = Number(params.page ?? "1");
 
   const supabase = await createClient();
   const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
@@ -198,6 +228,47 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
     );
   }
 
+  const appPlan = normalizePlan(profile.plan);
+  const plan = getPlanLabel(appPlan);
+  const displayName = user.email?.split("@")[0] ?? "użytkowniku";
+
+  if (!isPaidPlan(appPlan)) {
+    return (
+      <main className="min-h-screen bg-[#F7F7FA] text-ink">
+        <div className="flex min-h-screen items-center justify-center px-5 py-12">
+          <section className="w-full max-w-3xl rounded-[32px] border border-black/[0.06] bg-white p-7 text-center shadow-card sm:p-10">
+            <div className="mx-auto flex justify-center">
+              <BrandLogo />
+            </div>
+            <p className="mt-8 text-xs font-semibold uppercase tracking-[0.14em] text-brand">
+              Opinie klientów
+            </p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+              Wybierz plan, aby zobaczyć opinie
+            </h1>
+            <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-black/50">
+              Lista opinii i pełny dashboard są dostępne po aktywacji planu
+              Starter albo Business.
+            </p>
+            <div className="mt-8 grid gap-3 sm:grid-cols-2">
+              <Link href="/checkout?plan=starter" className="button-secondary justify-center">
+                Wybierz Starter
+              </Link>
+              <Link href="/checkout?plan=business" className="button-primary justify-center">
+                Wybierz Business
+              </Link>
+            </div>
+            <form action={signOut} className="mt-5">
+              <button type="submit" className="text-sm font-semibold text-black/40 hover:text-ink">
+                Wyloguj się
+              </button>
+            </form>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
   const { data: reviews, error: reviewsError } = await supabase
     .from("reviews")
     .select("id, author_name, rating, content, source, created_at")
@@ -217,11 +288,16 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
       : allReviews.filter(
           (review) => review.rating === Number(selectedRating),
         );
-  const plan = profile.plan === "business" ? "Business" : "Starter";
-  const displayName = user.email?.split("@")[0] ?? "użytkowniku";
+  const totalPages = Math.max(1, Math.ceil(filteredReviews.length / reviewsPerPage));
+  const currentPage = Number.isInteger(requestedPage)
+    ? Math.min(Math.max(requestedPage, 1), totalPages)
+    : 1;
+  const pageStart = (currentPage - 1) * reviewsPerPage;
+  const pageEnd = pageStart + reviewsPerPage;
+  const paginatedReviews = filteredReviews.slice(pageStart, pageEnd);
 
   return (
-    <main className="min-h-screen bg-[#F7F7FA] text-ink">
+    <main className="min-h-screen overflow-x-hidden bg-[#F7F7FA] text-ink">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col border-r border-black/[0.06] bg-white px-5 py-6 lg:flex">
         <BrandLogo />
         <div className="mt-9 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-3.5">
@@ -275,9 +351,9 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
               </span>
             </div>
             {plan === "Starter" && (
-              <button type="button" className="mt-4 w-full rounded-xl bg-white/10 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-white/15">
+              <Link href="/checkout?plan=business" className="mt-4 block w-full rounded-xl bg-white/10 px-3 py-2.5 text-center text-xs font-semibold text-white transition hover:bg-white/15">
                 Przejdź na Business
-              </button>
+              </Link>
             )}
           </div>
           <form action={signOut} className="mt-3">
@@ -292,17 +368,17 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
         </div>
       </aside>
 
-      <div className="lg:pl-[252px]">
+      <div className="min-w-0 lg:pl-[252px]">
         <header className="sticky top-0 z-20 border-b border-black/[0.06] bg-white/90 backdrop-blur-xl">
-          <div className="flex h-[74px] items-center justify-between gap-4 px-5 sm:px-8 lg:px-9">
-            <div className="lg:hidden">
+          <div className="flex h-[74px] min-w-0 items-center justify-between gap-4 px-5 sm:px-8 lg:px-9">
+            <div className="shrink-0 lg:hidden">
               <BrandLogo />
             </div>
-            <div className="hidden lg:block">
-              <p className="text-xs text-black/35">{business.name}</p>
+            <div className="hidden min-w-0 lg:block">
+              <p className="truncate text-xs text-black/35">{business.name}</p>
               <p className="mt-0.5 text-sm font-semibold">Opinie</p>
             </div>
-            <div className="flex items-center gap-2.5">
+            <div className="flex min-w-0 items-center gap-2.5">
               <button
                 type="button"
                 className="hidden rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-sm font-medium text-black/55 sm:block"
@@ -366,8 +442,8 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
           </nav>
         </header>
 
-        <div className="px-5 py-8 sm:px-8 lg:px-9 lg:py-10">
-          <div className="mx-auto max-w-[1450px]">
+        <div className="min-w-0 px-5 py-8 sm:px-8 lg:px-9 lg:py-10">
+          <div className="mx-auto min-w-0 max-w-[1450px]">
             <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
               <div>
                 <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
@@ -379,7 +455,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
               </div>
             </div>
 
-            <section className="mt-8 rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
+            <section className="mt-8 min-w-0 overflow-hidden rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
@@ -415,18 +491,18 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
 
               {filteredReviews.length > 0 ? (
                 <div className="mt-6 space-y-3">
-                  {filteredReviews.map((review) => (
+                  {paginatedReviews.map((review) => (
                     <article
                       key={review.id}
-                      className="rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-5"
+                      className="min-w-0 overflow-hidden rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-5"
                     >
-                      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-                        <div className="flex items-center gap-3">
+                      <div className="flex min-w-0 flex-col justify-between gap-4 sm:flex-row sm:items-start">
+                        <div className="flex min-w-0 items-center gap-3">
                           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-sm font-bold text-brand shadow-sm">
                             {review.author_name.slice(0, 1).toUpperCase()}
                           </span>
-                          <div>
-                            <p className="text-sm font-semibold">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold">
                               {review.author_name}
                             </p>
                             <p className="mt-0.5 text-[11px] text-black/35">
@@ -434,7 +510,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex shrink-0 items-center gap-2">
                           <span className="rounded-full border border-black/[0.06] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-black/40">
                             {formatSource(review.source)}
                           </span>
@@ -449,11 +525,17 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                           </span>
                         </div>
                       </div>
-                      <p className="mt-5 text-sm leading-6 text-black/60">
+                      <p className="mt-5 break-words text-sm leading-6 text-black/60">
                         {review.content}
                       </p>
                     </article>
                   ))}
+                  <Pagination
+                    buildHref={(page) => buildReviewsHref(selectedRating, page)}
+                    currentPage={currentPage}
+                    pageSize={reviewsPerPage}
+                    totalItems={filteredReviews.length}
+                  />
                 </div>
               ) : (
                 <div className="mt-6 rounded-2xl border border-dashed border-black/[0.08] bg-[#FAFAFC] px-5 py-14 text-center">

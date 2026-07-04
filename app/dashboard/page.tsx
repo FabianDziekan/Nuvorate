@@ -1,13 +1,26 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { CheckoutActivationStatus } from "@/components/billing/checkout-activation-status";
+import { PlanPicker } from "@/components/billing/plan-picker";
 import { BrandLogo } from "@/components/brand/logo";
-import { createClient } from "@/lib/supabase/server";
+import { AnalysisPreviewCard } from "@/components/dashboard/analysis-preview-card";
+import { ReviewResponseForm } from "@/components/dashboard/review-response-form";
 import {
-  generateBusinessAnalysis,
-  generateReviewResponse,
-  signOut,
-} from "./actions";
+  TrendRangeSelect,
+  type TrendRange,
+} from "@/components/dashboard/trend-range-select";
+import {
+  currentPeriodMonth,
+  getAiLimit,
+  getPlanLabel,
+  isPaidPlan,
+  normalizePlan,
+  type AppPlan,
+} from "@/lib/plans";
+import { hasPriceIdForPlan } from "@/lib/stripe";
+import { createClient } from "@/lib/supabase/server";
+import { signOut } from "./actions";
 
 export const metadata: Metadata = {
   title: "Dashboard | NuvoRate",
@@ -19,6 +32,7 @@ type DashboardIcon =
   | "dashboard"
   | "logout"
   | "nfc"
+  | "responses"
   | "reviews"
   | "settings"
   | "star"
@@ -69,6 +83,13 @@ function Icon({
         <circle cx="12" cy="12" r="1" fill="currentColor" />
       </>
     ),
+    responses: (
+      <>
+        <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
+        <path d="m8 10 2 2 4-4" />
+        <path d="M8 15h7" />
+      </>
+    ),
     reviews: (
       <>
         <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
@@ -111,9 +132,10 @@ const navigation = [
   { label: "Pulpit", icon: "dashboard" as const, active: true },
   { label: "Opinie", icon: "reviews" as const },
   { label: "Analiza", icon: "analysis" as const, href: "/analysis" },
-  { label: "NFC", icon: "nfc" as const },
+  { label: "Odpowiedzi", icon: "responses" as const, href: "/responses" },
+  { label: "NFC", icon: "nfc" as const, href: "/nfc" },
   { label: "Powiadomienia", icon: "bell" as const },
-  { label: "Ustawienia", icon: "settings" as const },
+  { label: "Ustawienia", icon: "settings" as const, href: "/settings" },
 ];
 
 type Review = {
@@ -126,7 +148,27 @@ type Review = {
 
 type ReviewResponse = {
   review_id: string;
-  response_text: string;
+  response_text: string | null;
+};
+
+type ReviewInsightSource = {
+  created_at: string;
+};
+
+type ReviewActivityTrendBucket = {
+  average_rating: number | null;
+  period_end: string;
+  period_start: string;
+  review_count: number;
+};
+
+type ReviewActivityTrendPoint = {
+  averageRating: number | null;
+  label: string;
+  value: number;
+  tooltipLabel: string;
+  x: number;
+  height: number;
 };
 
 type BusinessAnalysis = {
@@ -136,6 +178,11 @@ type BusinessAnalysis = {
   praised_elements: unknown;
   reported_problems: unknown;
   recommendations: unknown;
+};
+
+type AiUsage = {
+  ai_replies_used: number | null;
+  ai_analyses_used: number | null;
 };
 
 function formatReviewDate(createdAt: string) {
@@ -176,60 +223,468 @@ function formatRating(rating: number) {
   });
 }
 
-function TrendChart() {
+const polishWeekdays = [
+  "Niedziela",
+  "Poniedziałek",
+  "Wtorek",
+  "Środa",
+  "Czwartek",
+  "Piątek",
+  "Sobota",
+];
+
+function startOfCurrentMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function addDays(date: Date, days: number) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
+
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function formatDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function formatShortDate(date: Date) {
+  return date.toLocaleDateString("pl-PL", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+function formatTooltipDate(date: Date) {
+  return date.toLocaleDateString("pl-PL", {
+    day: "numeric",
+    month: "long",
+  });
+}
+
+function formatTooltipRange(startDate: Date, endDate: Date) {
+  if (formatDateKey(startDate) === formatDateKey(endDate)) {
+    return formatTooltipDate(startDate);
+  }
+
+  const sameMonth = startDate.getMonth() === endDate.getMonth();
+  const sameYear = startDate.getFullYear() === endDate.getFullYear();
+
+  if (sameMonth && sameYear) {
+    return `${startDate.getDate()}-${formatTooltipDate(endDate)}`;
+  }
+
+  return `${formatTooltipDate(startDate)} - ${formatTooltipDate(endDate)}`;
+}
+
+function formatReviewCount(value: number) {
+  if (value === 1) {
+    return "1 nowa opinia";
+  }
+
+  if (value === 0) {
+    return "0 opinii";
+  }
+
+  return `${value} nowych opinii`;
+}
+
+function formatAverageRating(value: number | null) {
+  if (value === null || !Number.isFinite(value)) {
+    return "Brak średniej oceny";
+  }
+
+  return `Średnia ocena: ${value.toLocaleString("pl-PL", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })}★`;
+}
+
+function normalizeTrendRange(range?: string): TrendRange {
+  if (range === "3m" || range === "12m") {
+    return range;
+  }
+
+  return "30d";
+}
+
+function getBestWeekday(reviews: ReviewInsightSource[]) {
+  if (reviews.length === 0) {
+    return null;
+  }
+
+  const counts = Array.from({ length: 7 }, () => 0);
+
+  reviews.forEach((review) => {
+    counts[new Date(review.created_at).getDay()] += 1;
+  });
+
+  const bestDayIndex = counts.reduce(
+    (bestIndex, count, index) => (count > counts[bestIndex] ? index : bestIndex),
+    0,
+  );
+
+  return {
+    count: counts[bestDayIndex],
+    dayIndex: bestDayIndex,
+    label: polishWeekdays[bestDayIndex],
+    percentage: Math.round((counts[bestDayIndex] / reviews.length) * 100),
+  };
+}
+
+function buildReviewActivityTrend(buckets: ReviewActivityTrendBucket[]) {
+  const chartWidth = 720;
+  const chartLeft = 18;
+  const chartRight = chartWidth - 18;
+  const chartBottom = 190;
+  const chartTop = 34;
+  const chartHeight = chartBottom - chartTop;
+  const dailyCounts = buckets.map((bucket) => Number(bucket.review_count ?? 0));
+  const maxDailyCount = Math.max(...dailyCounts);
+  const labels = buckets
+    .filter((_, index) => {
+      if (buckets.length <= 6) {
+        return true;
+      }
+
+      const interval = Math.max(1, Math.floor((buckets.length - 1) / 4));
+      return index % interval === 0 || index === buckets.length - 1;
+    })
+    .map((bucket) => formatShortDate(new Date(bucket.period_start)));
+
+  const points = buckets.map((bucket, index) => {
+    const value = dailyCounts[index];
+    const averageRating = Number(bucket.average_rating);
+    const periodStart = new Date(bucket.period_start);
+    const periodEnd = new Date(bucket.period_end);
+    const x =
+      buckets.length > 1
+        ? chartLeft + (index / (buckets.length - 1)) * (chartRight - chartLeft)
+        : chartWidth / 2;
+    const height =
+      maxDailyCount > 0 ? (value / maxDailyCount) * chartHeight : 0;
+
+    return {
+      averageRating: Number.isFinite(averageRating) ? averageRating : null,
+      label: formatShortDate(periodStart),
+      tooltipLabel: formatTooltipRange(periodStart, periodEnd),
+      value,
+      x,
+      height,
+    };
+  });
+
+  return {
+    labels,
+    points,
+  };
+}
+
+function buildBusinessInsights(reviews: ReviewInsightSource[]) {
+  const now = new Date();
+  const currentWeekStart = addDays(now, -7);
+  const previousWeekStart = addDays(now, -14);
+  const monthStart = startOfCurrentMonth(now);
+  const monthlyGoal = 30;
+
+  const currentWeekReviews = reviews.filter((review) => {
+    const createdAt = new Date(review.created_at);
+    return createdAt >= currentWeekStart && createdAt <= now;
+  });
+  const previousWeekReviews = reviews.filter((review) => {
+    const createdAt = new Date(review.created_at);
+    return createdAt >= previousWeekStart && createdAt < currentWeekStart;
+  });
+  const currentMonthReviews = reviews.filter((review) => {
+    const createdAt = new Date(review.created_at);
+    return createdAt >= monthStart && createdAt <= now;
+  });
+
+  const bestCurrentDay = getBestWeekday(currentWeekReviews);
+  const bestPreviousDay = getBestWeekday(previousWeekReviews);
+  const monthlyCount = currentMonthReviews.length;
+  const monthlyProgress = Math.min(
+    100,
+    Math.round((monthlyCount / monthlyGoal) * 100),
+  );
+
+  let repeatability = "Zbieramy dane do porównania.";
+
+  if (bestCurrentDay && bestPreviousDay) {
+    repeatability =
+      bestCurrentDay.dayIndex === bestPreviousDay.dayIndex
+        ? `${bestCurrentDay.label} dominuje 2 tygodnie z rzędu`
+        : `Zmiana z ${bestPreviousDay.label.toLowerCase()} na ${bestCurrentDay.label.toLowerCase()}`;
+  } else if (!bestCurrentDay && !bestPreviousDay) {
+    repeatability = "Pierwsze porównanie pojawi się po zebraniu opinii.";
+  }
+
+  let reviewPace = "Pierwsze tempo pojawi się po zebraniu opinii.";
+
+  if (currentWeekReviews.length > 0 || previousWeekReviews.length > 0) {
+    if (previousWeekReviews.length === 0 && currentWeekReviews.length > 0) {
+      reviewPace = "Nowe opinie w tym tygodniu";
+    } else {
+      const paceChange = Math.round(
+        ((currentWeekReviews.length - previousWeekReviews.length) /
+          previousWeekReviews.length) *
+          100,
+      );
+      reviewPace = `${paceChange > 0 ? "+" : ""}${paceChange}% względem poprzedniego tygodnia`;
+    }
+  }
+
+  return {
+    bestDay: bestCurrentDay
+      ? {
+          detail: `${bestCurrentDay.percentage}% opinii wpada w ${bestCurrentDay.label.toLowerCase()}`,
+          label: bestCurrentDay.label,
+          value: `${bestCurrentDay.count} opinii`,
+        }
+      : null,
+    monthlyGoal: {
+      count: monthlyCount,
+      goal: monthlyGoal,
+      helperText:
+        monthlyCount === 0
+          ? "Rozpocznij zbieranie opinii"
+          : "Domyślny cel: 30 opinii miesięcznie.",
+      progress: monthlyProgress,
+      reached: monthlyCount >= monthlyGoal,
+    },
+    repeatability,
+    reviewPace,
+  };
+}
+
+function usagePercent(used: number, limit: number) {
+  if (!Number.isFinite(used) || !Number.isFinite(limit) || limit <= 0) {
+    return 0;
+  }
+
+  return Math.min(100, Math.round((used / limit) * 100));
+}
+
+function UsageProgress({
+  used,
+  limit,
+}: {
+  used: number;
+  limit: number;
+}) {
   return (
-    <div className="mt-5 h-52 w-full">
-      <svg
-        className="h-full w-full overflow-visible"
-        viewBox="0 0 720 220"
-        preserveAspectRatio="none"
-        role="img"
-        aria-label="Trend nowych opinii z ostatnich 30 dni"
-      >
-        <defs>
-          <linearGradient id="dashboardArea" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#5B5CF6" stopOpacity=".22" />
-            <stop offset="100%" stopColor="#5B5CF6" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {[30, 80, 130, 180].map((y) => (
-          <line
-            key={y}
-            x1="0"
-            y1={y}
-            x2="720"
-            y2={y}
-            stroke="#0F0F10"
-            strokeOpacity=".06"
-            strokeDasharray="4 7"
-          />
-        ))}
-        <path
-          d="M0 176 C65 168,88 146,142 154 S220 127,280 133 S360 102,420 111 S506 76,565 88 S645 45,720 36 L720 220 L0 220 Z"
-          fill="url(#dashboardArea)"
-        />
-        <path
-          d="M0 176 C65 168,88 146,142 154 S220 127,280 133 S360 102,420 111 S506 76,565 88 S645 45,720 36"
-          fill="none"
-          stroke="#5B5CF6"
-          strokeWidth="4"
-          strokeLinecap="round"
-        />
-        {[
-          [142, 154],
-          [280, 133],
-          [420, 111],
-          [565, 88],
-          [720, 36],
-        ].map(([x, y]) => (
-          <circle key={x} cx={x} cy={y} r="6" fill="white" stroke="#5B5CF6" strokeWidth="4" />
-        ))}
-      </svg>
+    <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/[0.06]">
+      <div
+        className="h-full rounded-full bg-brand"
+        style={{ width: `${usagePercent(used, limit)}%` }}
+      />
     </div>
   );
 }
 
-export default async function DashboardPage() {
+function AiUsageCard({
+  plan,
+  repliesUsed,
+  repliesLimit,
+  analysesUsed,
+  analysesLimit,
+}: {
+  plan: AppPlan;
+  repliesUsed: number;
+  repliesLimit: number;
+  analysesUsed: number;
+  analysesLimit: number;
+}) {
+  const isUnpaid = plan === "unpaid";
+  const remainingReplies = Math.max(repliesLimit - repliesUsed, 0);
+  const remainingAnalyses = Math.max(analysesLimit - analysesUsed, 0);
+
+  return (
+    <article className="w-full min-w-0 overflow-hidden rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
+            Limity planu
+          </p>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight">
+            Okres rozliczeniowy
+          </h2>
+        </div>
+        <span className="self-start rounded-full bg-brand-soft px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-brand">
+          Plan {getPlanLabel(plan)}
+        </span>
+      </div>
+
+      {isUnpaid ? (
+        <div className="mt-5 rounded-2xl border border-brand/10 bg-brand-soft px-4 py-3 text-sm font-semibold text-brand">
+          Wybierz plan, aby korzystać z funkcji automatyzacji
+        </div>
+      ) : null}
+
+      <div className="mt-5 grid min-w-0 gap-4 sm:grid-cols-2">
+        <div className="min-w-0 rounded-2xl bg-[#FAFAFC] p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold">Odpowiedzi na opinie</p>
+            <p className="text-sm font-semibold text-brand">
+              {remainingReplies} pozostało
+            </p>
+          </div>
+          <UsageProgress used={repliesUsed} limit={repliesLimit} />
+          <p className="mt-2 text-[11px] text-black/35">
+            {usagePercent(repliesUsed, repliesLimit)}% limitu
+          </p>
+          <p className="mt-1 text-[11px] text-black/35">
+            Wykorzystano {repliesUsed} z {repliesLimit}
+          </p>
+        </div>
+        <div className="min-w-0 rounded-2xl bg-[#FAFAFC] p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold">Analizy reputacji</p>
+            <p className="text-sm font-semibold text-brand">
+              {remainingAnalyses} pozostało
+            </p>
+          </div>
+          <UsageProgress used={analysesUsed} limit={analysesLimit} />
+          <p className="mt-2 text-[11px] text-black/35">
+            {usagePercent(analysesUsed, analysesLimit)}% limitu
+          </p>
+          <p className="mt-1 text-[11px] text-black/35">
+            Wykorzystano {analysesUsed} z {analysesLimit}
+          </p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function TrendChart({ points }: { points: ReviewActivityTrendPoint[] }) {
+  const chartBottom = 190;
+  const chartTop = 30;
+  const chartHeight = chartBottom - chartTop;
+  const barWidth = Math.max(7, Math.min(15, Math.floor(420 / points.length)));
+
+  return (
+    <div className="relative mt-5 h-[220px] w-full overflow-visible">
+      {points.length > 0 ? (
+        <>
+          <svg
+            className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
+            viewBox="0 0 720 220"
+            preserveAspectRatio="none"
+            role="img"
+            aria-label="Liczba nowych opinii z ostatnich 30 dni"
+          >
+            {[70, 120].map((y) => (
+              <line
+                key={y}
+                x1="18"
+                y1={y}
+                x2="702"
+                y2={y}
+                stroke="#0F0F10"
+                strokeOpacity=".035"
+                strokeDasharray="4 9"
+              />
+            ))}
+            <line
+              x1="18"
+              y1={chartBottom}
+              x2="702"
+              y2={chartBottom}
+              stroke="#0F0F10"
+              strokeOpacity=".12"
+            />
+          </svg>
+          {points.map((point) => {
+            const visibleHeight = Math.max(point.height, point.value > 0 ? 10 : 3);
+            const leftPercent = (point.x / 720) * 100;
+            const tooltipEdgeClass =
+              point.x < 150
+                ? "left-0"
+                : point.x > 570
+                  ? "right-0"
+                  : "left-1/2 -translate-x-1/2";
+
+            return (
+              <div
+                key={`${point.tooltipLabel}-${point.x}`}
+                className="group absolute z-10 outline-none hover:z-50 focus:z-50"
+                style={{
+                  bottom: `${220 - chartBottom}px`,
+                  height: `${chartHeight}px`,
+                  left: `${leftPercent}%`,
+                  transform: "translateX(-50%)",
+                  width: `${Math.max(barWidth, 18)}px`,
+                }}
+                tabIndex={0}
+              >
+                <div
+                  className="absolute bottom-0 left-1/2 rounded-t-[4px] transition-colors duration-200 group-hover:bg-brand group-focus:bg-brand"
+                  style={{
+                    backgroundColor: point.value > 0 ? "#5B5CF6" : "#0F0F10",
+                    height: `${visibleHeight}px`,
+                    opacity: point.value > 0 ? 0.86 : 0.18,
+                    transform: "translateX(-50%)",
+                    width: `${barWidth}px`,
+                  }}
+                />
+                <div
+                  className={`pointer-events-none absolute z-[999] min-w-[150px] max-w-[220px] rounded-xl border border-white/[0.08] bg-[#181822] px-3.5 py-3 text-left opacity-0 shadow-[0_18px_40px_rgba(15,15,16,0.22)] transition-opacity duration-150 group-hover:opacity-100 group-focus:opacity-100 ${tooltipEdgeClass}`}
+                  style={{
+                    bottom: `${visibleHeight + 14}px`,
+                  }}
+                >
+                  <p className="text-[13px] font-semibold leading-[1.4] text-white/95">
+                    {point.tooltipLabel}
+                  </p>
+                  <p className="mt-1 text-[13px] font-medium leading-[1.4] text-white/80">
+                    {formatReviewCount(point.value)}
+                  </p>
+                  <p className="mt-1 text-xs leading-[1.4] text-white/55">
+                    {formatAverageRating(point.averageRating)}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </>
+      ) : (
+        <div className="grid h-full place-items-center rounded-2xl border border-dashed border-black/[0.08] bg-[#FAFAFC] px-5 text-center">
+          <p className="max-w-sm text-sm font-semibold leading-6 text-black/45">
+            Brak opinii w wybranym okresie
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    ai_error?: string;
+    billing_error?: string;
+    checkout?: string;
+    trend_range?: string;
+  }>;
+}) {
+  const params = await searchParams;
+  const isCheckoutSuccess = params.checkout === "success";
+  const trendRange = normalizeTrendRange(params.trend_range);
+  const dashboardMessage =
+    params.ai_error ??
+    params.billing_error ??
+    (isCheckoutSuccess
+      ? "Plan został aktywowany. Możesz już korzystać z NuvoRate."
+      : undefined);
   const supabase = await createClient();
   const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
 
@@ -255,7 +710,7 @@ export default async function DashboardPage() {
       .maybeSingle(),
     supabase
       .from("profiles")
-      .select("plan")
+      .select("plan, stripe_customer_id, subscription_status")
       .eq("user_id", user.id)
       .maybeSingle(),
   ]);
@@ -276,6 +731,114 @@ export default async function DashboardPage() {
     );
   }
 
+  const appPlan = normalizePlan(profile.plan);
+  const isPaid = isPaidPlan(appPlan);
+  const businessName = business.name ?? "Twoja firma";
+  const businessIndustry = business.industry ?? "Branża nieuzupełniona";
+  const businessCity = business.city ?? "Miasto nieuzupełnione";
+  const plan = getPlanLabel(appPlan);
+  const displayName = user.email?.split("@")[0] ?? "użytkowniku";
+  const hasActiveSubscription =
+    Boolean(profile.stripe_customer_id) &&
+    ["active", "trialing"].includes(profile.subscription_status ?? "");
+  const periodMonth = currentPeriodMonth();
+  const { data: aiUsage, error: aiUsageError } = await supabase
+    .from("ai_usage")
+    .select("ai_replies_used, ai_analyses_used")
+    .eq("user_id", user.id)
+    .eq("period_month", periodMonth)
+    .maybeSingle();
+
+  if (aiUsageError) {
+    console.warn("AI usage lookup failed", aiUsageError);
+  }
+
+  const currentAiUsage = aiUsageError ? null : (aiUsage as AiUsage | null);
+  const aiRepliesUsedRaw = Number(currentAiUsage?.ai_replies_used ?? 0);
+  const aiAnalysesUsedRaw = Number(currentAiUsage?.ai_analyses_used ?? 0);
+  const aiRepliesUsed = Number.isFinite(aiRepliesUsedRaw)
+    ? aiRepliesUsedRaw
+    : 0;
+  const aiAnalysesUsed = Number.isFinite(aiAnalysesUsedRaw)
+    ? aiAnalysesUsedRaw
+    : 0;
+  const aiRepliesLimit = getAiLimit(appPlan, "reply");
+  const aiAnalysesLimit = getAiLimit(appPlan, "analysis");
+  const remainingReplies = Math.max(aiRepliesLimit - aiRepliesUsed, 0);
+  const checkoutAvailability = {
+    monthly: {
+      business: hasPriceIdForPlan("business", "monthly"),
+      starter: hasPriceIdForPlan("starter", "monthly"),
+    },
+    yearly: {
+      business: hasPriceIdForPlan("business", "yearly"),
+      starter: hasPriceIdForPlan("starter", "yearly"),
+    },
+  };
+
+  if (!isPaid && isCheckoutSuccess) {
+    return (
+      <main className="min-h-screen bg-[#F6F6F9] text-ink">
+        <div className="flex min-h-screen items-center justify-center px-5 py-12">
+          <section className="w-full max-w-3xl rounded-[32px] border border-black/[0.06] bg-white p-7 text-center shadow-card sm:p-10">
+            <div className="mx-auto flex justify-center">
+              <BrandLogo />
+            </div>
+            <CheckoutActivationStatus />
+            <form action={signOut} className="mt-5">
+              <button type="submit" className="text-sm font-semibold text-black/40 hover:text-ink">
+                Wyloguj się
+              </button>
+            </form>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  if (!isPaid) {
+    return (
+      <main className="min-h-screen bg-[#F6F6F9] text-ink">
+        <div className="flex min-h-screen items-center justify-center px-5 py-12">
+          <section className="w-full max-w-5xl rounded-[32px] border border-black/[0.06] bg-white p-7 text-center shadow-card sm:p-10">
+            <div className="mx-auto flex justify-center">
+              <BrandLogo />
+            </div>
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+              Aktywuj NuvoRate
+            </h1>
+            <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-black/50">
+              Konto jest gotowe. Wybierz plan, aby rozpocząć monitorowanie
+              opinii i rozwijać reputację swojej firmy.
+            </p>
+            {dashboardMessage && (
+              <div className="mt-6 rounded-2xl border border-brand/15 bg-brand-soft px-4 py-3 text-sm font-semibold text-brand">
+                {dashboardMessage}
+              </div>
+            )}
+            <div className="mt-8">
+              <PlanPicker checkoutAvailability={checkoutAvailability} />
+            </div>
+            <form action={signOut} className="mt-5">
+              <button type="submit" className="text-sm font-semibold text-black/40 hover:text-ink">
+                Wyloguj się
+              </button>
+            </form>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  const now = new Date();
+  const insightRangeStart = new Date(
+    Math.min(
+      startOfCurrentMonth(now).getTime(),
+      addDays(now, -14).getTime(),
+    ),
+  ).toISOString();
+  const insightRangeEnd = now.toISOString();
+
   const [
     { data: reviews, error: reviewsError },
     {
@@ -283,6 +846,8 @@ export default async function DashboardPage() {
       count: reviewsCount,
       error: reviewStatsError,
     },
+    { data: insightReviews, error: insightReviewsError },
+    { data: trendReviews, error: trendReviewsError },
   ] = await Promise.all([
     supabase
       .from("reviews")
@@ -294,9 +859,25 @@ export default async function DashboardPage() {
       .from("reviews")
       .select("rating", { count: "exact" })
       .eq("business_id", business.id),
+    supabase
+      .from("reviews")
+      .select("created_at")
+      .eq("business_id", business.id)
+      .gte("created_at", insightRangeStart)
+      .lte("created_at", insightRangeEnd),
+    supabase
+      .rpc("get_review_activity_trend", {
+        p_business_id: business.id,
+        p_range: trendRange,
+      }),
   ]);
 
-  if (reviewsError || reviewStatsError) {
+  if (
+    reviewsError ||
+    reviewStatsError ||
+    insightReviewsError ||
+    trendReviewsError
+  ) {
     throw new Error(
       "Nie udało się odczytać opinii. Uruchom migrację reviews w Supabase.",
     );
@@ -323,7 +904,7 @@ export default async function DashboardPage() {
 
   if (reviewResponsesError || businessAnalysisError) {
     throw new Error(
-      "Nie udało się odczytać danych AI. Uruchom migrację 003_ai_features.sql w Supabase.",
+      "Nie udało się odczytać danych odpowiedzi na opinie i analiz reputacji. Uruchom migrację 003_ai_features.sql w Supabase.",
     );
   }
 
@@ -338,6 +919,13 @@ export default async function DashboardPage() {
     totalReviews > 0
       ? Math.round((positiveReviews / totalReviews) * 100)
       : 0;
+  const businessInsights =
+    appPlan === "business"
+      ? buildBusinessInsights((insightReviews ?? []) as ReviewInsightSource[])
+      : null;
+  const reviewActivityTrend = buildReviewActivityTrend(
+    (trendReviews ?? []) as ReviewActivityTrendBucket[],
+  );
 
   const metrics = [
     {
@@ -366,24 +954,22 @@ export default async function DashboardPage() {
     },
     {
       label: "Skany NFC",
-      value: "148",
-      change: "+32%",
-      detail: "vs poprzednie 30 dni",
-      placeholder: "Placeholder • NFC",
+      value: "0",
+      change: "Śledzenie NFC",
+      detail: "skany z plakietek i kart",
       icon: "nfc" as const,
     },
   ];
 
-  const businessName = business.name ?? "Twoja firma";
-  const businessIndustry = business.industry ?? "Branża nieuzupełniona";
-  const businessCity = business.city ?? "Miasto nieuzupełnione";
-  const plan = profile.plan === "business" ? "Business" : "Starter";
-  const displayName = user.email?.split("@")[0] ?? "użytkowniku";
-  const responsesByReviewId = new Map(
-    (reviewResponses as ReviewResponse[]).map((response) => [
-      response.review_id,
-      response.response_text,
-    ]),
+  const responsesByReviewId = new Map<string, string | null>(
+    ((reviewResponses ?? []) as ReviewResponse[])
+      .filter((response) => typeof response.review_id === "string")
+      .map((response) => [
+        response.review_id,
+        typeof response.response_text === "string"
+          ? response.response_text
+          : null,
+      ]),
   );
   const latestAnalysis = businessAnalysis as BusinessAnalysis | null;
   const praisedElements = Array.isArray(latestAnalysis?.praised_elements)
@@ -453,11 +1039,15 @@ export default async function DashboardPage() {
                 aktywny
               </span>
             </div>
-            {plan === "Starter" && (
-              <button type="button" className="mt-4 w-full rounded-xl bg-white/10 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-white/15">
+            {hasActiveSubscription ? (
+              <Link href="/billing/portal" className="mt-4 block w-full rounded-xl bg-white/10 px-3 py-2.5 text-center text-xs font-semibold text-white transition hover:bg-white/15">
+                Zarządzaj subskrypcją
+              </Link>
+            ) : plan === "Starter" ? (
+              <Link href="/checkout?plan=business" className="mt-4 block w-full rounded-xl bg-white/10 px-3 py-2.5 text-center text-xs font-semibold text-white transition hover:bg-white/15">
                 Przejdź na Business
-              </button>
-            )}
+              </Link>
+            ) : null}
           </div>
           <form action={signOut} className="mt-3">
             <button
@@ -482,12 +1072,7 @@ export default async function DashboardPage() {
               <p className="mt-0.5 text-sm font-semibold">Pulpit główny</p>
             </div>
             <div className="flex items-center gap-2.5">
-              <button
-                type="button"
-                className="hidden rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-sm font-medium text-black/55 sm:block"
-              >
-                Ostatnie 30 dni
-              </button>
+              <TrendRangeSelect value={trendRange} />
               <button
                 type="button"
                 className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/[0.08] bg-white text-black/50"
@@ -562,16 +1147,21 @@ export default async function DashboardPage() {
             </div>
 
             <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Najważniejsze statystyki">
+              {dashboardMessage && (
+                <div className="flex flex-col gap-3 rounded-[22px] border border-brand/15 bg-brand-soft p-5 text-sm font-semibold text-brand shadow-card sm:col-span-2 sm:flex-row sm:items-center sm:justify-between xl:col-span-4">
+                  <span>{dashboardMessage}</span>
+                  {params.ai_error && appPlan === "starter" && (
+                    <Link href="/checkout?plan=business" className="rounded-xl bg-brand px-4 py-2.5 text-center text-xs font-semibold text-white transition hover:bg-[#4D4EE8]">
+                      Przejdź na Business
+                    </Link>
+                  )}
+                </div>
+              )}
               {metrics.map((metric) => (
                 <article key={metric.label} className="rounded-[22px] border border-black/[0.06] bg-white p-5 shadow-card">
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="text-xs font-medium text-black/40">{metric.label}</p>
-                      {"placeholder" in metric && (
-                        <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-brand/70">
-                          {metric.placeholder}
-                        </p>
-                      )}
                       <p className="mt-3 text-3xl font-semibold tracking-[-0.04em]">{metric.value}</p>
                     </div>
                     <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand">
@@ -588,119 +1178,147 @@ export default async function DashboardPage() {
               ))}
             </section>
 
-            <section className="mt-4 grid gap-4 xl:grid-cols-[1.55fr_0.75fr]">
-              <article className="rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
+            <section className="mt-4" aria-label="Limity planu">
+              <AiUsageCard
+                plan={appPlan}
+                repliesUsed={aiRepliesUsed}
+                repliesLimit={aiRepliesLimit}
+                analysesUsed={aiAnalysesUsed}
+                analysesLimit={aiAnalysesLimit}
+              />
+            </section>
+
+            <section className="mt-4 grid items-start gap-4 xl:grid-cols-[1.55fr_0.75fr]">
+              <article className="h-fit self-start rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
                 <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
                       Nowe opinie
                     </p>
-                    <h2 className="mt-1 text-xl font-semibold tracking-tight">Trend reputacji</h2>
+                    <h2 className="mt-1 text-xl font-semibold tracking-tight">Nowe opinie w czasie</h2>
                   </div>
                   <div className="flex gap-4 text-xs">
                     <span className="flex items-center gap-2 text-black/50">
                       <span className="h-2 w-2 rounded-full bg-brand" />
                       Bieżący okres
                     </span>
-                    <span className="flex items-center gap-2 text-black/30">
+                    <span className="flex items-center gap-2 text-black/20">
                       <span className="h-2 w-2 rounded-full bg-black/15" />
                       Poprzedni okres
                     </span>
                   </div>
                 </div>
-                <TrendChart />
-                <div className="flex justify-between text-[10px] text-black/25">
-                  <span>1 maj</span>
-                  <span>8 maj</span>
-                  <span>15 maj</span>
-                  <span>22 maj</span>
-                  <span>30 maj</span>
+                <TrendChart points={reviewActivityTrend.points} />
+                <div className="flex justify-between text-[10px] font-medium text-black/35">
+                  {reviewActivityTrend.labels.map((label) => (
+                    <span key={label}>{label}</span>
+                  ))}
                 </div>
+                {businessInsights && (
+                  <div className="mt-4 border-t border-black/[0.06] pt-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
+                          Business Insights
+                        </p>
+                        <p className="mt-1 text-sm text-black/45">
+                          Krótkie sygnały z opinii dla planu Business.
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-brand-soft px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-brand">
+                        Business
+                      </span>
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      <article className="rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4">
+                        <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">
+                          Najlepszy dzień
+                        </p>
+                        {businessInsights.bestDay ? (
+                          <>
+                            <p className="mt-3 text-lg font-semibold tracking-tight">
+                              {businessInsights.bestDay.label}
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-brand">
+                              {businessInsights.bestDay.value}
+                            </p>
+                            <p className="mt-2 text-xs leading-5 text-black/45">
+                              {businessInsights.bestDay.detail}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="mt-3 text-sm font-semibold text-black/45">
+                            Pierwsze dane pojawią się po nowej opinii
+                          </p>
+                        )}
+                      </article>
+
+                      <article className="rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4">
+                        <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">
+                          Powtarzalność
+                        </p>
+                        <p className="mt-3 text-sm font-semibold leading-5 text-ink">
+                          {businessInsights.repeatability}
+                        </p>
+                        <p className="mt-2 text-xs leading-5 text-black/45">
+                          Porównanie najlepszego dnia tydzień do tygodnia.
+                        </p>
+                      </article>
+
+                      <article className="rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4">
+                        <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">
+                          Tempo opinii
+                        </p>
+                        <p className="mt-3 text-lg font-semibold tracking-tight">
+                          {businessInsights.reviewPace}
+                        </p>
+                        <p className="mt-2 text-xs leading-5 text-black/45">
+                          Ostatnie 7 dni vs poprzednie 7 dni.
+                        </p>
+                      </article>
+
+                      <article className="rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4">
+                        <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">
+                          Cel miesiąca
+                        </p>
+                        <div className="mt-3 flex items-center justify-between gap-3">
+                          <p className="text-lg font-semibold tracking-tight">
+                            {businessInsights.monthlyGoal.count} / {businessInsights.monthlyGoal.goal} opinii
+                          </p>
+                          {businessInsights.monthlyGoal.reached && (
+                            <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">
+                              Cel osiągnięty
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/[0.07]">
+                          <div
+                            className="h-full rounded-full bg-brand"
+                            style={{
+                              width: `${businessInsights.monthlyGoal.progress}%`,
+                            }}
+                          />
+                        </div>
+                        <p className="mt-2 text-xs leading-5 text-black/45">
+                          {businessInsights.monthlyGoal.helperText}
+                        </p>
+                      </article>
+                    </div>
+                  </div>
+                )}
               </article>
 
-              <article className="relative overflow-hidden rounded-[24px] bg-ink p-6 text-white shadow-card">
-                <div className="absolute -right-20 -top-20 h-52 w-52 rounded-full bg-brand/25 blur-3xl" />
-                <div className="relative flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.12em] text-white/40">
-                      Inteligentna analiza
-                    </p>
-                    <h2 className="mt-1 text-xl font-semibold">Analiza ostatnich 30 dni</h2>
-                  </div>
-                  <span className="rounded-full bg-brand/20 px-2.5 py-1 text-[10px] font-semibold text-[#B6B7FF]">
-                    BUSINESS
-                  </span>
-                </div>
-                {plan === "Business" ? (
-                  latestAnalysis ? (
-                    <div className="relative mt-6">
-                      <p className="text-sm leading-6 text-white/70">
-                        {latestAnalysis.summary}
-                      </p>
-                      <div className="mt-5 space-y-4 text-xs">
-                        <div>
-                          <p className="font-semibold text-[#B6B7FF]">
-                            Najczęściej chwalone
-                          </p>
-                          <ul className="mt-2 space-y-1.5 text-white/55">
-                            {praisedElements.map((item) => (
-                              <li key={item}>• {item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div>
-                          <p className="font-semibold text-[#B6B7FF]">
-                            Najczęściej zgłaszane problemy
-                          </p>
-                          <ul className="mt-2 space-y-1.5 text-white/55">
-                            {reportedProblems.map((item) => (
-                              <li key={item}>• {item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div>
-                          <p className="font-semibold text-[#B6B7FF]">
-                            Rekomendacje działań
-                          </p>
-                          <ul className="mt-2 space-y-1.5 text-white/55">
-                            {recommendations.map((item) => (
-                              <li key={item}>• {item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                      <p className="mt-5 text-[10px] text-white/35">
-                        {latestAnalysis.review_count} opinii •{" "}
-                        {new Date(latestAnalysis.created_at).toLocaleDateString(
-                          "pl-PL",
-                        )}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="relative mt-6 text-sm leading-6 text-white/65">
-                      Wygeneruj pierwszą analizę opinii z ostatnich 30 dni.
-                    </p>
-                  )
-                ) : (
-                  <p className="relative mt-6 text-sm leading-6 text-white/65">
-                    Analiza wszystkich opinii, trendów i rekomendacji jest
-                    dostępna w planie Business.
-                  </p>
-                )}
-                {plan === "Business" && (
-                  <form action={generateBusinessAnalysis} className="relative mt-6">
-                    <button
-                      type="submit"
-                      className="w-full rounded-xl bg-brand px-4 py-3 text-xs font-semibold text-white transition hover:bg-[#4D4EE8]"
-                    >
-                      {latestAnalysis ? "Odśwież analizę" : "Wygeneruj analizę"}
-                    </button>
-                  </form>
-                )}
-              </article>
+              <AnalysisPreviewCard
+                createdAt={latestAnalysis?.created_at}
+                praisedElements={praisedElements}
+                recommendations={recommendations}
+                reportedProblems={reportedProblems}
+                reviewCount={latestAnalysis?.review_count}
+                summary={latestAnalysis?.summary}
+              />
             </section>
 
-            <section className="mt-4 rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
+            <section className="mt-6 rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
@@ -740,24 +1358,11 @@ export default async function DashboardPage() {
                         </span>
                       </div>
                       <p className="mt-4 min-h-12 text-sm leading-6 text-black/55">{review.content}</p>
-                      {responsesByReviewId.has(review.id) && (
-                        <div className="mt-4 rounded-xl border border-brand/10 bg-white p-3">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-brand">
-                            Proponowana odpowiedź
-                          </p>
-                          <p className="mt-2 text-xs leading-5 text-black/55">
-                            {responsesByReviewId.get(review.id)}
-                          </p>
-                        </div>
-                      )}
-                      <form action={generateReviewResponse} className="mt-4">
-                        <input type="hidden" name="reviewId" value={review.id} />
-                        <button type="submit" className="text-xs font-semibold text-brand">
-                          {responsesByReviewId.has(review.id)
-                            ? "Wygeneruj ponownie"
-                            : "Wygeneruj odpowiedź"}
-                        </button>
-                      </form>
+                      <ReviewResponseForm
+                        reviewId={review.id}
+                        initialResponseText={responsesByReviewId.get(review.id)}
+                        isReplyLimitReached={remainingReplies <= 0}
+                      />
                     </article>
                   ))}
                 </div>

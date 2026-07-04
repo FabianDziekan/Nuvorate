@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { FormField, FormMessage } from "@/components/auth/form-controls";
-import { createClient } from "@/lib/supabase/client";
+import {
+  createClient,
+  getSupabaseBrowserDiagnostics,
+  getSupabaseBrowserConfigError,
+} from "@/lib/supabase/client";
 
 export function LoginForm({
   nextPath = "/dashboard",
@@ -27,6 +31,13 @@ export function LoginForm({
     const password = String(formData.get("password") ?? "");
 
     try {
+      const configError = getSupabaseBrowserConfigError();
+
+      if (configError) {
+        setError(configError);
+        return;
+      }
+
       const supabase = createClient();
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
@@ -44,8 +55,32 @@ export function LoginForm({
           : "/dashboard";
       router.push(safeNext);
       router.refresh();
-    } catch {
-      setError("Nie udało się połączyć z usługą logowania. Spróbuj ponownie.");
+    } catch (caughtError) {
+      const message =
+        caughtError instanceof Error ? caughtError.message : "";
+
+      if (message === "Konfiguracja logowania jest niekompletna.") {
+        setError(message);
+        return;
+      }
+
+      if (process.env.NODE_ENV === "development") {
+        const diagnostics = getSupabaseBrowserDiagnostics();
+
+        console.error("Supabase auth login request failed", {
+          anonKeyPresent: diagnostics.anonKeyPresent,
+          errorMessage: message || "Nieznany błąd",
+          supabaseUrlEndsWithSupabaseHost:
+            diagnostics.supabaseUrlEndsWithSupabaseHost,
+          supabaseUrlHost: diagnostics.supabaseUrlHost || "brak",
+          supabaseUrlPresent: diagnostics.supabaseUrlPresent,
+          supabaseUrlStartsWithHttps: diagnostics.supabaseUrlStartsWithHttps,
+        });
+      }
+
+      setError(
+        "Nie udało się połączyć z usługą logowania. Sprawdź konfigurację Supabase.",
+      );
     } finally {
       setLoading(false);
     }

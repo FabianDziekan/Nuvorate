@@ -2,11 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand/logo";
+import { AnalysisActionForm } from "@/components/dashboard/analysis-action-form";
+import { getPlanLabel, isPaidPlan, normalizePlan } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
-import {
-  generateBusinessAnalysis,
-  signOut,
-} from "@/app/dashboard/actions";
+import { signOut } from "@/app/dashboard/actions";
 
 export const metadata: Metadata = {
   title: "Analiza reputacji | NuvoRate",
@@ -22,6 +21,7 @@ type AnalysisIcon =
   | "dashboard"
   | "logout"
   | "nfc"
+  | "responses"
   | "reviews"
   | "settings"
   | "warning";
@@ -38,6 +38,8 @@ type BusinessAnalysis = {
   reported_problems: unknown;
   recommendations: unknown;
 };
+
+type LegacyBusinessAnalysis = Omit<BusinessAnalysis, "score" | "trend">;
 
 function Icon({
   name,
@@ -108,6 +110,13 @@ function Icon({
         <circle cx="12" cy="12" r="1" fill="currentColor" />
       </>
     ),
+    responses: (
+      <>
+        <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
+        <path d="m8 10 2 2 4-4" />
+        <path d="M8 15h7" />
+      </>
+    ),
     reviews: (
       <>
         <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
@@ -150,9 +159,10 @@ const navigation = [
   { label: "Pulpit", icon: "dashboard" as const, href: "/dashboard" },
   { label: "Opinie", icon: "reviews" as const, href: "/reviews" },
   { label: "Analiza", icon: "analysis" as const, href: "/analysis" },
-  { label: "NFC", icon: "nfc" as const },
+  { label: "Odpowiedzi", icon: "responses" as const, href: "/responses" },
+  { label: "NFC", icon: "nfc" as const, href: "/nfc" },
   { label: "Powiadomienia", icon: "bell" as const },
-  { label: "Ustawienia", icon: "settings" as const },
+  { label: "Ustawienia", icon: "settings" as const, href: "/settings" },
 ];
 
 function stringList(value: unknown) {
@@ -167,6 +177,17 @@ function formatDate(value: string) {
     month: "long",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function isMissingScoreTrendColumnError(error: { message?: string; code?: string }) {
+  const message = error.message ?? "";
+
+  return (
+    error.code === "42703" ||
+    error.code === "PGRST204" ||
+    message.includes("score") ||
+    message.includes("trend")
+  );
 }
 
 const trendDetails = {
@@ -190,7 +211,12 @@ const trendDetails = {
   },
 };
 
-export default async function AnalysisPage() {
+export default async function AnalysisPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ai_error?: string }>;
+}) {
+  const params = await searchParams;
   const supabase = await createClient();
   const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
 
@@ -233,30 +259,58 @@ export default async function AnalysisPage() {
     throw new Error("Nie znaleziono profilu użytkownika.");
   }
 
-  const isBusiness = profile.plan === "business";
+  const appPlan = normalizePlan(profile.plan);
+  const isBusiness = appPlan === "business";
+  const isPaid = isPaidPlan(appPlan);
   let analysis: BusinessAnalysis | null = null;
 
-  if (isBusiness) {
-    const { data, error } = await supabase
-      .from("ai_business_analyses")
-      .select(
-        "created_at, period_start, period_end, review_count, score, trend, summary, praised_elements, reported_problems, recommendations",
-      )
-      .eq("business_id", business.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+  if (isPaid) {
+    const selectLatestAnalysis = (columns: string) =>
+      supabase
+        .from("ai_business_analyses")
+        .select(columns)
+        .eq("business_id", business.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    const result = await selectLatestAnalysis(
+      "created_at, period_start, period_end, review_count, score, trend, summary, praised_elements, reported_problems, recommendations",
+    );
+    let data: BusinessAnalysis | null = result.data as BusinessAnalysis | null;
+    let error = result.error;
+
+    if (error && isMissingScoreTrendColumnError(error)) {
+      console.warn(
+        "ai_business_analyses score/trend columns are missing; rendering analysis empty state.",
+        error,
+      );
+
+      const legacyResult = await selectLatestAnalysis(
+        "created_at, period_start, period_end, review_count, summary, praised_elements, reported_problems, recommendations",
+      );
+      const legacyData = legacyResult.data as LegacyBusinessAnalysis | null;
+
+      data = legacyData
+        ? {
+            ...legacyData,
+            score: null,
+            trend: null,
+          }
+        : null;
+      error = legacyResult.error;
+    }
 
     if (error) {
       throw new Error(
-        "Nie udało się odczytać analizy. Uruchom migrację 004_business_analysis_score_trend.sql.",
+        `Nie udało się odczytać analizy: ${error.message}`,
       );
     }
 
     analysis = data as BusinessAnalysis | null;
   }
 
-  const plan = isBusiness ? "Business" : "Starter";
+  const plan = getPlanLabel(appPlan);
   const displayName = user.email?.split("@")[0] ?? "użytkowniku";
   const strengths = stringList(analysis?.praised_elements);
   const problems = stringList(analysis?.reported_problems);
@@ -327,9 +381,9 @@ export default async function AnalysisPage() {
               </span>
             </div>
             {!isBusiness && (
-              <button type="button" className="mt-4 w-full rounded-xl bg-white/10 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-white/15">
+              <Link href="/checkout?plan=business" className="mt-4 block w-full rounded-xl bg-white/10 px-3 py-2.5 text-center text-xs font-semibold text-white transition hover:bg-white/15">
                 Przejdź na Business
-              </button>
+              </Link>
             )}
           </div>
           <form action={signOut} className="mt-3">
@@ -427,30 +481,47 @@ export default async function AnalysisPage() {
                   {business.name} z ostatnich 30 dni.
                 </p>
               </div>
-              {isBusiness && (
-                <form action={generateBusinessAnalysis}>
-                  <button type="submit" className="button-primary">
-                    {completeAnalysis
-                      ? "Odśwież analizę"
-                      : "Wygeneruj analizę"}
-                  </button>
-                </form>
+              {isPaid && (
+                <AnalysisActionForm
+                  hasSummary={Boolean(completeAnalysis)}
+                  redirectTo="/analysis"
+                />
               )}
             </div>
 
-            {!isBusiness ? (
+            {params.ai_error && (
+              <div className="mt-8 flex flex-col gap-3 rounded-[22px] border border-brand/15 bg-brand-soft p-5 text-sm font-semibold text-brand shadow-card sm:flex-row sm:items-center sm:justify-between">
+                <span>{params.ai_error}</span>
+                {appPlan === "starter" && (
+                  <Link href="/checkout?plan=business" className="rounded-xl bg-brand px-4 py-2.5 text-center text-xs font-semibold text-white transition hover:bg-[#4D4EE8]">
+                    Przejdź na Business
+                  </Link>
+                )}
+              </div>
+            )}
+
+            {!isPaid ? (
               <section className="mt-8 overflow-hidden rounded-[28px] bg-ink p-7 text-white shadow-card sm:p-10">
                 <div className="max-w-2xl">
                   <span className="inline-flex rounded-full bg-brand/20 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#B6B7FF]">
-                    Plan Business
+                    Wybierz plan
                   </span>
                   <h2 className="mt-5 text-2xl font-semibold tracking-tight sm:text-3xl">
-                    Zamień opinie klientów w konkretne decyzje biznesowe.
+                    Aktywuj plan, aby korzystać z analizy reputacji.
                   </h2>
                   <p className="mt-4 text-sm leading-7 text-white/60">
-                    Analiza reputacji, trendów, mocnych stron i problemów jest
-                    dostępna w planie Business.
+                    Analizy reputacji są dostępne po zakupie planu Starter
+                    albo Business. Starter obejmuje 1 analizę miesięcznie,
+                    Business 50 analiz miesięcznie.
                   </p>
+                  <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                    <Link href="/checkout?plan=starter" className="button-secondary bg-white text-ink hover:bg-white/90">
+                      Wybierz Starter
+                    </Link>
+                    <Link href="/checkout?plan=business" className="button-primary">
+                      Wybierz Business
+                    </Link>
+                  </div>
                 </div>
               </section>
             ) : completeAnalysis ? (

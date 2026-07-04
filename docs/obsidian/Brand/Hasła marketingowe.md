@@ -1,3 +1,9 @@
+---
+tags:
+  - brand
+  - marketing
+---
+
 # Hasła marketingowe
 
 Zestaw roboczych haseł opisujących główną wartość NuvoRate w krótkiej formie.
@@ -8,10 +14,10 @@ Zestaw roboczych haseł opisujących główną wartość NuvoRate w krótkiej fo
 - „Zbieraj opinie łatwiej. Rozwijaj firmę mądrzej.”
 - „NuvoRate — reputacja pod kontrolą.”
 
-## Powiązane
+## Powiązane notatki
 
 - [[Tone of Voice]]
 - [[Hero]]
 - [[CTA]]
 - [[Argumenty sprzedażowe]]
-
+- [[Brand MOC]]

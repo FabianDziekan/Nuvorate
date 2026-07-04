@@ -1,3 +1,8 @@
+---
+tags:
+  - sales
+---
+
 # Skrypt rozmowy
 
 Skrypt porządkuje rozmowę sprzedażową wokół obecnej reputacji firmy i oczekiwanych rezultatów.
@@ -8,10 +13,10 @@ Skrypt porządkuje rozmowę sprzedażową wokół obecnej reputacji firmy i ocze
 - Dopasowanie: Starter dla prostego początku, Business dla szerszej analizy.
 - Zamknięcie: ustalenie konkretnego następnego kroku bez wywierania presji.
 
-## Powiązane
+## Powiązane notatki
 
 - [[Argumenty sprzedażowe]]
 - [[Obiekcje klientów]]
 - [[Starter]]
 - [[Business]]
-
+- [[Sales MOC]]

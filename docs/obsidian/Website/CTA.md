@@ -1,3 +1,11 @@
+---
+tags:
+  - copy
+  - frontend
+  - marketing
+  - website
+---
+
 # CTA
 
 Wezwania do działania powinny prowadzić użytkownika do prostego, konkretnego następnego kroku.
@@ -8,10 +16,10 @@ Wezwania do działania powinny prowadzić użytkownika do prostego, konkretnego 
 - Tekst powinien być krótki, aktywny i zgodny z Tone of Voice.
 - Na jednym ekranie należy wyraźnie wyróżnić jedną główną akcję.
 
-## Powiązane
+## Powiązane notatki
 
 - [[Hero]]
 - [[Cennik]]
 - [[Tone of Voice]]
 - [[Hasła marketingowe]]
-
+- [[Website MOC]]

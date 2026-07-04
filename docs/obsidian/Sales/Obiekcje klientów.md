@@ -1,3 +1,8 @@
+---
+tags:
+  - sales
+---
+
 # Obiekcje klientów
 
 Notatka zbiera typowe wątpliwości klientów i kierunki uczciwych, konkretnych odpowiedzi.
@@ -8,10 +13,10 @@ Notatka zbiera typowe wątpliwości klientów i kierunki uczciwych, konkretnych 
 - „To za drogie” — rozmowa powinna odnieść koszt do wartości nowych klientów i oszczędzonego czasu.
 - „Boję się negatywnych opinii” — szybka informacja daje możliwość wcześniejszej i lepszej reakcji.
 
-## Powiązane
+## Powiązane notatki
 
 - [[Argumenty sprzedażowe]]
 - [[Skrypt rozmowy]]
 - [[Cennik]]
 - [[FAQ]]
-
+- [[Sales MOC]]

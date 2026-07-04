@@ -1,3 +1,9 @@
+---
+tags:
+  - brand
+  - marketing
+---
+
 # Kolory
 
 Paleta NuvoRate jest prosta, kontrastowa i oparta na fiolecie jako kolorze rozpoznawczym.
@@ -7,10 +13,10 @@ Paleta NuvoRate jest prosta, kontrastowa i oparta na fiolecie jako kolorze rozpo
 - Czarny `#0F0F10`: tekst, ciemne tła i mocny kontrast.
 - Kolory powinny zachowywać dostępny kontrast tekstu i interfejsu.
 
-## Powiązane
+## Powiązane notatki
 
 - [[Logo]]
 - [[Tone of Voice]]
 - [[Frontend]]
 - [[Mockup panelu]]
-
+- [[Brand MOC]]

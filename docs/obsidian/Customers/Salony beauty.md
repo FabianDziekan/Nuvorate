@@ -1,3 +1,9 @@
+---
+tags:
+  - customers
+  - sales
+---
+
 # Salony beauty
 
 Salony beauty budują wybór nowych klientów przede wszystkim na zaufaniu, efektach usług i rekomendacjach.
@@ -7,10 +13,10 @@ Salony beauty budują wybór nowych klientów przede wszystkim na zaufaniu, efek
 - NFC ułatwia wystawienie oceny przed opuszczeniem salonu.
 - Analiza pomaga zauważać trendy dotyczące obsługi, atmosfery i jakości usług.
 
-## Powiązane
+## Powiązane notatki
 
 - [[NFC]]
 - [[Inteligentna analiza]]
 - [[Barberzy]]
 - [[Skrypt rozmowy]]
-
+- [[Customers MOC]]

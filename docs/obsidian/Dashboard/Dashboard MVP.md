@@ -1,371 +1,201 @@
-+# Dashboard MVP
+---
+tags:
+  - dashboard
+  - mvp
+  - openai
+  - product
+  - stripe
+  - supabase
+---
 
-Dashboard MVP jest głównym widokiem produktu NuvoRate dla planów Starter i Business. Ma w kilka sekund odpowiadać na pytania właściciela firmy: ile nowych opinii pozyskano, jak zmienia się reputacja, co mówią klienci i które sytuacje wymagają reakcji.
+# Dashboard MVP
 
-Dashboard powinien również pełnić rolę najważniejszego obrazu produktu prezentowanego na stronie internetowej. Musi jasno komunikować główną wartość NuvoRate: więcej opinii = większe zaufanie = więcej klientów. Plakietki NFC są w nim widoczne jako źródło pozyskiwania opinii, ale nie dominują nad abonamentem i zarządzaniem reputacją.
+Dashboard jest głównym widokiem produktu po zalogowaniu. Aktualny kod znajduje się w `app/dashboard/page.tsx`.
 
-## Założenia produktowe
+Dashboard odpowiada na pytania:
 
-- Najważniejsze dane i działania są widoczne bez przechodzenia przez wiele ekranów.
-- Użytkownik najpierw widzi stan reputacji, następnie trendy, a potem konkretne opinie i rekomendowane działania.
-- Interfejs używa prostego języka biznesowego zamiast terminologii analitycznej.
-- Każdy wskaźnik pokazuje wartość bieżącą oraz zmianę względem poprzedniego, porównywalnego okresu.
-- Domyślnym zakresem danych jest ostatnie 30 dni, z możliwością zmiany okresu.
-- Funkcje niedostępne w Starter mogą być pokazane w ograniczonej formie jako czytelna zapowiedź Business, bez blokowania podstawowej pracy.
-- Dashboard powinien dobrze prezentować się zarówno jako działające narzędzie, jak i jako mockup używany w komunikacji produktu.
+- jaki plan ma użytkownik,
+- jaka firma jest przypisana do ownera,
+- ile opinii ma firma,
+- jaka jest średnia ocena,
+- jaki procent opinii jest pozytywny,
+- ile limitów odpowiedzi i analiz pozostało,
+- jakie są najnowsze opinie,
+- czy istnieje wygenerowana analiza reputacji.
 
-## Układ dashboardu
+## Dostęp
 
-### Sidebar
+Dashboard wymaga:
 
-Sidebar stanowi główną nawigację i powinien pozostać prosty w pierwszej wersji.
+- aktywnej sesji Supabase Auth,
+- istniejącego rekordu firmy w `public.businesses`,
+- profilu użytkownika w `public.profiles`.
 
-- Logo NuvoRate i nazwa aktualnie wybranej firmy.
-- Pozycja „Pulpit” prowadząca do głównego dashboardu.
-- Pozycja „Opinie” prowadząca do pełnej listy opinii.
-- Pozycja „Analiza” prowadząca do inteligentnej analizy w planie Business.
-- Pozycja „NFC” prowadząca do plakietek, liczby skanów i konfiguracji przekierowań.
-- Pozycja „Powiadomienia” prowadząca do historii alertów i ich ustawień.
-- Pozycja „Ustawienia” obejmująca profil firmy, konto, plan i integracje.
-- Informacja o aktywnym planie: Starter lub Business.
-- Dla Starter: dyskretny przycisk „Przejdź na Business” przy funkcjach premium.
+Jeżeli użytkownik nie ma firmy, `/dashboard` przekierowuje do `/onboarding`.
 
-Na desktopie sidebar jest stale widoczny. Może mieć wersję pełną z etykietami oraz zwiniętą z samymi ikonami. Aktywna pozycja jest oznaczona fioletem `#5B5CF6`.
+Jeżeli użytkownik ma plan `unpaid`, dashboard pokazuje ekran aktywacji planu zamiast pełnego panelu.
 
-### Górny pasek
+## Layout
 
-Górny pasek zapewnia kontekst i dostęp do najczęstszych działań.
+Aktualny dashboard używa własnego shell layoutu w pliku `app/dashboard/page.tsx`.
 
-- Tytuł widoku, np. „Dzień dobry, Anno” oraz nazwa firmy.
-- Selektor okresu: 7 dni, 30 dni, 90 dni lub zakres własny.
-- W planie Business: wybór lokalizacji, gdy obsługa wielu lokalizacji zostanie wdrożona.
-- Ikona powiadomień z liczbą nieprzeczytanych alertów.
-- Przycisk szybkiego działania „Poproś o opinię” lub „Skopiuj link do opinii”.
-- Menu profilu użytkownika.
+Desktop:
 
-Zmiana okresu powinna aktualizować kafelki, wykresy oraz listę opinii na całym dashboardzie.
+- sidebar po lewej,
+- topbar u góry,
+- główna zawartość po prawej,
+- karty statystyk,
+- karta limitów planu,
+- wykres trendu,
+- karta analizy,
+- sekcja najnowszych opinii.
 
-### Główna zawartość
+Mobile:
 
-Główna zawartość ma prowadzić użytkownika od szybkiego podsumowania do konkretnych działań.
+- logo w topbarze,
+- pozioma nawigacja pod topbarem,
+- karty układane pionowo lub w responsywnej siatce.
 
-1. Kafelki najważniejszych statystyk.
-2. Główny wykres trendu nowych opinii.
-3. Mniejsze wykresy ocen i skanów NFC.
-4. Sekcja ostatnich opinii z szybkim generowaniem odpowiedzi.
-5. Sekcja inteligentnej analizy w planie Business.
-6. Lista najważniejszych powiadomień i zdarzeń wymagających reakcji.
+## Sidebar
 
-Najpilniejsze informacje, takie jak nowa negatywna opinia lub spadek średniej oceny, powinny być widoczne przed treściami informacyjnymi.
+Sidebar pokazuje:
 
-### Widok desktop
+- logo NuvoRate,
+- nazwę firmy,
+- branżę,
+- miasto,
+- aktywny plan,
+- linki: Pulpit, Opinie, Analiza, NFC,
+- pozycje nieaktywne: Powiadomienia, Ustawienia,
+- przycisk Stripe Customer Portal dla aktywnej subskrypcji,
+- przycisk „Przejdź na Business” dla Startera bez aktywnego customer portal,
+- wylogowanie.
 
-- Sidebar zajmuje stałą kolumnę po lewej stronie.
-- Górny pasek pozostaje czytelny podczas przewijania.
-- Cztery kafelki statystyk są ułożone w jednym rzędzie.
-- Główny wykres nowych opinii zajmuje większą część szerokości.
-- Wykres ocen i wykres skanów NFC znajdują się obok siebie lub w prawej kolumnie.
-- Ostatnie opinie zajmują szeroką sekcję z miejscem na pełną treść i działania.
-- Inteligentna analiza może być przedstawiona jako trzy lub cztery karty w jednym rzędzie.
-- Układ powinien być przestronny i wykorzystywać białe tło, czarny tekst `#0F0F10` oraz fioletowe akcenty `#5B5CF6`.
+## Widgety dashboardu
 
-### Widok mobile
+### Nowe opinie
 
-- Sidebar zmienia się w menu otwierane ikoną lub dolną nawigację dla najważniejszych sekcji.
-- Górny pasek pokazuje nazwę firmy, powiadomienia i skrócone menu profilu.
-- Selektor okresu znajduje się pod nagłówkiem i zajmuje pełną szerokość.
-- Kafelki statystyk są ułożone po dwa w rzędzie, a na bardzo małych ekranach pojedynczo.
-- Wykresy przewijają się pionowo i nie wymagają przesuwania całego ekranu w poziomie.
-- Lista opinii używa kart zamiast szerokiej tabeli.
-- Najważniejsze działania, takie jak „Odpowiedz” i „Wygeneruj odpowiedź”, są dostępne bez otwierania dodatkowego widoku.
-- Filtry opinii otwierają się w wysuwanym panelu.
-- Funkcja „Poproś o opinię” może być dostępna jako stały przycisk w dolnej części ekranu.
-
-## Kafelki statystyk
-
-Każdy kafelek powinien zawierać nazwę wskaźnika, aktualną wartość, zmianę względem poprzedniego okresu oraz krótką interpretację.
-
-### Liczba nowych opinii
-
-- Pokazuje liczbę opinii pozyskanych w wybranym okresie.
-- Zawiera zmianę liczbową i procentową względem poprzedniego okresu.
-- Przykład: „24 nowe opinie, +20% vs poprzednie 30 dni”.
-- Kliknięcie otwiera listę opinii z ustawionym odpowiednim okresem.
+Aktualnie pokazuje łączną liczbę opinii firmy z `public.reviews`. Nazwa „Nowe opinie” jest uproszczeniem UI; kod nie filtruje jeszcze po okresie.
 
 ### Średnia ocena
 
-- Pokazuje aktualną średnią ocenę, np. `4,7 / 5`.
-- Zawiera zmianę względem poprzedniego okresu, np. `+0,2`.
-- Powinna korzystać z czytelnej skali gwiazdkowej, ale nie opierać znaczenia wyłącznie na kolorze.
-- Kliknięcie otwiera szczegółowy trend ocen.
+Średnia liczona z `reviews.rating`, formatowana do jednego miejsca po przecinku.
 
-### Pozytywne vs negatywne opinie
+### Pozytywne opinie
 
-- Pokazuje procentowy udział opinii pozytywnych i negatywnych.
-- Dla MVP opinie pozytywne to oceny 4-5, neutralne 3, a negatywne 1-2.
-- Główny kafelek może pokazywać np. „86% pozytywnych” oraz „8% negatywnych”.
-- Opinie neutralne powinny być dostępne w szczegółach, aby suma danych była zrozumiała.
-- Definicja kategorii musi być widoczna w podpowiedzi.
+Procent opinii z `rating >= 4`.
 
-### Liczba skanów NFC
+### Skany NFC
 
-- Pokazuje liczbę skanów aktywnych plakietek NFC w wybranym okresie.
-- Zawiera zmianę względem poprzedniego okresu.
-- Może dodatkowo pokazywać, ile skanów zakończyło się przejściem do wystawienia opinii, gdy takie dane będą dostępne.
-- Kliknięcie otwiera sekcję NFC z podziałem na plakietki lub lokalizacje.
-- Brak plakietki powinien wyświetlać prosty komunikat o możliwości dodania NFC, bez sugerowania, że jest ono wymagane.
+Aktualnie wartość `0`, bez podłączenia do tabeli skanów. UI używa tekstu „Śledzenie NFC”.
 
-## Wykresy
+## Limity planu
 
-Wykresy powinny przedstawiać trend i pomagać zauważać zmianę. Nie powinny powtarzać samych wartości z kafelków bez dodatkowego kontekstu.
+Karta „Limity planu” pokazuje:
 
-### Wykres nowych opinii
+- odpowiedzi na opinie: pozostało, procent i wykorzystanie,
+- analizy reputacji: pozostało, procent i wykorzystanie,
+- plan użytkownika.
 
-- Podstawowa forma: wykres liniowy lub kolumnowy pokazujący liczbę nowych opinii dziennie, tygodniowo albo miesięcznie.
-- Użytkownik może zmienić agregację zależnie od wybranego okresu.
-- Druga, delikatniejsza linia lub seria pokazuje poprzedni okres.
-- Po wskazaniu punktu widoczna jest data, liczba opinii i zmiana.
-- W planie Business możliwy jest podział na lokalizacje lub źródła.
+Dane pochodzą z:
 
-### Wykres ocen
+- `profiles.plan`,
+- `ai_usage.ai_replies_used`,
+- `ai_usage.ai_analyses_used`,
+- `lib/plans.ts`.
 
-- Podstawowa forma: wykres liniowy średniej oceny w czasie.
-- Dodatkowy widok może pokazywać rozkład ocen 1-5 w formie poziomych słupków.
-- Należy wyróżniać momenty istotnego spadku lub wzrostu średniej.
-- W planie Business wykres może być zestawiony ze zmianą sentymentu i najczęstszymi tematami.
+Jeżeli nie ma rekordu w `ai_usage`, UI przyjmuje użycie `0`.
 
-### Wykres skanów NFC
+## Komunikaty limitów
 
-- Podstawowa forma: wykres kolumnowy liczby skanów w czasie.
-- W planie Starter pokazuje łączną liczbę skanów.
-- W planie Business może porównywać plakietki, lokalizacje lub okresy.
-- Docelowo powinien pokazywać prostą ścieżkę: skan NFC → otwarcie formularza → wystawienie opinii.
-- Jeżeli nie ma danych, dashboard wyświetla instrukcję aktywacji plakietki zamiast pustego wykresu.
+Komunikaty backendowe są definiowane w `lib/plans.ts`.
 
-## Sekcja opinii
+Aktualne komunikaty:
 
-### Ostatnie opinie
+- Unpaid: „Wybierz plan, aby korzystać z odpowiedzi na opinie i analiz reputacji.”
+- Starter, analiza: „Wykorzystałeś analizę reputacji w planie Starter. Przejdź na Business, aby odblokować więcej analiz.”
+- Starter, odpowiedzi: „Wykorzystałeś limit odpowiedzi na opinie w planie Starter.”
+- Business, odpowiedzi: „Osiągnięto miesięczny limit odpowiedzi na opinie. Limit odnowi się w kolejnym okresie rozliczeniowym.”
+- Business, analizy: „Osiągnięto miesięczny limit analiz reputacji. Limit odnowi się w kolejnym okresie rozliczeniowym.”
+- Oba limity: „Wszystkie odpowiedzi na opinie i analizy reputacji zostały wykorzystane. Limity odnowią się w kolejnym okresie rozliczeniowym.”
 
-Sekcja pokazuje od pięciu do dziesięciu najnowszych opinii, zależnie od wielkości ekranu.
+## Analiza reputacji
 
-Każda pozycja zawiera:
+Dashboard pokazuje najnowszą analizę z `public.ai_business_analyses`.
 
-- ocenę i źródło opinii,
-- datę publikacji,
-- imię autora, jeśli jest dostępne,
-- fragment treści,
-- status: nowa, przeczytana, wymagająca reakcji lub obsłużona,
-- przycisk „Odpowiedz”,
-- przycisk „Wygeneruj odpowiedź”, jeśli funkcja jest dostępna w planie.
+Jeżeli analiza istnieje, UI pokazuje:
 
-Negatywne i nieobsłużone opinie powinny być łatwe do zauważenia, ale interfejs nie może używać alarmującego tonu bez potrzeby.
-
-### Filtrowanie opinii
-
-Użytkownik powinien móc filtrować opinie według:
-
-- okresu,
-- oceny od 1 do 5,
-- kategorii: pozytywne, neutralne, negatywne,
-- statusu obsługi,
-- źródła opinii,
-- lokalizacji w planie Business,
-- obecności odpowiedzi.
-
-Aktywne filtry powinny być widoczne i możliwe do usunięcia jednym kliknięciem.
-
-### Wyszukiwanie opinii
-
-- Wyszukiwarka obejmuje treść opinii i nazwę autora.
-- Wyniki aktualizują się bez opuszczania widoku.
-- Wpisana fraza może działać razem z filtrami.
-- Brak wyników powinien zawierać prostą informację oraz opcję wyczyszczenia filtrów.
-- W planie Business wyszukiwanie może obejmować także tematy rozpoznane przez inteligentną analizę.
-
-## Inteligentna analiza
-
-Inteligentna analiza jest kluczowym wyróżnikiem planu Business. Powinna przekładać wiele opinii na krótkie, zrozumiałe wnioski, ale zawsze jasno wskazywać analizowany okres i liczbę opinii.
-
-### Najczęściej chwalone elementy
-
-- Lista trzech do pięciu najczęściej chwalonych tematów.
-- Każdy temat zawiera liczbę lub procent opinii, w których wystąpił.
-- Przykłady: „miła obsługa”, „krótki czas oczekiwania”, „czystość”.
-- Kliknięcie tematu pokazuje powiązane opinie.
-
-### Najczęściej zgłaszane problemy
-
-- Lista powtarzających się problemów wymagających uwagi.
-- Każdy problem zawiera skalę występowania i trend względem poprzedniego okresu.
-- Przykłady: „długi czas oczekiwania”, „trudność z rezerwacją”, „hałas”.
-- Dashboard powinien odróżniać pojedynczy komentarz od powtarzalnego sygnału.
-
-### Automatyczne podsumowanie tygodnia
-
-- Krótkie podsumowanie nowych opinii, średniej oceny i najważniejszych tematów z ostatnich siedmiu dni.
-- Wskazuje największą pozytywną zmianę oraz najważniejszy obszar do sprawdzenia.
-- Jest dostępne w dashboardzie i może być wysyłane e-mailem.
-- Przykład: „W tym tygodniu otrzymano 8 opinii. Klienci najczęściej chwalili obsługę, a trzy osoby wspomniały o czasie oczekiwania.”
-
-### Automatyczne podsumowanie miesiąca
-
-- Szersze zestawienie trendów z całego miesiąca.
-- Porównuje wyniki z poprzednim miesiącem.
-- Pokazuje liczbę opinii, średnią ocenę, udział opinii pozytywnych i najważniejsze tematy.
-- Zawiera maksymalnie trzy konkretne rekomendacje działań.
-- Może być podstawą miesięcznego raportu dla właściciela lub zespołu.
-
-Wnioski generowane automatycznie powinny być opisane jako wsparcie decyzyjne, a nie jako nieomylna diagnoza firmy.
-
-## Generowanie odpowiedzi
-
-Funkcja generowania odpowiedzi jednym kliknięciem pomaga szybko przygotować spójną i uprzejmą reakcję na opinię.
-
-- Przycisk „Wygeneruj odpowiedź” znajduje się bezpośrednio przy opinii.
-- System uwzględnia ocenę, treść opinii, nazwę firmy i ustalony Tone of Voice.
-- Wygenerowana treść trafia najpierw do pola edycji i nigdy nie jest publikowana automatycznie.
-- Użytkownik może zaakceptować, poprawić, skrócić lub wygenerować inną wersję.
-- Dla pozytywnej opinii odpowiedź dziękuje i odnosi się do konkretnego elementu wypowiedzi.
-- Dla negatywnej opinii odpowiedź zachowuje spokojny ton, okazuje zrozumienie i proponuje dalszy kontakt bez składania niepotwierdzonych obietnic.
-- System powinien unikać powtarzalnych, identycznych odpowiedzi.
-- Przed publikacją użytkownik zawsze widzi podgląd i potwierdza działanie.
-
-W Starter funkcja może mieć miesięczny limit wygenerowanych odpowiedzi. W Business powinna oferować wyższy limit lub dostęp bez typowych ograniczeń operacyjnych, zależnie od ostatecznej polityki cenowej.
-
-## Powiadomienia
-
-Powiadomienia powinny pojawiać się w dashboardzie oraz, po włączeniu przez użytkownika, w wybranym kanale zewnętrznym. Każde powiadomienie prowadzi bezpośrednio do odpowiedniej opinii lub statystyki.
-
-### Nowa opinia
-
-- Informuje o nowej opinii, jej ocenie, źródle i czasie publikacji.
-- Pozwala od razu przejść do treści i przygotować odpowiedź.
-- Użytkownik może ustawić powiadomienie natychmiastowe lub zbiorcze.
-
-### Negatywna opinia
-
-- Jest uruchamiane dla opinii z oceną 1-2.
-- Ma wyższy priorytet niż standardowe powiadomienie o nowej opinii.
-- Zawiera szybkie działania: „Zobacz opinię” i „Wygeneruj odpowiedź”.
-- Próg negatywnej opinii może być konfigurowalny w planie Business.
-
-### Spadek średniej oceny
-
-- Informuje o istotnym spadku średniej względem poprzedniego porównywalnego okresu.
-- Powiadomienie powinno być wysyłane dopiero po przekroczeniu ustalonego progu, aby uniknąć szumu.
-- Zawiera skalę zmiany i link do opinii, które mogły na nią wpłynąć.
-- W Business próg i analizowany okres mogą być konfigurowalne.
-
-## Plan Starter
-
-Starter za 49,99 zł miesięcznie zapewnia podstawowy, kompletny dashboard dla małej firmy rozpoczynającej systematyczne zarządzanie reputacją.
-
-Funkcje dostępne w Starter:
-
-- dashboard dla jednej firmy lub lokalizacji,
-- cztery podstawowe kafelki statystyk,
-- podstawowe wykresy nowych opinii, ocen i łącznych skanów NFC,
-- wybór podstawowego zakresu czasu,
-- lista ostatnich opinii,
-- wyszukiwanie opinii,
-- podstawowe filtrowanie według okresu, oceny i statusu,
-- oznaczanie opinii jako przeczytanych lub obsłużonych,
-- standardowe powiadomienia o nowej i negatywnej opinii,
-- podstawowy alert o spadku średniej oceny,
-- obsługa i podgląd danych z plakietek NFC,
-- ograniczona liczba odpowiedzi generowanych jednym kliknięciem, jeśli funkcja zostanie włączona w MVP.
-
-Starter nie zawiera pełnej inteligentnej analizy, zaawansowanych porównań ani automatycznych raportów tygodniowych i miesięcznych.
-
-## Plan Business
-
-Business za 229,99 zł miesięcznie obejmuje wszystkie funkcje Starter oraz bardziej zaawansowane zarządzanie reputacją.
-
-Funkcje dostępne w Business:
-
-- pełna inteligentna analiza opinii,
+- podsumowanie,
 - najczęściej chwalone elementy,
 - najczęściej zgłaszane problemy,
-- automatyczne podsumowanie tygodnia,
-- automatyczne podsumowanie miesiąca,
-- zaawansowane porównania okresów,
-- rozbudowane filtrowanie i wyszukiwanie po tematach,
-- większy limit lub rozszerzony dostęp do generowania odpowiedzi,
-- konfigurowalne alerty i progi powiadomień,
-- zaawansowane dane o skuteczności skanów NFC,
-- porównanie plakietek, źródeł oraz docelowo lokalizacji,
-- priorytetowy widok opinii wymagających reakcji,
-- przyszła obsługa wielu użytkowników i lokalizacji.
+- rekomendacje działań,
+- liczbę opinii wykorzystanych w analizie,
+- datę wygenerowania.
 
-Ostateczne limity, liczba lokalizacji i zasady generowania odpowiedzi wymagają osobnej decyzji produktowej przed publikacją cennika.
+Przycisk „Wygeneruj analizę” lub „Odśwież analizę” wywołuje `generateBusinessAnalysis`.
 
-## Zakres pierwszej wersji
+## Trend opinii
 
-Pierwsza wersja powinna przede wszystkim zapewniać wiarygodne dane, prostą nawigację i szybki dostęp do opinii. Zakres można wdrażać etapami:
+Wykres „Trend reputacji” jest aktualnie statycznym SVG. Nie korzysta jeszcze z agregacji opinii z Supabase.
 
-- rdzeń MVP: kafelki, podstawowe wykresy, ostatnie opinie, filtry i podstawowe powiadomienia,
-- rozszerzenie Business: inteligentna analiza i automatyczne podsumowania,
-- dalszy rozwój: wiele lokalizacji, rozbudowane raporty i analiza pełnej ścieżki NFC.
+## Ostatnie opinie
 
-Takie podejście pozostaje zgodne z roadmapą NuvoRate, w której podstawowy monitoring poprzedza pełne funkcje analityczne.
+Dashboard pobiera 3 najnowsze opinie firmy i pokazuje:
 
-## Mockup
+- autora,
+- relatywną datę,
+- ocenę,
+- treść,
+- wygenerowaną odpowiedź, jeśli istnieje,
+- przycisk generowania lub ponownego generowania odpowiedzi.
 
-Poniższy mockup przedstawia przykładowy desktopowy układ dashboardu. Dane są demonstracyjne.
+Jeżeli limit odpowiedzi jest wykorzystany, zamiast przycisku pojawia się:
 
-```text
-┌──────────────────────┬──────────────────────────────────────────────────────────────┐
-│ NUVORATE             │ Dzień dobry, Anno        [Ostatnie 30 dni ▼] [Alerty: 3]   │
-│ Restauracja Nova     │ Twoja reputacja rośnie. Otrzymano 24 nowe opinie.            │
-├──────────────────────┼──────────────────────────────────────────────────────────────┤
-│ ● Pulpit             │ ┌────────────────┐ ┌────────────────┐ ┌────────────────┐     │
-│   Opinie             │ │ NOWE OPINIE    │ │ ŚREDNIA OCENA │ │ POZYTYWNE      │     │
-│   Analiza            │ │ 24             │ │ 4,7 / 5       │ │ 86%            │     │
-│   NFC                │ │ +20%           │ │ +0,2           │ │ negatywne: 8%  │     │
-│   Powiadomienia      │ └────────────────┘ └────────────────┘ └────────────────┘     │
-│   Ustawienia         │ ┌────────────────┐                                           │
-│                      │ │ SKANY NFC      │                                           │
-│ Plan: Business       │ │ 148            │                                           │
-│                      │ │ +32%           │                                           │
-│                      │ └────────────────┘                                           │
-│                      │                                                              │
-│                      │ NOWE OPINIE                                                   │
-│                      │  8 ┤                         ●                                │
-│                      │  6 ┤            ●      ●─────╯                                │
-│                      │  4 ┤      ●─────╯──────╯                                      │
-│                      │  2 ┤ ●────╯                                                   │
-│                      │    └────────────────────────────────────────────────────      │
-│                      │      Tydzień 1   Tydzień 2   Tydzień 3   Tydzień 4           │
-│                      │                                                              │
-│                      │ ┌────────────────────────┐ ┌───────────────────────────────┐  │
-│                      │ │ ŚREDNIA OCENA         │ │ SKANY NFC                    │  │
-│                      │ │ 4,5 → 4,7             │ │ 31  29  40  48              │  │
-│                      │ └────────────────────────┘ └───────────────────────────────┘  │
-│                      │                                                              │
-│                      │ OSTATNIE OPINIE                         [Szukaj...] [Filtry]  │
-│                      │ Ocena 5/5  „Świetna obsługa i szybki serwis.”                │
-│                      │ Anna K. · dzisiaj          [Wygeneruj odpowiedź] [Odpowiedz] │
-│                      │ Ocena 2/5  „Zbyt długi czas oczekiwania.”                    │
-│                      │ Marek P. · wczoraj         [Wygeneruj odpowiedź] [Odpowiedz] │
-│                      │                                                              │
-│                      │ INTELIGENTNA ANALIZA                                          │
-│                      │ Chwalone: obsługa, jakość, atmosfera                          │
-│                      │ Problemy: czas oczekiwania rośnie                             │
-│                      │ Podsumowanie: „Ocena wzrosła o 0,2. Sprawdź czas obsługi.”    │
-└──────────────────────┴──────────────────────────────────────────────────────────────┘
+> Limit odpowiedzi wykorzystany
+
+## Server Actions używane przez dashboard
+
+- `signOut` z `app/dashboard/actions.ts`
+- `generateBusinessAnalysis` z `app/dashboard/actions.ts`
+- `generateReviewResponse` z `app/dashboard/review-response-actions.ts`
+- implementacja odpowiedzi: `app/dashboard/review-response-service.ts`
+
+## Mapa techniczna
+
+- **Odpowiedzialne pliki**: `app/dashboard/page.tsx`, `app/dashboard/actions.ts`, `app/dashboard/review-response-actions.ts`, `app/dashboard/review-response-service.ts`.
+- **Komponenty**: `components/dashboard/review-response-form.tsx`, `components/dashboard/review-response-state.ts`.
+- **Używane tabele**: `profiles`, `businesses`, `reviews`, `ai_usage`, `ai_review_responses`, `ai_business_analyses`.
+- **Server actions**: `signOut`, `generateBusinessAnalysis`, `generateReviewResponse`.
+- **Route handlers**: `app/billing/portal/route.ts` dla przycisku zarządzania subskrypcją, `app/checkout/route.ts` dla przejścia na plan.
+- **Zależności**: [[Supabase]], [[OpenAI]], [[Stripe]], [[Frontend]], [[Server Actions]].
+
+## Diagram przepływu dashboardu
+
+```mermaid
+flowchart TD
+  User["Owner"] --> Dashboard["/dashboard"]
+  Dashboard --> SupabaseAuth["Supabase Auth"]
+  Dashboard --> Profiles["profiles"]
+  Dashboard --> Businesses["businesses"]
+  Dashboard --> Reviews["reviews"]
+  Dashboard --> Usage["ai_usage"]
+  Dashboard --> Responses["ai_review_responses"]
+  Dashboard --> Analyses["ai_business_analyses"]
+  Dashboard --> AnalysisAction["generateBusinessAnalysis"]
+  Dashboard --> ResponseForm["ReviewResponseForm"]
+  ResponseForm --> ResponseAction["generateReviewResponse"]
+  AnalysisAction --> OpenAI["OpenAI Responses API"]
+  ResponseAction --> OpenAI
+  AnalysisAction --> SupabaseWrite["Supabase writes"]
+  ResponseAction --> SupabaseWrite
 ```
 
-## Powiązane
+## Powiązane notatki
 
-- [[Mockup panelu]]
 - [[Statystyki]]
 - [[Opinie]]
 - [[Analiza]]
-- [[Powiadomienia]]
-- [[Inteligentna analiza]]
-- [[Starter]]
-- [[Business]]
 - [[NFC]]
-- [[MVP]]
-- [[Roadmap]]
-- [[Frontend]]
+- [[Server Actions]]
+- [[Supabase]]
+- [[Dashboard MOC]]

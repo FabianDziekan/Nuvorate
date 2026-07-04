@@ -1,3 +1,9 @@
+---
+tags:
+  - brand
+  - marketing
+---
+
 # Tone of Voice
 
 NuvoRate mówi jasno, konkretnie i partnersko, skupiając się na efektach ważnych dla właściciela firmy.
@@ -8,10 +14,10 @@ NuvoRate mówi jasno, konkretnie i partnersko, skupiając się na efektach ważn
 - Komunikujemy zależność: więcej opinii = większe zaufanie = więcej klientów.
 - Nie obiecujemy wyników, których nie można wiarygodnie uzasadnić.
 
-## Powiązane
+## Powiązane notatki
 
 - [[Hasła marketingowe]]
 - [[Argumenty sprzedażowe]]
 - [[Hero]]
 - [[CTA]]
-
+- [[Brand MOC]]

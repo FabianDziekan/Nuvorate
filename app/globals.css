@@ -12,10 +12,12 @@
 }
 
 html {
+  min-height: 100%;
   scroll-behavior: smooth;
 }
 
 body {
+  min-height: 100vh;
   margin: 0;
   color: var(--foreground);
   background: var(--background);
@@ -57,6 +59,32 @@ body {
 
   .section-copy {
     @apply text-pretty text-base leading-7 text-black/60 sm:text-lg;
+  }
+
+  .analysis-scroll-area {
+    scrollbar-color: transparent transparent;
+    scrollbar-width: thin;
+  }
+
+  .analysis-scroll-area:hover {
+    scrollbar-color: #5b5cf6 rgba(255, 255, 255, 0.08);
+  }
+
+  .analysis-scroll-area::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .analysis-scroll-area::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .analysis-scroll-area::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 999px;
+  }
+
+  .analysis-scroll-area:hover::-webkit-scrollbar-thumb {
+    background: rgba(91, 92, 246, 0.7);
   }
 }
 

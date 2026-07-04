@@ -1,3 +1,9 @@
+---
+tags:
+  - customers
+  - sales
+---
+
 # Barberzy
 
 NuvoRate pomaga barberom zamieniać zadowolenie stałych klientów w widoczne rekomendacje online.
@@ -7,10 +13,10 @@ NuvoRate pomaga barberom zamieniać zadowolenie stałych klientów w widoczne re
 - Regularne opinie pokazują aktualną jakość usług.
 - Panel pomaga śledzić komentarze dotyczące konkretnych aspektów wizyty.
 
-## Powiązane
+## Powiązane notatki
 
 - [[Salony beauty]]
 - [[NFC]]
 - [[Opinie]]
 - [[Argumenty sprzedażowe]]
-
+- [[Customers MOC]]

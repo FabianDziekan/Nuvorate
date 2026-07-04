@@ -1,3 +1,9 @@
+---
+tags:
+  - strategia
+  - vision
+---
+
 # Misja
 
 Misją NuvoRate jest pomaganie firmom w prostym i systematycznym budowaniu wiarygodnej reputacji online.
@@ -7,10 +13,10 @@ Misją NuvoRate jest pomaganie firmom w prostym i systematycznym budowaniu wiary
 - Dajemy właścicielom firm czytelny obraz ich reputacji.
 - Łączymy prostą technologię z mierzalną wartością biznesową.
 
-## Powiązane
+## Powiązane notatki
 
 - [[NuvoRate Hub]]
 - [[Wizja]]
 - [[Cele]]
 - [[Argumenty sprzedażowe]]
-
+- [[Vision MOC]]

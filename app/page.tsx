@@ -1,7 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  billingCycles,
+  pricingPlans,
+  type BillingCycle,
+} from "@/lib/pricing";
 
 type IconName =
   | "arrow"
@@ -129,18 +134,12 @@ function Icon({
 function Logo({ inverse = false }: { inverse?: boolean }) {
   return (
     <a href="#top" className="inline-flex items-center gap-2.5" aria-label="NuvoRate">
-      <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-white shadow-sm">
-        <svg aria-hidden="true" viewBox="0 0 32 32" className="h-6 w-6">
-          <path
-            d="M8 23V9l8 10V9M16 23l8-14v14"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </span>
+      <img
+        src="/brand/nuvorate-logo.png"
+        alt=""
+        aria-hidden="true"
+        className="h-10 w-10 shrink-0 rounded-xl object-contain"
+      />
       <span
         className={`text-[19px] font-bold tracking-[-0.04em] ${
           inverse ? "text-white" : "text-ink"
@@ -771,24 +770,19 @@ function NfcSection() {
   );
 }
 
-const starterFeatures = [
-  "Podstawowy dashboard reputacji",
-  "Statystyki i trendy opinii",
-  "Wyszukiwanie i filtrowanie",
-  "Powiadomienia o nowych opiniach",
-  "Podgląd skanów NFC",
-];
-
-const businessFeatures = [
-  "Wszystko z planu Starter",
-  "Inteligentna analiza opinii",
-  "Podsumowania tygodnia i miesiąca",
-  "Generowanie odpowiedzi",
-  "Zaawansowane alerty i filtry",
-  "Rozszerzone dane NFC",
-];
-
 function Pricing() {
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const isYearly = billingCycle === "yearly";
+
+  useEffect(() => {
+    const error = new URLSearchParams(window.location.search).get("error");
+
+    if (error) {
+      setCheckoutError(error);
+    }
+  }, []);
+
   return (
     <section id="cennik" className="section-space bg-[#FAFAFC]">
       <div className="container-page">
@@ -799,67 +793,117 @@ function Pricing() {
             Zacznij od podstawowego monitorowania albo wybierz pełną analizę reputacji.
           </p>
         </div>
+        <div className="mx-auto mt-8 flex w-fit rounded-full border border-black/[0.08] bg-white p-1 shadow-sm">
+          {billingCycles.map((cycle) => {
+            const active = billingCycle === cycle.id;
+
+            return (
+              <button
+                key={cycle.id}
+                type="button"
+                onClick={() => setBillingCycle(cycle.id)}
+                className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${
+                  active
+                    ? "bg-brand text-white shadow-sm"
+                    : "text-black/55 hover:bg-black/[0.04] hover:text-black"
+                }`}
+                aria-pressed={active}
+              >
+                {cycle.label}
+              </button>
+            );
+          })}
+        </div>
+        {checkoutError && (
+          <div className="mx-auto mt-6 max-w-2xl rounded-2xl border border-brand/20 bg-white px-5 py-4 text-center text-sm font-medium text-ink shadow-sm">
+            {checkoutError}
+          </div>
+        )}
         <div className="mx-auto mt-14 grid max-w-[930px] gap-6 lg:grid-cols-2 lg:items-stretch">
-          <article className="flex flex-col rounded-[28px] border border-black/[0.08] bg-white p-7 shadow-card sm:p-9">
-            <div>
-              <p className="text-sm font-semibold text-brand">NuvoRate Starter</p>
-              <h3 className="mt-3 text-2xl font-semibold tracking-tight">Dobry początek</h3>
-              <p className="mt-3 min-h-12 text-sm leading-6 text-black/50">
-                Dla małych firm, które chcą systematycznie zbierać i monitorować opinie.
-              </p>
-              <div className="mt-8 flex items-end gap-2">
-                <span className="text-5xl font-semibold tracking-[-0.06em]">49,99 zł</span>
-                <span className="pb-1 text-sm text-black/40">/ miesiąc</span>
-              </div>
-            </div>
-            <div className="my-8 h-px bg-black/[0.07]" />
-            <ul className="flex-1 space-y-4">
-              {starterFeatures.map((feature) => (
-                <li key={feature} className="flex gap-3 text-sm text-black/70">
-                  <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
-                    <Icon name="check" className="h-3 w-3" />
-                  </span>
-                  {feature}
-                </li>
-              ))}
-            </ul>
-            <Link href="/register?plan=starter" className="button-secondary mt-9 w-full">
-              Wybierz Starter
-            </Link>
-          </article>
-          <article className="relative flex flex-col overflow-hidden rounded-[28px] bg-ink p-7 text-white shadow-2xl sm:p-9">
-            <div className="absolute right-0 top-0 h-56 w-56 -translate-y-1/2 translate-x-1/2 rounded-full bg-brand/30 blur-3xl" />
-            <div className="relative">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-[#A6A7FF]">NuvoRate Business</p>
-                <span className="rounded-full bg-brand px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em]">
-                  Najczęściej wybierany
-                </span>
-              </div>
-              <h3 className="mt-3 text-2xl font-semibold tracking-tight">Pełna kontrola reputacji</h3>
-              <p className="mt-3 min-h-12 text-sm leading-6 text-white/50">
-                Dla firm, które potrzebują głębszych wniosków i inteligentnej analizy.
-              </p>
-              <div className="mt-8 flex items-end gap-2">
-                <span className="text-5xl font-semibold tracking-[-0.06em]">229,99 zł</span>
-                <span className="pb-1 text-sm text-white/40">/ miesiąc</span>
-              </div>
-            </div>
-            <div className="my-8 h-px bg-white/10" />
-            <ul className="relative flex-1 space-y-4">
-              {businessFeatures.map((feature) => (
-                <li key={feature} className="flex gap-3 text-sm text-white/70">
-                  <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand text-white">
-                    <Icon name="check" className="h-3 w-3" />
-                  </span>
-                  {feature}
-                </li>
-              ))}
-            </ul>
-            <Link href="/register?plan=business" className="button-primary relative mt-9 w-full bg-brand hover:bg-[#6C6DF8]">
-              Wybierz Business
-            </Link>
-          </article>
+          {pricingPlans.map((plan) => {
+            const isBusiness = plan.id === "business";
+            const price = plan.prices[billingCycle];
+            const yearlyPrice = isYearly ? plan.prices.yearly : null;
+            const featuredBadge =
+              "featuredBadge" in plan ? plan.featuredBadge : null;
+
+            return (
+              <article
+                key={plan.id}
+                className={
+                  isBusiness
+                    ? "relative flex flex-col overflow-hidden rounded-[28px] bg-ink p-7 text-white shadow-2xl sm:p-9"
+                    : "flex flex-col rounded-[28px] border border-black/[0.08] bg-white p-7 shadow-card sm:p-9"
+                }
+              >
+                {isBusiness && (
+                  <div className="absolute right-0 top-0 h-56 w-56 -translate-y-1/2 translate-x-1/2 rounded-full bg-brand/30 blur-3xl" />
+                )}
+                <div className={isBusiness ? "relative" : undefined}>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className={`text-sm font-semibold ${isBusiness ? "text-[#A6A7FF]" : "text-brand"}`}>
+                      {plan.title}
+                    </p>
+                    {(isYearly || featuredBadge) && (
+                      <span
+                        className={`rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] ${
+                          isBusiness
+                            ? "bg-brand text-white"
+                            : "bg-brand-soft text-brand"
+                        }`}
+                      >
+                        {isYearly ? "Najlepsza wartość" : featuredBadge}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="mt-3 text-2xl font-semibold tracking-tight">{plan.subtitle}</h3>
+                  <p className={`mt-3 min-h-12 text-sm leading-6 ${isBusiness ? "text-white/50" : "text-black/50"}`}>
+                    {plan.description}
+                  </p>
+                  <div className="mt-8 flex items-end gap-2">
+                    <span className="text-5xl font-semibold tracking-[-0.06em]">{price.price}</span>
+                    <span className={`pb-1 text-sm ${isBusiness ? "text-white/40" : "text-black/40"}`}>
+                      {price.period}
+                    </span>
+                  </div>
+                  {isYearly && (
+                    <div className="mt-4 space-y-1 text-sm">
+                      <p className={isBusiness ? "font-medium text-white/75" : "font-medium text-black/70"}>
+                        {yearlyPrice?.monthlyEquivalent}
+                      </p>
+                      <p className={isBusiness ? "text-[#A6A7FF]" : "text-brand"}>
+                        {yearlyPrice?.saving}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <div className={`my-8 h-px ${isBusiness ? "bg-white/10" : "bg-black/[0.07]"}`} />
+                <ul className={`${isBusiness ? "relative" : ""} flex-1 space-y-4`}>
+                  {plan.features.map((feature) => (
+                    <li
+                      key={feature}
+                      className={`flex gap-3 text-sm ${isBusiness ? "text-white/70" : "text-black/70"}`}
+                    >
+                      <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full ${isBusiness ? "bg-brand text-white" : "bg-brand-soft text-brand"}`}>
+                        <Icon name="check" className="h-3 w-3" />
+                      </span>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href={price.href}
+                  className={
+                    isBusiness
+                      ? "button-primary relative mt-9 w-full bg-brand hover:bg-[#6C6DF8]"
+                      : "button-secondary mt-9 w-full"
+                  }
+                >
+                  Wybierz {plan.name}
+                </Link>
+              </article>
+            );
+          })}
         </div>
         <p className="mx-auto mt-7 max-w-xl text-center text-xs leading-5 text-black/40">
           Plakietki NFC są opcjonalnym dodatkiem dostępnym od 10 zł za sztukę.

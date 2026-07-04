@@ -43,10 +43,9 @@ export function RegisterForm({ initialPlan = "starter" }: { initialPlan?: Plan }
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
-          data: {
-            selected_plan: plan,
-          },
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+            `/checkout?plan=${plan}`,
+          )}`,
         },
       });
 
@@ -60,13 +59,13 @@ export function RegisterForm({ initialPlan = "starter" }: { initialPlan?: Plan }
       }
 
       if (data.session) {
-        router.push("/dashboard");
+        router.push(`/checkout?plan=${plan}`);
         router.refresh();
         return;
       }
 
       setSuccess(
-        "Konto zostało utworzone. Sprawdź skrzynkę e-mail i potwierdź adres, aby przejść do dashboardu.",
+        "Konto zostało utworzone. Sprawdź skrzynkę e-mail i potwierdź adres, aby przejść do płatności.",
       );
     } catch {
       setError("Nie udało się połączyć z usługą rejestracji. Spróbuj ponownie.");

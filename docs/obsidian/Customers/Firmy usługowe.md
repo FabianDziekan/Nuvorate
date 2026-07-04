@@ -1,3 +1,9 @@
+---
+tags:
+  - customers
+  - sales
+---
+
 # Firmy usługowe
 
 Firmy usługowe wykorzystują opinie jako dowód jakości, terminowości i rzetelności.
@@ -7,10 +13,10 @@ Firmy usługowe wykorzystują opinie jako dowód jakości, terminowości i rzete
 - Panel porządkuje informacje zwrotne z wielu realizacji.
 - Większa liczba aktualnych opinii pomaga zwiększać zaufanie nowych klientów.
 
-## Powiązane
+## Powiązane notatki
 
 - [[Starter]]
 - [[Argumenty sprzedażowe]]
 - [[Skrypt rozmowy]]
 - [[Opinie]]
-
+- [[Customers MOC]]

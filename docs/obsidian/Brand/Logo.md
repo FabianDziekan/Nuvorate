@@ -1,3 +1,9 @@
+---
+tags:
+  - brand
+  - marketing
+---
+
 # Logo
 
 Logo NuvoRate powinno komunikować nowoczesność, zaufanie i prostotę zarządzania reputacją.
@@ -7,10 +13,10 @@ Logo NuvoRate powinno komunikować nowoczesność, zaufanie i prostotę zarządz
 - Należy zachować czytelność znaku w małych rozmiarach.
 - Wokół logo powinna obowiązywać stała przestrzeń ochronna.
 
-## Powiązane
+## Powiązane notatki
 
 - [[Kolory]]
 - [[Tone of Voice]]
 - [[Hero]]
 - [[NuvoRate Hub]]
-
+- [[Brand MOC]]
