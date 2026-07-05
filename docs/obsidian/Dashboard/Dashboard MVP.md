@@ -10,192 +10,158 @@ tags:
 
 # Dashboard MVP
 
-Dashboard jest głównym widokiem produktu po zalogowaniu. Aktualny kod znajduje się w `app/dashboard/page.tsx`.
-
-Dashboard odpowiada na pytania:
-
-- jaki plan ma użytkownik,
-- jaka firma jest przypisana do ownera,
-- ile opinii ma firma,
-- jaka jest średnia ocena,
-- jaki procent opinii jest pozytywny,
-- ile limitów odpowiedzi i analiz pozostało,
-- jakie są najnowsze opinie,
-- czy istnieje wygenerowana analiza reputacji.
+Dashboard jest głównym widokiem produktu po zalogowaniu. Kod znajduje się w `app/dashboard/page.tsx`.
 
 ## Dostęp
 
 Dashboard wymaga:
 
-- aktywnej sesji Supabase Auth,
-- istniejącego rekordu firmy w `public.businesses`,
-- profilu użytkownika w `public.profiles`.
+- sesji Supabase Auth,
+- profilu w `profiles`,
+- firmy w `businesses`.
 
-Jeżeli użytkownik nie ma firmy, `/dashboard` przekierowuje do `/onboarding`.
+Jeżeli owner nie ma firmy, trafia do `/onboarding`.
 
-Jeżeli użytkownik ma plan `unpaid`, dashboard pokazuje ekran aktywacji planu zamiast pełnego panelu.
+Jeżeli plan to `unpaid`, dashboard pokazuje ekran aktywacji planu z przełącznikiem miesięcznie/rocznie i kartami Starter/Business.
 
 ## Layout
-
-Aktualny dashboard używa własnego shell layoutu w pliku `app/dashboard/page.tsx`.
 
 Desktop:
 
 - sidebar po lewej,
-- topbar u góry,
-- główna zawartość po prawej,
+- topbar,
 - karty statystyk,
-- karta limitów planu,
-- wykres trendu,
-- karta analizy,
-- sekcja najnowszych opinii.
+- karta „Limity planu”,
+- wykres „Nowe opinie w czasie”,
+- Business Insights dla planu Business,
+- karta „Analiza ostatnich 30 dni”,
+- sekcja „Najnowsze opinie klientów”.
 
 Mobile:
 
-- logo w topbarze,
-- pozioma nawigacja pod topbarem,
-- karty układane pionowo lub w responsywnej siatce.
+- topbar z logo,
+- pozioma nawigacja,
+- sekcje układane pionowo.
 
 ## Sidebar
 
-Sidebar pokazuje:
+Linki:
 
-- logo NuvoRate,
-- nazwę firmy,
-- branżę,
-- miasto,
-- aktywny plan,
-- linki: Pulpit, Opinie, Analiza, NFC,
-- pozycje nieaktywne: Powiadomienia, Ustawienia,
-- przycisk Stripe Customer Portal dla aktywnej subskrypcji,
-- przycisk „Przejdź na Business” dla Startera bez aktywnego customer portal,
-- wylogowanie.
+- Pulpit,
+- Opinie,
+- Analiza,
+- Odpowiedzi,
+- NFC,
+- Powiadomienia jako nieaktywna pozycja,
+- Ustawienia.
 
-## Widgety dashboardu
+Sidebar pokazuje nazwę firmy, branżę, miasto i plan.
 
-### Nowe opinie
+## Statystyki
 
-Aktualnie pokazuje łączną liczbę opinii firmy z `public.reviews`. Nazwa „Nowe opinie” jest uproszczeniem UI; kod nie filtruje jeszcze po okresie.
+Źródło danych: `reviews`.
 
-### Średnia ocena
-
-Średnia liczona z `reviews.rating`, formatowana do jednego miejsca po przecinku.
-
-### Pozytywne opinie
-
-Procent opinii z `rating >= 4`.
-
-### Skany NFC
-
-Aktualnie wartość `0`, bez podłączenia do tabeli skanów. UI używa tekstu „Śledzenie NFC”.
+- **Nowe opinie**: aktualnie liczba wszystkich opinii firmy.
+- **Średnia ocena**: `AVG(rating)` z dokładnością do 1 miejsca.
+- **Pozytywne opinie**: procent opinii `rating >= 4`.
+- **Skany NFC**: obecnie `0`, bez tabeli trackingowej.
 
 ## Limity planu
 
-Karta „Limity planu” pokazuje:
-
-- odpowiedzi na opinie: pozostało, procent i wykorzystanie,
-- analizy reputacji: pozostało, procent i wykorzystanie,
-- plan użytkownika.
-
-Dane pochodzą z:
+Źródła:
 
 - `profiles.plan`,
-- `ai_usage.ai_replies_used`,
-- `ai_usage.ai_analyses_used`,
+- `ai_usage`,
 - `lib/plans.ts`.
 
-Jeżeli nie ma rekordu w `ai_usage`, UI przyjmuje użycie `0`.
+Karta pokazuje:
 
-## Komunikaty limitów
+- pozostałe odpowiedzi na opinie,
+- pozostałe analizy reputacji,
+- procent wykorzystania,
+- tekst „Wykorzystano X z Y”.
 
-Komunikaty backendowe są definiowane w `lib/plans.ts`.
+## Wykres „Nowe opinie w czasie”
 
-Aktualne komunikaty:
+Źródło:
 
-- Unpaid: „Wybierz plan, aby korzystać z odpowiedzi na opinie i analiz reputacji.”
-- Starter, analiza: „Wykorzystałeś analizę reputacji w planie Starter. Przejdź na Business, aby odblokować więcej analiz.”
-- Starter, odpowiedzi: „Wykorzystałeś limit odpowiedzi na opinie w planie Starter.”
-- Business, odpowiedzi: „Osiągnięto miesięczny limit odpowiedzi na opinie. Limit odnowi się w kolejnym okresie rozliczeniowym.”
-- Business, analizy: „Osiągnięto miesięczny limit analiz reputacji. Limit odnowi się w kolejnym okresie rozliczeniowym.”
-- Oba limity: „Wszystkie odpowiedzi na opinie i analizy reputacji zostały wykorzystane. Limity odnowią się w kolejnym okresie rozliczeniowym.”
+- RPC `get_review_activity_trend` z migracji `007_review_activity_trend.sql`.
+
+Zakresy:
+
+- ostatnie 30 dni: grupowanie po dniach,
+- ostatnie 3 miesiące: grupowanie po tygodniach,
+- ostatnie 12 miesięcy: grupowanie po miesiącach.
+
+Wykres jest słupkowy i pokazuje liczbę opinii w okresie. Tooltip pokazuje okres, liczbę opinii i średnią ocenę.
+
+## Business Insights
+
+Widoczne tylko dla planu Business.
+
+Liczone z `reviews.created_at`:
+
+- najlepszy dzień z ostatnich 7 dni,
+- powtarzalność względem poprzednich 7 dni,
+- tempo opinii tydzień do tygodnia,
+- cel miesiąca: domyślnie 30 opinii.
 
 ## Analiza reputacji
 
-Dashboard pokazuje najnowszą analizę z `public.ai_business_analyses`.
+Karta `components/dashboard/analysis-preview-card.tsx` pokazuje najnowszą analizę z `ai_business_analyses`.
 
-Jeżeli analiza istnieje, UI pokazuje:
+Przycisk generowania/odświeżania korzysta z:
 
-- podsumowanie,
-- najczęściej chwalone elementy,
-- najczęściej zgłaszane problemy,
-- rekomendacje działań,
-- liczbę opinii wykorzystanych w analizie,
-- datę wygenerowania.
+- `components/dashboard/analysis-action-form.tsx`,
+- `generateBusinessAnalysis` w `app/dashboard/actions.ts`,
+- `AiGenerationProgress`.
 
-Przycisk „Wygeneruj analizę” lub „Odśwież analizę” wywołuje `generateBusinessAnalysis`.
+## Najnowsze opinie
 
-## Trend opinii
+Dashboard pobiera 3 najnowsze opinie firmy.
 
-Wykres „Trend reputacji” jest aktualnie statycznym SVG. Nie korzysta jeszcze z agregacji opinii z Supabase.
-
-## Ostatnie opinie
-
-Dashboard pobiera 3 najnowsze opinie firmy i pokazuje:
+Karta opinii pokazuje:
 
 - autora,
-- relatywną datę,
+- datę relatywną,
 - ocenę,
 - treść,
 - wygenerowaną odpowiedź, jeśli istnieje,
-- przycisk generowania lub ponownego generowania odpowiedzi.
+- przycisk generowania odpowiedzi, jeśli limit nie jest wykorzystany.
 
-Jeżeli limit odpowiedzi jest wykorzystany, zamiast przycisku pojawia się:
-
-> Limit odpowiedzi wykorzystany
-
-## Server Actions używane przez dashboard
-
-- `signOut` z `app/dashboard/actions.ts`
-- `generateBusinessAnalysis` z `app/dashboard/actions.ts`
-- `generateReviewResponse` z `app/dashboard/review-response-actions.ts`
-- implementacja odpowiedzi: `app/dashboard/review-response-service.ts`
+Generowanie odpowiedzi używa `components/dashboard/review-response-form.tsx`.
 
 ## Mapa techniczna
 
 - **Odpowiedzialne pliki**: `app/dashboard/page.tsx`, `app/dashboard/actions.ts`, `app/dashboard/review-response-actions.ts`, `app/dashboard/review-response-service.ts`.
-- **Komponenty**: `components/dashboard/review-response-form.tsx`, `components/dashboard/review-response-state.ts`.
-- **Używane tabele**: `profiles`, `businesses`, `reviews`, `ai_usage`, `ai_review_responses`, `ai_business_analyses`.
-- **Server actions**: `signOut`, `generateBusinessAnalysis`, `generateReviewResponse`.
-- **Route handlers**: `app/billing/portal/route.ts` dla przycisku zarządzania subskrypcją, `app/checkout/route.ts` dla przejścia na plan.
-- **Zależności**: [[Supabase]], [[OpenAI]], [[Stripe]], [[Frontend]], [[Server Actions]].
+- **Komponenty**: `analysis-action-form`, `analysis-preview-card`, `review-response-form`, `trend-range-select`, `ai-generation-progress`.
+- **Tabele**: `profiles`, `businesses`, `reviews`, `ai_usage`, `ai_review_responses`, `ai_business_analyses`, `business_response_settings`.
+- **RPC**: `get_review_activity_trend`.
 
-## Diagram przepływu dashboardu
+## Diagram
 
 ```mermaid
 flowchart TD
-  User["Owner"] --> Dashboard["/dashboard"]
-  Dashboard --> SupabaseAuth["Supabase Auth"]
-  Dashboard --> Profiles["profiles"]
+  Dashboard["/dashboard"] --> Profiles["profiles"]
   Dashboard --> Businesses["businesses"]
   Dashboard --> Reviews["reviews"]
   Dashboard --> Usage["ai_usage"]
-  Dashboard --> Responses["ai_review_responses"]
+  Dashboard --> TrendRpc["get_review_activity_trend"]
   Dashboard --> Analyses["ai_business_analyses"]
-  Dashboard --> AnalysisAction["generateBusinessAnalysis"]
   Dashboard --> ResponseForm["ReviewResponseForm"]
-  ResponseForm --> ResponseAction["generateReviewResponse"]
-  AnalysisAction --> OpenAI["OpenAI Responses API"]
-  ResponseAction --> OpenAI
-  AnalysisAction --> SupabaseWrite["Supabase writes"]
-  ResponseAction --> SupabaseWrite
+  ResponseForm --> ResponseService["review-response-service"]
+  AnalysisForm["AnalysisActionForm"] --> GenerateAnalysis["generateBusinessAnalysis"]
+  ResponseService --> OpenAI["OpenAI"]
+  GenerateAnalysis --> OpenAI
 ```
 
 ## Powiązane notatki
 
 - [[Statystyki]]
 - [[Opinie]]
+- [[Odpowiedzi]]
 - [[Analiza]]
 - [[NFC]]
+- [[Settings]]
 - [[Server Actions]]
 - [[Supabase]]
-- [[Dashboard MOC]]

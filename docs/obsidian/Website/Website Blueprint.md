@@ -2,23 +2,20 @@
 tags:
   - blueprint
   - frontend
-  - marketing
+  - landing
   - website
 ---
 
 # Website Blueprint
 
-Website Blueprint opisuje strukturę strony głównej NuvoRate zgodną z aktualnym stanem produktu. Strona promuje abonament SaaS jako główny produkt. NFC jest dodatkiem wspierającym kierowanie klientów do Google review URL.
+Blueprint opisuje aktualną stronę główną NuvoRate. Strona promuje abonament SaaS, a NFC jest dodatkiem.
 
-## Cel strony
+## Cel
 
-Strona główna ma:
-
-- wyjaśnić, że NuvoRate to platforma do zarządzania opiniami i reputacją online,
-- sprzedać abonament Starter albo Business,
-- pokazać dashboard jako centrum produktu,
-- jasno rozdzielić gotowe funkcje od planowanych,
-- nie sugerować, że NuvoRate ma własny publiczny formularz opinii albo Google Reviews API, dopóki te funkcje nie istnieją.
+- Wyjaśnić w kilka sekund, czym jest NuvoRate.
+- Sprzedać Starter albo Business.
+- Pokazać dashboard jako główne centrum produktu.
+- Kierować do rejestracji, logowania i checkoutu.
 
 ## Nawigacja
 
@@ -27,7 +24,7 @@ Strona główna ma:
 - Jak działa.
 - Cennik.
 - FAQ.
-- Przełącznik PL / EN jako element UI.
+- PL / EN jako element UI.
 - Zaloguj się.
 - Załóż konto.
 
@@ -37,93 +34,61 @@ Nagłówek:
 
 > Więcej opinii. Większe zaufanie. Więcej klientów.
 
-Opis:
+Hero pokazuje mockup dashboardu z:
 
-> NuvoRate pomaga monitorować opinie, analizować reputację i szybciej reagować na głos klientów. Dashboard pokazuje najważniejsze statystyki, opinie, limity planu i analizę reputacji w jednym miejscu.
-
-CTA:
-
-- „Załóż konto”
-- „Zobacz cennik”
-
-## Dashboard Preview
-
-Preview powinien pokazywać aktualne elementy:
-
-- nowe opinie,
-- średnia ocena,
-- pozytywne opinie,
-- skany NFC jako `0` albo „Śledzenie NFC”,
-- limity planu,
-- najnowsze opinie,
-- generowanie odpowiedzi,
-- analizę reputacji.
-
-Nie należy pokazywać jako gotowych:
-
-- realnych skanów NFC,
-- powiadomień,
-- Google Reviews API,
-- wielu lokalizacji.
-
-## Korzyści
-
-- Wszystkie opinie w jednym panelu.
-- Szybsze przygotowanie odpowiedzi.
-- Lepsze zrozumienie mocnych stron i problemów.
-- Jasne limity i plany.
-- Link Google review URL gotowy do użycia na NFC lub QR.
-
-## Jak działa NuvoRate
-
-1. Zakładasz konto.
-2. Wybierasz plan i opłacasz subskrypcję przez Stripe.
-3. Uzupełniasz dane firmy i Google review URL.
-4. Pracujesz z opiniami w dashboardzie.
-5. Generujesz odpowiedzi i analizy w ramach limitów planu.
-
-## NFC
-
-Sekcja NFC powinna mówić:
-
-- NFC jest dodatkiem,
-- link prowadzi do Google review URL firmy,
-- aktualny panel pokazuje link i instrukcję,
-- tracking skanów jest funkcją planowaną.
+- statystykami opinii,
+- średnią oceną,
+- pozytywnymi opiniami,
+- skanami NFC,
+- analizą reputacji,
+- generowaniem odpowiedzi.
 
 ## Cennik
 
+Strona używa `lib/pricing.ts`.
+
+Przełącznik:
+
+- Miesięcznie,
+- Rocznie.
+
 Starter:
 
-- 49,99 zł miesięcznie,
-- 50 odpowiedzi na opinie,
-- 1 analiza reputacji.
+- 49,99 zł / miesiąc,
+- 499,99 zł / rok,
+- około 41,67 zł miesięcznie,
+- oszczędność około 100 zł rocznie.
 
 Business:
 
-- 229,99 zł miesięcznie,
-- 350 odpowiedzi na opinie,
-- 50 analiz reputacji,
+- 229,99 zł / miesiąc,
+- 2299,99 zł / rok,
+- około 191,67 zł miesięcznie,
+- oszczędność około 460 zł rocznie,
 - oznaczenie „Najczęściej wybierany”.
 
-## FAQ
+Jeżeli roczne Price ID nie są ustawione, checkout roczny jest blokowany kontrolowanym błędem.
 
-FAQ powinno obejmować:
+## Sekcje
 
-- różnice Starter/Business,
-- zasady płatności Stripe,
-- status `unpaid`,
-- NFC jako dodatek,
-- brak Google Reviews API w aktualnym MVP,
-- brak publicznego formularza opinii NuvoRate.
+- Hero.
+- Korzyści.
+- Jak działa.
+- Dashboard preview.
+- NFC.
+- Cennik.
+- FAQ.
+- CTA końcowe.
 
-## Styl wizualny
+## Ważne ograniczenia komunikacji
 
-- Tło: białe.
-- Akcent: fiolet `#5B5CF6`.
-- Tekst: czerń `#0F0F10`.
-- Styl: nowoczesny SaaS, premium, przejrzysty.
-- Język główny: polski.
+Nie sugerować jako gotowych:
+
+- Google Reviews API,
+- własnego formularza opinii NuvoRate,
+- prawdziwego trackingu NFC,
+- wielu lokalizacji,
+- powiadomień.
 
 ## Powiązane notatki
 
@@ -133,4 +98,3 @@ FAQ powinno obejmować:
 - [[Cennik]]
 - [[FAQ]]
 - [[Dashboard MVP]]
-- [[Website MOC]]

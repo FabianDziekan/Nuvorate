@@ -9,41 +9,47 @@ tags:
 
 # Backend
 
-Backend NuvoRate działa w architekturze Next.js App Router z Supabase jako backendem danych i auth, Stripe jako billingiem oraz OpenAI jako silnikiem generowania odpowiedzi i analiz.
+Backend NuvoRate działa w Next.js App Router z Supabase, Stripe i OpenAI.
 
 ## Główne elementy
 
-- Supabase Auth: logowanie, rejestracja, reset hasła i sesje.
-- Supabase Database: profile, firmy, opinie, odpowiedzi, analizy, użycie limitów.
-- Server Actions: onboarding, wylogowanie, generowanie analiz, generowanie odpowiedzi.
-- Route handlers: Stripe Checkout, Stripe webhook, Stripe Customer Portal, callback auth.
-- OpenAI Responses API: Structured Outputs dla odpowiedzi i analiz.
-- Stripe: subskrypcje Starter i Business.
+- Supabase Auth: konto, sesje, reset hasła.
+- Supabase Database: profile, firmy, opinie, odpowiedzi, analizy, ustawienia i limity.
+- Server Actions: onboarding, wylogowanie, analiza, odpowiedzi, ustawienia.
+- Route handlers: Stripe, auth callback, API odpowiedzi.
+- OpenAI Responses API: Structured Outputs.
+- Stripe Subscriptions: checkout, webhook, portal klienta.
 
 ## Źródła prawdy
 
-- `auth.users`: konto użytkownika.
-- `public.profiles`: plan, Stripe customer, subskrypcja, status.
-- `public.businesses`: jedna firma ownera.
-- Stripe webhook: źródło prawdy dla aktywacji i anulowania planu.
-- `public.ai_usage`: miesięczne zużycie limitów odpowiedzi i analiz.
+- `auth.users`: konto.
+- `profiles`: plan, status subskrypcji, identyfikatory Stripe.
+- `businesses`: firma ownera.
+- `reviews`: opinie i statusy odpowiedzi.
+- `business_response_settings`: automatyczne odpowiedzi i styl odpowiedzi.
+- `ai_usage`: limity miesięczne.
+- Stripe webhook: aktywacja i dezaktywacja planu.
 
-## Ważne ograniczenia
+## Route handlers
+
+- `/checkout`
+- `/billing/portal`
+- `/api/stripe/webhook`
+- `/api/responses/generate`
+- `/api/responses/auto-generate`
+- `/api/responses/settings`
+- `/api/responses/[id]`
+- `/api/responses/[id]/responded`
+- `/auth/callback`
+
+## Ograniczenia
 
 - Jeden owner = jedna firma.
 - Brak pracowników.
 - Brak wielu lokalizacji.
 - Brak Google Reviews API.
-- Brak realnego trackingu skanów NFC.
-- Brak modułu powiadomień.
-
-## Mapa techniczna
-
-- **Odpowiedzialne pliki**: `lib/supabase/*`, `lib/stripe.ts`, `lib/openai.ts`, `lib/plans.ts`, `middleware.ts`, `app/**/actions.ts`, `app/**/route.ts`.
-- **Używane tabele**: `profiles`, `businesses`, `reviews`, `ai_review_responses`, `ai_business_analyses`, `ai_usage`.
-- **Server actions**: opisane szczegółowo w [[Server Actions]].
-- **Route handlers**: `/auth/callback`, `/checkout`, `/billing/portal`, `/api/stripe/webhook`.
-- **Zależności**: [[Supabase]], [[Stripe]], [[OpenAI]], [[Autoryzacja]].
+- Brak realnego trackingu NFC.
+- Powiadomienia nie mają jeszcze backendu.
 
 ## Powiązane notatki
 
@@ -51,6 +57,5 @@ Backend NuvoRate działa w architekturze Next.js App Router z Supabase jako back
 - [[Supabase]]
 - [[Server Actions]]
 - [[Stripe]]
-- [[Autoryzacja]]
 - [[OpenAI]]
-- [[Development MOC]]
+- [[Deployment]]

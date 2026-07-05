@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand/logo";
+import { NotificationBell } from "@/components/notifications/notification-bell";
+import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
 import { ResponseCard } from "@/components/responses/response-card";
 import { ResponseSettingsCard } from "@/components/responses/response-settings-card";
 import { Pagination } from "@/components/ui/pagination";
@@ -135,7 +137,7 @@ const navigation = [
   { label: "Analiza", icon: "analysis" as const, href: "/analysis" },
   { label: "Odpowiedzi", icon: "responses" as const, href: "/responses" },
   { label: "NFC", icon: "nfc" as const, href: "/nfc" },
-  { label: "Powiadomienia", icon: "bell" as const },
+  { label: "Powiadomienia", icon: "bell" as const, href: "/notifications" },
   { label: "Ustawienia", icon: "settings" as const, href: "/settings" },
 ];
 
@@ -339,7 +341,7 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
         <nav className="mt-7 space-y-1.5" aria-label="Nawigacja dashboardu">
           {navigation.map((item) => {
             const active = item.label === "Odpowiedzi";
-            const className = `flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition ${
+            const className = `sidebar-nav-item flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition ${
               active
                 ? "bg-brand-soft text-brand"
                 : "text-black/45 hover:bg-black/[0.035] hover:text-ink"
@@ -349,7 +351,10 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
               return (
                 <Link key={item.label} href={item.href} className={className}>
                   <Icon name={item.icon} className="h-[18px] w-[18px]" />
-                  {item.label}
+                  <span className="min-w-0 flex-1">{item.label}</span>
+                  {item.label === "Powiadomienia" ? (
+                    <NotificationSidebarBadge businessId={business.id} />
+                  ) : null}
                 </Link>
               );
             }
@@ -357,7 +362,10 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
             return (
               <button key={item.label} type="button" className={className}>
                 <Icon name={item.icon} className="h-[18px] w-[18px]" />
-                {item.label}
+                <span className="min-w-0 flex-1">{item.label}</span>
+                {item.label === "Powiadomienia" ? (
+                  <NotificationSidebarBadge businessId={business.id} />
+                ) : null}
               </button>
             );
           })}
@@ -406,14 +414,7 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
               >
                 Wszystkie odpowiedzi
               </button>
-              <button
-                type="button"
-                className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/[0.08] bg-white text-black/50"
-                aria-label="Powiadomienia"
-              >
-                <Icon name="bell" className="h-[18px] w-[18px]" />
-                <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-brand" />
-              </button>
+              <NotificationBell businessId={business.id} />
               <div className="hidden items-center gap-3 rounded-xl border border-black/[0.08] bg-white py-1.5 pl-1.5 pr-3 sm:flex">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft text-xs font-bold uppercase text-brand">
                   {displayName.slice(0, 2)}

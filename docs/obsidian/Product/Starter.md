@@ -1,54 +1,41 @@
 ---
 tags:
-  - plans
   - pricing
   - product
-  - stripe
+  - starter
 ---
 
-# NuvoRate Starter
+# Starter
 
-Starter to płatny abonament wejściowy NuvoRate dla małych firm, które chcą zarządzać opiniami i reputacją online bez rozbudowanej konfiguracji.
+Starter to płatny plan dla małych firm zaczynających pracę z reputacją online.
 
 ## Cena
 
-- 49,99 zł miesięcznie.
-- Plan aktywuje Stripe webhook po opłaceniu subskrypcji.
-- Nowy użytkownik nie otrzymuje Startera automatycznie. Do czasu płatności ma plan `unpaid`.
-
-Komunikacja cenowa jest utrzymywana razem z [[Cennik]], a techniczna aktywacja planu z [[Stripe]].
-
-## Zakres w aktualnym kodzie
-
-Starter daje dostęp do:
-
-- dashboardu po onboardingu firmy,
-- listy opinii,
-- podstawowych statystyk opinii,
-- modułu NFC z linkiem Google review URL,
-- generowania odpowiedzi na opinie,
-- generowania analizy reputacji w ograniczonym limicie,
-- Stripe Customer Portal, jeżeli profil ma `stripe_customer_id`.
+- 49,99 zł / miesiąc.
+- 499,99 zł / rok.
 
 ## Limity
 
 - 50 odpowiedzi na opinie miesięcznie.
 - 1 analiza reputacji miesięcznie.
 
-Limity są sprawdzane backendowo w server actions i zapisywane w `public.ai_usage`.
+## Funkcje
 
-## Ograniczenia Startera
+- Dashboard reputacji.
+- Statystyki opinii.
+- Lista opinii.
+- Generowanie odpowiedzi.
+- Jedna analiza reputacji miesięcznie.
+- Panel NFC z Google review URL.
 
-- Mniej odpowiedzi i analiz niż w Business.
-- Brak zaawansowanych raportów.
-- Brak obsługi wielu lokalizacji.
-- Brak integracji Google Reviews API.
+## Ograniczenia
+
+- Mniej analiz niż Business.
+- Brak Business Insights jako funkcji premium.
 
 ## Powiązane notatki
 
 - [[Business]]
-- [[NFC]]
 - [[Cennik]]
-- [[MVP]]
-- [[Supabase]]
-- [[Product MOC]]
+- [[Dashboard MVP]]
+- [[Odpowiedzi]]

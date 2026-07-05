@@ -10,163 +10,100 @@ tags:
 
 Supabase obsługuje autoryzację, sesje i bazę danych NuvoRate.
 
-## Klienci Supabase w kodzie
+## Klienci Supabase
 
-- `lib/supabase/server.ts`: klient SSR używany w Server Components, actions i route handlers.
-- `lib/supabase/client.ts`: klient browserowy.
+- `lib/supabase/server.ts`: SSR, server components, actions i route handlers.
+- `lib/supabase/client.ts`: klient browserowy auth.
 - `lib/supabase/admin.ts`: service role, tylko server-side.
 - `lib/supabase/middleware.ts`: odświeżanie sesji i ochrona tras.
 
-## Tabele
+## Tabele i funkcje
 
 ### `profiles`
 
-Przeznaczenie: profil ownera powiązany z `auth.users`.
+Profil ownera powiązany z `auth.users`.
 
-Najważniejsze kolumny:
+Kolumny: `user_id`, `full_name`, `plan`, `stripe_customer_id`, `stripe_subscription_id`, `subscription_status`, `current_period_end`, `created_at`, `updated_at`.
 
-- `user_id`: primary key, references `auth.users(id)`,
-- `full_name`,
-- `plan`: `unpaid`, `starter`, `business`,
-- `stripe_customer_id`,
-- `stripe_subscription_id`,
-- `subscription_status`,
-- `current_period_end`,
-- `created_at`,
-- `updated_at`.
-
-Wykorzystanie:
-
-- dashboard,
-- onboarding,
-- reviews,
-- analysis,
-- nfc,
-- checkout,
-- billing portal,
-- Stripe webhook,
-- limity planów.
+Wykorzystanie: auth flow, dashboard, Stripe webhook, checkout, portal billingowy, limity planów.
 
 ### `businesses`
 
-Przeznaczenie: jedna firma przypisana do ownera.
+Jedna firma przypisana do ownera.
 
-Najważniejsze kolumny:
+Kolumny: `id`, `owner_id`, `name`, `industry`, `city`, `google_review_url`, `setup_status`, `created_at`, `updated_at`.
 
-- `id`,
-- `owner_id`: references `profiles.user_id`, unique,
-- `name`,
-- `industry`,
-- `city`,
-- `google_review_url`,
-- `setup_status`,
-- `created_at`,
-- `updated_at`.
-
-Wykorzystanie:
-
-- onboarding zapisuje rekord,
-- dashboard pobiera dane firmy,
-- reviews filtruje opinie po `business.id`,
-- analysis filtruje analizy po `business.id`,
-- nfc pokazuje Google review URL.
+Wykorzystanie: onboarding, dashboard, reviews, responses, analysis, nfc, settings.
 
 ### `reviews`
 
-Przeznaczenie: opinie klientów przypisane do firmy.
+Opinie klientów.
 
-Najważniejsze kolumny:
+Kolumny: `id`, `business_id`, `author_name`, `rating`, `content`, `source`, `created_at`, `response_text`, `response_status`, `response_generated_at`.
 
-- `id`,
-- `business_id`: references `businesses.id`,
-- `author_name`,
-- `rating`,
-- `content`,
-- `source`,
-- `created_at`.
-
-Wykorzystanie:
-
-- dashboard: 3 najnowsze opinie i statystyki,
-- `/reviews`: pełna lista,
-- generowanie odpowiedzi,
-- analiza reputacji.
+Wykorzystanie: dashboard, `/reviews`, `/responses`, odpowiedzi OpenAI, analiza reputacji, wykres aktywności opinii.
 
 ### `ai_review_responses`
 
-Przeznaczenie: wygenerowane odpowiedzi na pojedyncze opinie.
+Wygenerowane odpowiedzi na opinie.
 
-Najważniejsze kolumny:
+Kolumny: `id`, `business_id`, `review_id`, `response_text`, `model`, `created_at`, `updated_at`.
 
-- `id`,
-- `business_id`,
-- `review_id`: unique, references `reviews.id`,
-- `response_text`,
-- `model`,
-- `created_at`,
-- `updated_at`.
-
-Wykorzystanie:
-
-- dashboard pokazuje odpowiedź przy opinii,
-- generowanie odpowiedzi robi `upsert` po `review_id`.
+Wykorzystanie: dashboard i generator odpowiedzi. Aktualny kod synchronizuje także pola odpowiedzi bezpośrednio do `reviews`.
 
 ### `ai_business_analyses`
 
-Przeznaczenie: zapisane analizy reputacji firmy.
+Analizy reputacji firmy.
 
-Najważniejsze kolumny:
+Kolumny: `id`, `business_id`, `period_start`, `period_end`, `review_count`, `score`, `trend`, `summary`, `praised_elements`, `reported_problems`, `recommendations`, `model`, `created_at`, `updated_at`.
 
-- `id`,
-- `business_id`,
-- `period_start`,
-- `period_end`,
-- `review_count`,
-- `score`,
-- `trend`,
-- `summary`,
-- `praised_elements`,
-- `reported_problems`,
-- `recommendations`,
-- `model`,
-- `created_at`,
-- `updated_at`.
-
-Wykorzystanie:
-
-- dashboard pokazuje najnowszą analizę,
-- `/analysis` pokazuje pełny raport,
-- `generateBusinessAnalysis` zapisuje nowy rekord.
+Wykorzystanie: `/dashboard`, `/analysis`, OpenAI.
 
 ### `ai_usage`
 
-Przeznaczenie: miesięczne liczniki limitów planu.
+Miesięczne liczniki limitów.
 
-Najważniejsze kolumny:
+Kolumny: `id`, `user_id`, `period_month`, `ai_replies_used`, `ai_analyses_used`, `created_at`, `updated_at`.
 
-- `id`,
-- `user_id`: references `profiles.user_id`,
-- `period_month`,
-- `ai_replies_used`,
-- `ai_analyses_used`,
-- `created_at`,
-- `updated_at`.
+Unikalność: `user_id + period_month`.
 
-Unikalność:
+### `business_response_settings`
 
-- `user_id + period_month`.
+Ustawienia odpowiedzi dla firmy.
 
-Wykorzystanie:
+Kolumny: `id`, `business_id`, `auto_generate`, `enabled_ratings`, `response_tone`, `created_at`, `updated_at`.
 
-- dashboard karta „Limity planu”,
-- generowanie odpowiedzi,
-- generowanie analiz.
+Wykorzystanie: `/responses` automatyczne odpowiedzi, `/settings` styl odpowiedzi, generator odpowiedzi OpenAI.
+
+### `get_review_activity_trend(p_business_id, p_range)`
+
+RPC z migracji `007_review_activity_trend.sql`.
+
+Zwraca agregację opinii:
+
+- `30d`: po dniach,
+- `3m`: po tygodniach,
+- `12m`: po miesiącach.
+
+Wykorzystanie: wykres „Nowe opinie w czasie” na dashboardzie.
+
+## Migracje
+
+- `001_initial_schema.sql`: `profiles`, `businesses`.
+- `002_reviews.sql`: `reviews`.
+- `003_ai_features.sql`: `ai_review_responses`, `ai_business_analyses`.
+- `004_business_analysis_score_trend.sql`: `score`, `trend`.
+- `005_stripe_subscriptions.sql`: pola Stripe w `profiles`.
+- `006_unpaid_plan_ai_usage.sql`: plan `unpaid`, `ai_usage`.
+- `007_review_activity_trend.sql`: RPC trendu aktywności opinii.
+- `008_review_responses.sql`: pola odpowiedzi w `reviews`, `business_response_settings`.
+- `009_settings_fields.sql`: `business_response_settings.response_tone`.
 
 ## RLS
 
-Migracje włączają RLS dla tabel publicznych. Owner może czytać i edytować własne dane. Część zapisów krytycznych, np. Stripe i liczniki, używa service role po stronie server.
+Owner może czytać i edytować własne dane. Operacje krytyczne, takie jak webhook Stripe i liczniki AI, używają service role po stronie server.
 
-## Mapa zależności tabel
+## Diagram danych
 
 ```mermaid
 erDiagram
@@ -177,16 +114,8 @@ erDiagram
   reviews ||--|| ai_review_responses : "review_id"
   businesses ||--o{ ai_business_analyses : "business_id"
   profiles ||--o{ ai_usage : "user_id"
+  businesses ||--|| business_response_settings : "business_id"
 ```
-
-## Migracje
-
-- `001_initial_schema.sql`: profiles, businesses.
-- `002_reviews.sql`: reviews i demo seed.
-- `003_ai_features.sql`: ai_review_responses, ai_business_analyses.
-- `004_business_analysis_score_trend.sql`: score i trend.
-- `005_stripe_subscriptions.sql`: pola Stripe w profiles.
-- `006_unpaid_plan_ai_usage.sql`: plan unpaid i ai_usage.
 
 ## Powiązane notatki
 
@@ -195,5 +124,4 @@ erDiagram
 - [[Autoryzacja]]
 - [[Stripe]]
 - [[OpenAI]]
-- [[Dashboard MOC]]
-- [[Development MOC]]
+- [[Settings]]

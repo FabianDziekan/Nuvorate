@@ -1,79 +1,48 @@
 ---
 tags:
-  - dashboard
   - nfc
   - product
+  - supabase
 ---
 
 # NFC
 
-NFC w NuvoRate jest dodatkiem wspierającym kierowanie klientów do miejsca wystawienia opinii. NuvoRate nie zbiera opinii we własnym publicznym formularzu. Link z NFC powinien prowadzić do Google review URL firmy.
+NFC jest dodatkiem wspierającym kierowanie klientów do Google review URL firmy. NuvoRate nie zbiera opinii we własnym formularzu publicznym.
 
-## Co działa w aktualnym kodzie
+## Co działa
 
 Strona `/nfc`:
 
-- wymaga zalogowanego użytkownika,
-- wymaga istniejącej firmy,
-- blokuje dostęp dla planu `unpaid`,
+- wymaga sesji,
+- wymaga firmy,
+- blokuje `unpaid`,
 - pobiera `businesses.google_review_url`,
-- pokazuje kartę „Twój link do opinii”,
-- pozwala skopiować link przez `CopyLinkButton`,
-- pokazuje instrukcję konfiguracji NFC,
-- pokazuje statystyki skanów jako `0` lub „Brak danych”.
+- pokazuje link do opinii,
+- umożliwia kopiowanie linku,
+- pokazuje instrukcję konfiguracji plakietki/karty NFC,
+- pokazuje statystyki skanów jako 0 lub „Brak danych”.
 
-## Link do opinii
+## Czego jeszcze nie ma
 
-Link pochodzi z pola:
-
-- `public.businesses.google_review_url`
-
-Pole jest uzupełniane w onboardingu firmy.
-
-## Kopiowanie linku
-
-Komponent:
-
-- `components/nfc/copy-link-button.tsx`
-
-Kopiuje link do schowka przez `navigator.clipboard.writeText()`.
-
-## Otwieranie linku
-
-Kod pokazuje link do opinii, ale nie posiada jeszcze osobnej warstwy trackingu kliknięć ani przekierowań. Nie istnieje route typu `/r/[slug]`.
-
-## Statystyki skanów
-
-Aktualnie:
-
-- `scansLast30Days = 0`,
-- `scansTotal = 0`,
-- konwersja: „Brak danych”, jeżeli nie ma skanów.
-
-Nie istnieje jeszcze tabela skanów NFC.
+- brak tabeli skanów,
+- brak route śledzącego kliknięcia,
+- brak rozróżniania plakietek,
+- brak integracji Google Reviews API.
 
 ## Mapa techniczna
 
-- **Odpowiedzialne pliki**: `app/nfc/page.tsx`, `components/nfc/copy-link-button.tsx`.
-- **Komponenty**: `CopyLinkButton`.
-- **Używane tabele**: `businesses`, `profiles`.
-- **Server actions**: brak.
-- **Route handlers**: brak dedykowanego route handlera dla NFC.
-- **Zależności**: [[Supabase]], [[Dashboard MVP]], [[Starter]], [[Business]].
+- `app/nfc/page.tsx`
+- `components/nfc/copy-link-button.tsx`
+- tabele: `businesses`, `profiles`
 
-## Plan dalszego rozwoju
+## Plan
 
-- Dodać tabelę skanów NFC.
-- Dodać przekierowania śledzące kliknięcia/skany.
-- Rozróżnić plakietki albo karty NFC.
+- Dodać tracking kliknięć/skanów.
+- Dodać redirect do Google review URL z możliwością liczenia wejść.
 - Dodać statystyki per okres.
-- Powiązać skan z przejściem do Google review URL, o ile da się to mierzyć bez własnego formularza opinii.
 
 ## Powiązane notatki
 
-- [[Jak działa]]
-- [[Starter]]
-- [[Business]]
+- [[Dashboard MVP]]
 - [[Supabase]]
 - [[Roadmap]]
-- [[Product MOC]]

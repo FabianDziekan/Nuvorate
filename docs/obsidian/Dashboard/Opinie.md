@@ -9,108 +9,67 @@ tags:
 
 # Opinie
 
-Moduł opinii pokazuje opinie przypisane do aktualnej firmy ownera. Dane pochodzą z tabeli `public.reviews`.
+Moduł opinii pokazuje opinie przypisane do aktualnej firmy ownera. Dane pochodzą z `public.reviews`.
 
-## Widok dashboardu
+## Dashboard
 
-Na `/dashboard` sekcja „Najnowsze opinie klientów” pobiera 3 najnowsze opinie:
+Na `/dashboard` sekcja „Najnowsze opinie klientów” pobiera 3 najnowsze opinie po `created_at desc`.
 
-- `id`,
-- `author_name`,
-- `rating`,
-- `content`,
-- `created_at`.
+Wyświetla:
 
-Opinie są sortowane po `created_at desc` i filtrowane po `business.id` aktualnej firmy.
+- autora,
+- relatywną datę,
+- ocenę,
+- treść,
+- wygenerowaną odpowiedź,
+- akcję generowania odpowiedzi, jeśli limit nie jest wykorzystany.
 
 ## Strona `/reviews`
 
-Strona `/reviews` pokazuje pełną listę opinii aktualnej firmy.
+Strona pokazuje pełną listę opinii aktualnej firmy.
 
-Aktualnie obsługuje:
+Funkcje:
 
-- pobranie zalogowanego użytkownika z Supabase Auth,
-- pobranie firmy z `public.businesses`,
-- pobranie wszystkich opinii z `public.reviews`,
-- sortowanie po `created_at desc`,
-- filtr po ocenie: Wszystkie, 5, 4, 3, 2, 1,
-- pusty stan, gdy firma nie ma opinii,
-- blokadę dostępu dla planu `unpaid`.
+- filtrowanie po ocenie: Wszystkie, 5, 4, 3, 2, 1,
+- paginacja po 10 opinii na stronę,
+- tekst „Wyświetlanie X–Y z Z opinii”,
+- przyciski Poprzednia/Następna i numery stron,
+- reset strony do 1 po zmianie filtra,
+- pusty stan dla braku opinii.
 
-Wyświetlane pola:
+Wspólny komponent paginacji:
 
-- autor,
-- ocena,
-- treść,
-- źródło,
-- data utworzenia.
+- `components/ui/pagination.tsx`
 
-## Generowanie odpowiedzi
+## Odpowiedzi na opinie
 
-Odpowiedzi przy opiniach są generowane z poziomu dashboardu.
-
-Komponent UI:
+Odpowiedzi na dashboardzie generuje:
 
 - `components/dashboard/review-response-form.tsx`
-
-Server action dla klientowego formularza:
-
 - `app/dashboard/review-response-actions.ts`
-
-Implementacja serwerowa:
-
 - `app/dashboard/review-response-service.ts`
 
-Przepływ:
+Odpowiedzi w pełnym module są opisane w [[Odpowiedzi]].
 
-1. Użytkownik klika „Wygeneruj odpowiedź” albo „Wygeneruj ponownie”.
-2. Formularz wywołuje server action `generateReviewResponse`.
-3. Serwer sprawdza zalogowanego użytkownika.
-4. Serwer pobiera `profiles.plan`.
-5. Serwer sprawdza limit odpowiedzi z `ai_usage`.
-6. Serwer pobiera firmę ownera i opinię należącą do tej firmy.
-7. OpenAI generuje odpowiedź według schematu z `lib/ai-config.ts`.
-8. Wynik jest zapisywany lub nadpisywany w `public.ai_review_responses`.
-9. Licznik `ai_replies_used` jest zwiększany w `public.ai_usage`.
-10. Dashboard jest odświeżany przez `revalidatePath("/dashboard")`.
+## Limity
 
-## Limity odpowiedzi
-
-Limity są egzekwowane po stronie backendu i dodatkowo pokazywane w UI.
-
-- Starter: 50 odpowiedzi na opinie miesięcznie.
-- Business: 350 odpowiedzi na opinie miesięcznie.
-- Unpaid: brak dostępu do odpowiedzi.
-
-Jeżeli `remainingReplies <= 0`, karta opinii nie pokazuje aktywnego przycisku generowania. Zamiast niego pokazuje tekst:
+Jeżeli `remainingReplies <= 0`, UI nie pokazuje aktywnego przycisku generowania. Widoczny jest tekst:
 
 > Limit odpowiedzi wykorzystany
 
-Backend nadal niezależnie blokuje wywołanie po przekroczeniu limitu.
-
-## Obecne ograniczenia
-
-- Brak integracji Google Reviews API.
-- Brak własnego publicznego formularza opinii NuvoRate.
-- Brak statusów opinii typu „przeczytana”, „obsłużona”, „wymaga reakcji”.
-- Brak wyszukiwarki tekstowej w `/reviews`.
-- Brak paginacji.
+Backend nadal sprawdza limit w `review-response-service`.
 
 ## Mapa techniczna
 
-- **Odpowiedzialne pliki**: `app/reviews/page.tsx`, `app/dashboard/page.tsx`, `app/dashboard/review-response-actions.ts`, `app/dashboard/review-response-service.ts`.
-- **Komponenty**: `components/dashboard/review-response-form.tsx`, `components/dashboard/review-response-state.ts`.
-- **Używane tabele**: `businesses`, `profiles`, `reviews`, `ai_review_responses`, `ai_usage`.
+- **Odpowiedzialne pliki**: `app/reviews/page.tsx`, `app/dashboard/page.tsx`, `components/ui/pagination.tsx`.
+- **Tabele**: `businesses`, `profiles`, `reviews`, `ai_review_responses`, `ai_usage`.
 - **Server actions**: `generateReviewResponse`.
-- **Route handlers**: brak dedykowanego route handlera dla opinii; widoki pobierają dane server-side przez Supabase.
-- **Zależności**: [[Supabase]], [[OpenAI]], [[Server Actions]], [[Dashboard MVP]].
+- **Route handlers**: brak dla samej listy `/reviews`.
 
 ## Powiązane notatki
 
 - [[Dashboard MVP]]
+- [[Odpowiedzi]]
 - [[Analiza]]
-- [[Statystyki]]
-- [[Server Actions]]
 - [[Supabase]]
 - [[OpenAI]]
-- [[Dashboard MOC]]

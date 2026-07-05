@@ -1,6 +1,5 @@
 ---
 tags:
-  - backend
   - development
   - frontend
   - nextjs
@@ -9,62 +8,50 @@ tags:
 
 # Frontend
 
-Frontend NuvoRate jest zbudowany w Next.js App Router, TypeScript i Tailwind CSS. Styl opiera się na białym tle, fiolecie `#5B5CF6` i czerni `#0F0F10`.
+Frontend NuvoRate jest zbudowany w Next.js App Router, TypeScript i Tailwind CSS.
 
-## Struktura aplikacji
+## Trasy
 
-Najważniejsze trasy:
-
-- `/` landing page,
-- `/register` rejestracja,
-- `/login` logowanie,
-- `/forgot-password` reset hasła,
-- `/update-password` ustawienie nowego hasła,
-- `/onboarding` konfiguracja firmy,
-- `/dashboard` główny dashboard,
-- `/reviews` lista opinii,
-- `/analysis` analiza reputacji,
-- `/nfc` link do opinii i panel NFC,
-- `/checkout` Stripe Checkout,
-- `/billing/portal` Stripe Customer Portal,
-- `/api/stripe/webhook` webhook Stripe.
+- `/`: landing page.
+- `/register`, `/login`, `/forgot-password`, `/update-password`: auth.
+- `/onboarding`: konfiguracja firmy.
+- `/dashboard`: pulpit.
+- `/reviews`: opinie z filtrem i paginacją.
+- `/responses`: zarządzanie odpowiedziami.
+- `/analysis`: analiza reputacji.
+- `/nfc`: link opinii i instrukcja NFC.
+- `/settings`: ustawienia firmy, styl odpowiedzi, konto.
+- `/checkout`: Stripe Checkout.
+- `/billing/portal`: Stripe Customer Portal.
 
 ## Komponenty
 
-- `components/brand/logo.tsx`: logo NuvoRate.
-- `components/auth/*`: formularze auth i wspólny shell.
-- `components/onboarding/business-form.tsx`: formularz firmy.
-- `components/dashboard/review-response-form.tsx`: klientowy formularz generowania odpowiedzi.
-- `components/nfc/copy-link-button.tsx`: kopiowanie Google review URL.
+- `components/brand/logo.tsx`
+- `components/auth/*`
+- `components/billing/*`
+- `components/dashboard/*`
+- `components/responses/*`
+- `components/settings/settings-form.tsx`
+- `components/nfc/copy-link-button.tsx`
+- `components/ui/ai-generation-progress.tsx`
+- `components/ui/pagination.tsx`
 
 ## Style
 
-- Globalny CSS: `app/globals.css`.
-- Tailwind: `tailwind.config.ts`.
-- PostCSS: `postcss.config.mjs`.
-- Klasy komponentowe: `container-page`, `section-space`, `eyebrow`, `button-primary`, `button-secondary`.
+- `app/globals.css`
+- Tailwind config
+- białe tła, fiolet `#5B5CF6`, czerń `#0F0F10`
+- dashboardowy shell powielony w kilku stronach
 
-## Aktualne ograniczenia frontendowe
+## Obecne ograniczenia
 
-- Dashboard shell jest powielony w kilku stronach zamiast wydzielonego wspólnego layoutu.
-- Brak aktywnych stron dla Powiadomień i Ustawień.
-- Wykres trendu na dashboardzie jest statyczny.
-- Część elementów topbara jest wizualna, bez pełnej interakcji.
-
-## Mapa techniczna
-
-- **Odpowiedzialne pliki**: `app/page.tsx`, `app/layout.tsx`, `app/globals.css`, `tailwind.config.ts`, strony w `app/*/page.tsx`.
-- **Komponenty**: `components/brand/logo.tsx`, `components/auth/*`, `components/onboarding/business-form.tsx`, `components/dashboard/review-response-form.tsx`, `components/nfc/copy-link-button.tsx`.
-- **Używane tabele**: frontend czyta dane przez server components i actions z tabel opisanych w [[Supabase]].
-- **Server actions**: wywoływane przez formularze dashboardu, analizy, odpowiedzi i onboardingu.
-- **Route handlers**: trasy billingowe i auth są linkowane z UI, ale logika sekretów pozostaje server-side.
-- **Zależności**: Next.js App Router, TypeScript, Tailwind CSS, [[Backend]].
+- Brak wspólnego dashboard layoutu.
+- Powiadomienia są pozycją UI bez strony.
+- NFC statystyki są zerowe, bo brak tabeli skanów.
 
 ## Powiązane notatki
 
-- [[Kolory]]
-- [[Mockup panelu]]
-- [[MVP]]
-- [[Backend]]
 - [[Architektura]]
-- [[Development MOC]]
+- [[Backend]]
+- [[Dashboard MVP]]
+- [[Website Blueprint]]

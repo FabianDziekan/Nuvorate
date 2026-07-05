@@ -18,6 +18,7 @@ Mapa wiedzy dla architektury i implementacji NuvoRate.
 - [[MVP]]: zakres aktualnie działający oraz częściowy.
 - [[Roadmap]]: gotowe, w trakcie, następne i pomysły.
 - [[Changelog]]: ostatnie zmiany opisane w dokumentacji.
+- [[Deployment]]: GitHub, Vercel, lockfile i env deploymentowe.
 
 ## Integracje
 
@@ -32,4 +33,3 @@ Mapa wiedzy dla architektury i implementacji NuvoRate.
 - [[NuvoRate Hub]]
 - [[Dashboard MOC]]
 - [[Product MOC]]
-

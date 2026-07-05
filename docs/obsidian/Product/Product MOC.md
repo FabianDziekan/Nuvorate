@@ -22,7 +22,9 @@ Mapa wiedzy dla funkcji produktu i planów NuvoRate.
 - [[Inteligentna analiza]]: analiza reputacji na bazie opinii.
 - [[Powiadomienia]]: funkcja planowana, widoczna częściowo w UI.
 - [[Opinie]]: lista opinii i odpowiedzi na opinie.
+- [[Odpowiedzi]]: pełny moduł zarządzania odpowiedziami.
 - [[Analiza]]: ekran analizy reputacji.
+- [[Settings]]: styl odpowiedzi używany przez OpenAI.
 
 ## Powiązane notatki
 
@@ -30,4 +32,3 @@ Mapa wiedzy dla funkcji produktu i planów NuvoRate.
 - [[Dashboard MOC]]
 - [[Development MOC]]
 - [[Roadmap]]
-

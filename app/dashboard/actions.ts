@@ -13,6 +13,7 @@ import {
   generateStructuredOutput,
   openAIModel,
 } from "@/lib/openai";
+import { createNotification } from "@/lib/notifications";
 import {
   currentPeriodMonth,
   getAiLimit,
@@ -272,7 +273,15 @@ export async function generateReviewResponse(
       periodMonth: limitCheck.usage.periodMonth,
     });
 
+    await createNotification({
+      businessId: business.id,
+      type: "response_generated",
+      title: "Odpowiedź gotowa",
+      message: "Wygenerowano odpowiedź na opinię klienta.",
+    });
+
     revalidatePath("/dashboard");
+    revalidatePath("/notifications");
 
     return {
       ok: true,
@@ -412,6 +421,14 @@ export async function generateBusinessAnalysis(formData?: FormData) {
     periodMonth: usage.periodMonth,
   });
 
+  await createNotification({
+    businessId: business.id,
+    type: "analysis_ready",
+    title: "Analiza gotowa",
+    message: "Nowa analiza reputacji jest gotowa do sprawdzenia.",
+  });
+
   revalidatePath("/dashboard");
   revalidatePath("/analysis");
+  revalidatePath("/notifications");
 }

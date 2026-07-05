@@ -1,37 +1,37 @@
 ---
 tags:
-  - backend
   - changelog
   - development
 ---
 
 # Changelog
 
-Changelog opisuje aktualne większe zmiany w projekcie NuvoRate.
+## 2026-07-05
 
-## 2026-07-02
+- Zsynchronizowano `pnpm-lock.yaml` po błędzie Vercel `ERR_PNPM_OUTDATED_LOCKFILE`.
+- Potwierdzono workflow GitHub -> Vercel dla aktualnego repo.
+- Zaktualizowano dokumentację Obsidian do aktualnego stanu projektu.
 
-- Uporządkowano dokumentację Obsidian pod aktualny stan kodu.
-- Doprecyzowano, że nowy użytkownik ma plan `unpaid` do momentu płatności.
-- Udokumentowano Stripe Checkout, webhook i Customer Portal.
-- Udokumentowano limity odpowiedzi i analiz w `ai_usage`.
-- Udokumentowano rozdzielenie server action odpowiedzi przez `review-response-actions.ts` i `review-response-service.ts`.
-- Udokumentowano, że NFC nie ma jeszcze realnego trackingu skanów.
-- Udokumentowano, że powiadomienia są planowane, a nie gotowe.
+## 2026-07-04
 
-## Ostatni stan funkcjonalny
-
-- Starter: 49,99 zł miesięcznie, 50 odpowiedzi na opinie i 1 analiza reputacji miesięcznie.
-- Business: 229,99 zł miesięcznie, 350 odpowiedzi na opinie i 50 analiz reputacji miesięcznie.
-- Stripe webhook synchronizuje `profiles.plan`.
-- Dashboard pokazuje statystyki opinii, limity planu, analizę i ostatnie opinie.
-- `/reviews` pokazuje pełną listę opinii z filtrem oceny.
-- `/analysis` pokazuje ostatnią analizę reputacji.
-- `/nfc` pokazuje Google review URL i instrukcję NFC.
+- Dodano `/settings`.
+- Uproszczono ustawienia do nazwy firmy, branży i stylu odpowiedzi.
+- Dodano `business_response_settings.response_tone`.
+- Generator odpowiedzi przekazuje `preferred_response_style` do OpenAI.
+- Dodano zakładkę `/responses`.
+- Dodano statusy odpowiedzi: `pending`, `ready`, `responded`.
+- Dodano automatyczne generowanie odpowiedzi po zapisie ustawień.
+- Dodano wspólny progress bar generowania AI.
+- Dodano paginację w `/reviews` i `/responses`.
+- Dodano `/nfc`.
+- Dodano Stripe monthly/yearly checkout.
+- Dodano Customer Portal.
+- Dodano Business Insights i wykres aktywności opinii.
+- Dodano nowe logo z pliku `public/brand/nuvorate-logo.png`.
 
 ## Powiązane notatki
 
 - [[Roadmap]]
-- [[MVP]]
-- [[Architektura]]
-- [[Development MOC]]
+- [[Deployment]]
+- [[Server Actions]]
+- [[Stripe]]

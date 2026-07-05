@@ -7,7 +7,7 @@ tags:
 
 # Server Actions
 
-Server Actions obsługują operacje wymagające sesji użytkownika i zapisu do Supabase.
+Server Actions obsługują operacje wymagające sesji użytkownika, walidacji i zapisu do Supabase.
 
 ## `createBusiness`
 
@@ -19,27 +19,7 @@ Wywoływana przez:
 
 - `components/onboarding/business-form.tsx`
 
-Co robi:
-
-- waliduje nazwę firmy, branżę, miasto i Google review URL,
-- pobiera aktualnego użytkownika,
-- sprawdza, czy owner ma już firmę,
-- tworzy rekord w `public.businesses`,
-- ustawia `setup_status = completed`,
-- przekierowuje do `/dashboard`.
-
-Zapisuje dane:
-
-- `businesses.owner_id`,
-- `businesses.name`,
-- `businesses.industry`,
-- `businesses.city`,
-- `businesses.google_review_url`,
-- `businesses.setup_status`.
-
-Limity planów:
-
-- nie korzysta z limitów planów.
+Tworzy rekord w `businesses` dla aktualnego ownera. Jeden owner = jedna firma.
 
 ## `signOut`
 
@@ -49,23 +29,9 @@ Lokalizacja:
 
 Wywoływana przez:
 
-- `/dashboard`,
-- `/reviews`,
-- `/analysis`,
-- `/nfc`.
+- dashboard shell na `/dashboard`, `/reviews`, `/responses`, `/analysis`, `/nfc`, `/settings`.
 
-Co robi:
-
-- wylogowuje użytkownika przez Supabase Auth,
-- przekierowuje do `/login`.
-
-Zapisuje dane:
-
-- nie zapisuje danych biznesowych.
-
-Limity planów:
-
-- nie korzysta z limitów.
+Kończy sesję Supabase i przekierowuje do `/login`.
 
 ## `generateBusinessAnalysis`
 
@@ -75,34 +41,23 @@ Lokalizacja:
 
 Wywoływana przez:
 
-- formularz w `/dashboard`,
-- formularz w `/analysis`.
+- `components/dashboard/analysis-action-form.tsx`
+- dashboard,
+- `/analysis`.
 
-Co robi:
+Robi:
 
-- pobiera użytkownika, firmę i profil,
-- sprawdza limit analiz w `ai_usage`,
-- pobiera opinie z ostatnich 30 dni,
-- wysyła dane do OpenAI,
-- waliduje `score` i `trend`,
-- zapisuje analizę w `ai_business_analyses`,
-- zwiększa `ai_analyses_used`,
-- odświeża `/dashboard` i `/analysis`.
-
-Zapisuje dane:
-
-- `ai_business_analyses`,
-- `ai_usage.ai_analyses_used`.
-
-Limity planów:
-
-- unpaid: 0,
-- starter: 1 analiza miesięcznie,
-- business: 50 analiz miesięcznie.
+1. Pobiera użytkownika, firmę i profil.
+2. Sprawdza limit analiz w `ai_usage`.
+3. Pobiera opinie z ostatnich 30 dni.
+4. Wysyła dane do OpenAI.
+5. Zapisuje rekord w `ai_business_analyses`.
+6. Zwiększa `ai_usage.ai_analyses_used`.
+7. Rewaliduje `/dashboard` i `/analysis`.
 
 ## `generateReviewResponse`
 
-Lokalizacja action-browser:
+Lokalizacja wrappera:
 
 - `app/dashboard/review-response-actions.ts`
 
@@ -113,65 +68,72 @@ Implementacja:
 Wywoływana przez:
 
 - `components/dashboard/review-response-form.tsx`
+- route handlers `/api/responses/generate` i `/api/responses/auto-generate`.
 
-Co robi:
+Robi:
 
-- pobiera użytkownika,
-- pobiera plan z `profiles`,
-- sprawdza limit odpowiedzi,
-- pobiera firmę i opinię,
-- wysyła dane opinii do OpenAI,
-- zapisuje odpowiedź w `ai_review_responses`,
-- zwiększa `ai_replies_used`,
-- odświeża `/dashboard`.
+1. Pobiera użytkownika i plan.
+2. Sprawdza limit odpowiedzi.
+3. Pobiera firmę i opinię.
+4. Pobiera `business_response_settings.response_tone`.
+5. Wysyła dane do OpenAI.
+6. Zapisuje `ai_review_responses`.
+7. Synchronizuje pola odpowiedzi w `reviews`.
+8. Zwiększa `ai_usage.ai_replies_used`.
+9. Rewaliduje `/dashboard` i `/responses`.
 
-Zapisuje dane:
+## `saveSettings`
 
-- `ai_review_responses.response_text`,
-- `ai_review_responses.model`,
-- `ai_usage.ai_replies_used`.
+Lokalizacja:
 
-Limity planów:
+- `app/settings/actions.ts`
 
-- unpaid: 0,
-- starter: 50 odpowiedzi miesięcznie,
-- business: 350 odpowiedzi miesięcznie.
+Wywoływana przez:
 
-Ważna zasada architektoniczna:
+- `components/settings/settings-form.tsx`
 
-- server action nie jest przekazywana jako prop do client componentu,
-- client component importuje bezpieczny wrapper `review-response-actions.ts`,
-- wrapper wywołuje server-only service.
+Zapisuje:
 
-## Diagram Server Actions
+- `businesses.name`
+- `businesses.industry`
+- `business_response_settings.response_tone`
+
+## Route handlers zamiast Server Actions
+
+Moduł `/responses` korzysta głównie z route handlers, żeby aktualizować lokalny stan React bez pełnego odświeżenia strony:
+
+- `POST /api/responses/generate`
+- `POST /api/responses/auto-generate`
+- `PATCH /api/responses/settings`
+- `PATCH /api/responses/[id]`
+- `POST /api/responses/[id]/responded`
+
+Stripe działa wyłącznie przez route handlers:
+
+- `/checkout`
+- `/billing/portal`
+- `/api/stripe/webhook`
+
+## Diagram
 
 ```mermaid
 flowchart TD
-  BusinessForm["BusinessForm"] --> CreateBusiness["createBusiness"]
-  Dashboard["Dashboard"] --> GenerateAnalysis["generateBusinessAnalysis"]
-  AnalysisPage["Analysis page"] --> GenerateAnalysis
-  ReviewForm["ReviewResponseForm"] --> ReviewAction["generateReviewResponse wrapper"]
-  ReviewAction --> ReviewService["review-response-service"]
+  OnboardingForm["BusinessForm"] --> CreateBusiness["createBusiness"]
+  AnalysisForm["AnalysisActionForm"] --> GenerateAnalysis["generateBusinessAnalysis"]
+  DashboardReviewForm["ReviewResponseForm"] --> ReviewWrapper["generateReviewResponse wrapper"]
+  ResponsesApi["/api/responses/*"] --> ReviewService["review-response-service"]
+  SettingsForm["SettingsForm"] --> SaveSettings["saveSettings"]
   GenerateAnalysis --> Supabase["Supabase"]
   ReviewService --> Supabase
+  SaveSettings --> Supabase
   GenerateAnalysis --> OpenAI["OpenAI"]
   ReviewService --> OpenAI
 ```
 
-## Mapa odpowiedzialności
-
-- **Onboarding firmy**: `createBusiness` tworzy `businesses`.
-- **Sesja**: `signOut` kończy sesję Supabase.
-- **Analiza reputacji**: `generateBusinessAnalysis` używa `reviews`, `ai_usage`, `ai_business_analyses` i OpenAI.
-- **Odpowiedzi na opinie**: `generateReviewResponse` używa `reviews`, `ai_usage`, `ai_review_responses` i OpenAI.
-- **Limity planów**: akcje generujące korzystają z konfiguracji w `lib/plans.ts`.
-- **Service role**: zapisy liczników i danych generowanych po stronie serwera nie powinny trafiać do komponentów klientowych.
-
 ## Powiązane notatki
 
 - [[Dashboard MVP]]
-- [[Opinie]]
-- [[Analiza]]
-- [[Supabase]]
+- [[Odpowiedzi]]
+- [[Settings]]
 - [[OpenAI]]
-- [[Development MOC]]
+- [[Supabase]]

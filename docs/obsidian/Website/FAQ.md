@@ -1,51 +1,47 @@
 ---
 tags:
   - faq
-  - frontend
-  - marketing
-  - sales
   - website
 ---
 
 # FAQ
 
-FAQ powinien odpowiadać zgodnie z aktualnym stanem produktu, bez obiecywania funkcji, których jeszcze nie ma w kodzie.
+FAQ powinno odpowiadać na pytania zgodnie z aktualnym stanem aplikacji.
 
-## Pytania i odpowiedzi
+## Czy NuvoRate pobiera opinie z Google automatycznie?
 
-### Czym różni się Starter od Business?
+Nie w aktualnym MVP. Opinie są przechowywane w `public.reviews`. Integracja Google Reviews API jest planowana.
 
-Oba plany dają dostęp do dashboardu, opinii, modułu NFC i funkcji reputacyjnych. Różnica w aktualnym kodzie dotyczy głównie limitów: Starter ma 50 odpowiedzi na opinie i 1 analizę reputacji miesięcznie, Business ma 350 odpowiedzi i 50 analiz miesięcznie.
+## Czy NuvoRate zbiera opinie we własnym formularzu?
 
-### Czy do korzystania z NuvoRate potrzebna jest plakietka NFC?
+Nie. NuvoRate kieruje klienta do Google review URL firmy. Publiczny formularz `/r/[slug]` nie istnieje w aktualnym produkcie.
 
-Nie. NFC jest dodatkiem. NuvoRate może pokazywać link Google review URL zapisany przy firmie, a plakietka NFC może ten link ułatwiać klientom.
+## Czy NFC jest głównym produktem?
 
-### Czy NuvoRate zbiera opinie we własnym formularzu?
+Nie. Głównym produktem jest abonament SaaS. NFC jest dodatkiem ułatwiającym kierowanie klientów do linku opinii.
 
-Nie w aktualnym kodzie. NuvoRate kieruje klientów do Google review URL firmy i analizuje opinie zapisane w bazie aplikacji. Nie istnieje publiczny formularz `/r/[slug]`.
+## Kiedy aktywuje się plan?
 
-### Jak działa płatność?
+Plan aktywuje się po potwierdzonym webhooku Stripe. Sam powrót z Checkout na `/dashboard?checkout=success` nie zmienia planu.
 
-Użytkownik wybiera plan, trafia do Stripe Checkout, a plan w Supabase zmienia dopiero Stripe webhook po potwierdzeniu subskrypcji.
+## Co oznacza `unpaid`?
 
-### Co widzi użytkownik bez płatności?
+To stan użytkownika bez aktywnej płatności. Ma dostęp do onboardingu i wyboru planu, ale nie do pełnych funkcji.
 
-Użytkownik z planem `unpaid` może przejść onboarding firmy i widzi ekran zachęcający do wyboru planu. Pełny dashboard, opinie, NFC i analiza wymagają Startera albo Business.
+## Czy są plany roczne?
 
-### Czy działa integracja Google Reviews API?
+Tak. Starter i Business mają wariant miesięczny oraz roczny.
 
-Nie. To funkcja planowana.
+## Czy odpowiedzi i analizy mają limity?
 
-### Czy działają powiadomienia?
+Tak.
 
-Nie jako pełny moduł. Ikony i pozycje nawigacji istnieją w UI, ale nie ma jeszcze tabeli ani logiki powiadomień.
+- Starter: 50 odpowiedzi i 1 analiza miesięcznie.
+- Business: 350 odpowiedzi i 50 analiz miesięcznie.
 
 ## Powiązane notatki
 
 - [[Cennik]]
-- [[Jak działa]]
-- [[Starter]]
-- [[Business]]
 - [[Stripe]]
-- [[Website MOC]]
+- [[NFC]]
+- [[Website Blueprint]]

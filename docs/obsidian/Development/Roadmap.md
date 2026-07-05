@@ -7,69 +7,68 @@ tags:
 
 # Roadmap
 
-Roadmap opisuje rozwój NuvoRate na podstawie aktualnego stanu kodu. Funkcje nie są przenoszone do „Gotowe”, jeśli nie istnieją w repozytorium.
+Roadmap opisuje aktualny stan kodu i najbliższe kierunki rozwoju.
 
 ## ✅ Gotowe
 
 - Landing page NuvoRate.
+- Cennik miesięczny i roczny.
 - Rejestracja, logowanie, wylogowanie, reset hasła.
-- Supabase Auth i middleware dla `/dashboard` oraz `/onboarding`.
+- Supabase Auth.
 - Onboarding jednej firmy ownera.
-- Tabele `profiles`, `businesses`, `reviews`.
 - Plan `unpaid` dla nowych użytkowników.
-- Stripe Checkout dla Starter i Business.
-- Stripe webhook dla checkout, subskrypcji i faktur.
+- Stripe Checkout dla Starter/Business monthly/yearly.
+- Stripe webhook jako źródło prawdy planów.
 - Stripe Customer Portal.
-- Synchronizacja `profiles.plan` z webhooka Stripe.
 - Dashboard dla płatnych planów.
-- Ekran wyboru planu dla `unpaid`.
-- Statystyki opinii z `public.reviews`.
-- Lista opinii `/reviews` z filtrem oceny.
+- Ekran aktywacji planu dla `unpaid`.
+- Statystyki opinii z `reviews`.
+- Wykres „Nowe opinie w czasie” z RPC `get_review_activity_trend`.
+- Business Insights dla planu Business.
+- Lista opinii `/reviews` z filtrem i paginacją.
+- Zakładka `/responses` z generowaniem, edycją, kopiowaniem i statusami odpowiedzi.
+- Automatyczne generowanie odpowiedzi po zapisie ustawień.
 - OpenAI Structured Outputs.
-- Generowanie odpowiedzi na opinie.
-- Zapisywanie odpowiedzi w `ai_review_responses`.
 - Analiza reputacji z ostatnich 30 dni.
-- Zapisywanie analiz w `ai_business_analyses`.
-- Miesięczne limity w `ai_usage`.
-- Blokada generowania odpowiedzi po wykorzystaniu limitu.
+- Limity AI w `ai_usage`.
+- Ustawienia `/settings` dla nazwy firmy, branży i stylu odpowiedzi.
 - Moduł `/nfc` z Google review URL i kopiowaniem linku.
+- Dokumentacja Obsidian z mapami MOC.
+- Deployment GitHub + Vercel z aktualnym `pnpm-lock.yaml`.
 
 ## 🚧 W trakcie
 
-- Dashboard shell powielony w kilku stronach, jeszcze bez wspólnego layoutu.
+- Dashboard shell jest powielony w kilku stronach, bez wspólnego layoutu.
 - NFC bez realnego trackingu skanów.
-- Trend reputacji jako statyczny wykres.
-- Analiza reputacji bez harmonogramu automatycznego.
 - Powiadomienia widoczne w UI, ale bez działającej logiki.
-- Upgrade/downgrade obsługiwany przez Stripe, ale UI aplikacji ma tylko podstawowe wejścia.
+- Google review URL jest zapisywany ręcznie, bez Google Reviews API.
+- Automatyczne odpowiedzi działają po zapisie ustawień, ale nie jako background job.
+- Ustawienie `response_tone` wpływa na payload OpenAI, ale prompt można jeszcze dopracować semantycznie.
 
 ## 📌 Następne
 
-- Wydzielić wspólny dashboard layout dla `/dashboard`, `/reviews`, `/analysis`, `/nfc`.
-- Dodać tracking kliknięć/skanów NFC bez własnego formularza opinii.
-- Dodać route przekierowujący do Google review URL z możliwością zliczania wejść.
-- Dodać tabelę i widok powiadomień.
-- Dodać realny wykres trendu opinii z agregacją po datach.
-- Dodać paginację i wyszukiwanie opinii.
-- Uporządkować duplikację logiki limitów odpowiedzi między `actions.ts` i `review-response-service.ts`.
-- Doprecyzować politykę downgrade po anulowaniu subskrypcji.
+- Wydzielić wspólny dashboard layout.
+- Dodać tracking NFC i redirect do Google review URL.
+- Dodać moduł powiadomień.
+- Dodać wyszukiwanie opinii.
+- Dodać Google Reviews API albo import opinii.
+- Dodać automatyczne harmonogramy analiz.
+- Dodać historię billingową/status planu w UI.
+- Uporządkować `package-lock.json` vs `pnpm-lock.yaml` w repo.
 
 ## 💡 Pomysły
 
-- Integracja Google Reviews API.
-- Automatyczne raporty tygodniowe i miesięczne.
-- Eksport raportów reputacji.
 - Wiele lokalizacji.
 - Role pracowników.
 - Szablony odpowiedzi.
-- Historia zmian planów.
-- Panel ustawień firmy.
+- Eksport raportów reputacji.
+- Raporty e-mail.
+- Segmentacja opinii po tematach.
 
 ## Powiązane notatki
 
 - [[MVP]]
-- [[Frontend]]
-- [[Backend]]
-- [[Wizja]]
 - [[Changelog]]
-- [[Development MOC]]
+- [[Deployment]]
+- [[Architektura]]
+- [[Dashboard MVP]]

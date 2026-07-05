@@ -37,13 +37,18 @@ Karta pokazuje:
 - procent wykorzystania,
 - tekst „Wykorzystano X z Y”.
 
-## Trend opinii
+## Nowe opinie w czasie
 
-Sekcja „Trend reputacji” w dashboardzie jest obecnie statycznym wykresem SVG. Nie jest jeszcze oparta o agregację danych z Supabase.
+Sekcja „Nowe opinie w czasie” jest podłączona do realnych danych z `public.reviews`.
+
+- Zakres „Ostatnie 30 dni” grupuje opinie po dniach.
+- Zakres „Ostatnie 3 miesiące” grupuje opinie po tygodniach.
+- Zakres „Ostatnie 12 miesięcy” grupuje opinie po miesiącach.
+- Agregacja jest wykonywana przez funkcję RPC `get_review_activity_trend`, a frontend nie pobiera wszystkich opinii do przeliczeń.
+- Tooltip pokazuje okres, liczbę nowych opinii i średnią ocenę dla danego okresu.
 
 ## Ograniczenia obecnego stanu
 
-- Brak selektora zakresu dat działającego na zapytaniach.
 - Brak porównania z poprzednim okresem.
 - Brak realnych danych skanów NFC.
 - Brak osobnych statusów opinii typu „przeczytana” albo „obsłużona”.

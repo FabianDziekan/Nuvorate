@@ -1,7 +1,5 @@
 ---
 tags:
-  - frontend
-  - marketing
   - pricing
   - stripe
   - website
@@ -9,45 +7,67 @@ tags:
 
 # Cennik
 
-Cennik w aplikacji pokazuje abonament jako główny produkt NuvoRate. NFC jest dodatkiem wspierającym pozyskiwanie opinii, a nie osobnym głównym produktem.
+Cennik jest widoczny na landing page oraz na ekranie aktywacji planu dla użytkownika `unpaid`.
 
-## Aktualne ceny
+## Billing
 
-- NuvoRate Starter: 49,99 zł miesięcznie.
-- NuvoRate Business: 229,99 zł miesięcznie.
-- Plakietki NFC: od 10 zł za sztukę.
+Dostępne cykle:
 
-Ta notatka jest źródłem komunikacji cenowej na stronie. Szczegóły produktowe planów są w [[Starter]] i [[Business]], a techniczna synchronizacja subskrypcji w [[Stripe]].
+- miesięcznie,
+- rocznie.
 
-## Aktualne limity planów
+Konfiguracja cen:
 
-Starter:
+- `lib/pricing.ts`
 
-- podstawowy dashboard,
-- opinie,
-- moduł NFC z Google review URL,
+## Starter
+
+Miesięcznie:
+
+- 49,99 zł / miesiąc.
+
+Rocznie:
+
+- 499,99 zł / rok,
+- około 41,67 zł miesięcznie,
+- oszczędzasz około 100 zł rocznie.
+
+Limity:
+
 - 50 odpowiedzi na opinie miesięcznie,
 - 1 analiza reputacji miesięcznie.
 
-Business:
+## Business
 
-- wszystko z planu Starter,
+Miesięcznie:
+
+- 229,99 zł / miesiąc.
+
+Rocznie:
+
+- 2299,99 zł / rok,
+- około 191,67 zł miesięcznie,
+- oszczędzasz około 460 zł rocznie.
+
+Limity:
+
 - 350 odpowiedzi na opinie miesięcznie,
-- 50 analiz reputacji miesięcznie,
-- wyższe limity dla pracy z reputacją.
+- 50 analiz reputacji miesięcznie.
 
-## Płatności
+## Stripe
 
-- Checkout obsługuje Stripe.
-- Stripe webhook jest źródłem prawdy dla aktywacji planu.
-- Powrót z Checkout na `/dashboard?checkout=success` nie zmienia planu bez webhooka.
-- Customer Portal pozwala zarządzać subskrypcją, jeżeli profil ma `stripe_customer_id`.
+Checkout:
+
+- `/checkout?plan=starter&billing=monthly`
+- `/checkout?plan=starter&billing=yearly`
+- `/checkout?plan=business&billing=monthly`
+- `/checkout?plan=business&billing=yearly`
+
+Webhook aktywuje plan dopiero po potwierdzeniu Stripe.
 
 ## Powiązane notatki
 
 - [[Starter]]
 - [[Business]]
-- [[NFC]]
-- [[FAQ]]
 - [[Stripe]]
-- [[Website MOC]]
+- [[Website Blueprint]]

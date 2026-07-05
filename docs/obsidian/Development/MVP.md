@@ -7,47 +7,44 @@ tags:
 
 # MVP
 
-MVP NuvoRate obejmuje aktualnie działający rdzeń aplikacji SaaS: konto ownera, firmę, płatny plan, dashboard, opinie, odpowiedzi na opinie, analizę reputacji, podstawowy moduł NFC i Stripe Subscriptions.
+MVP NuvoRate obejmuje konto ownera, firmę, płatny plan, dashboard, opinie, odpowiedzi, analizę reputacji, ustawienia, NFC i Stripe Subscriptions.
 
-## Gotowe w kodzie
+## Gotowe
 
-- Landing page.
-- Rejestracja i logowanie przez Supabase Auth.
-- Reset hasła.
+- Landing page z cennikiem monthly/yearly.
+- Auth przez Supabase.
 - Onboarding firmy.
-- Jeden owner = jedna firma.
+- Stripe Checkout, webhook i Customer Portal.
 - Plan `unpaid` przed płatnością.
-- Stripe Checkout dla Starter i Business.
-- Stripe webhook synchronizujący plan w `profiles`.
-- Stripe Customer Portal.
-- Dashboard z podstawowymi statystykami opinii.
-- Lista opinii `/reviews`.
-- Generowanie odpowiedzi na opinie.
-- Miesięczne limity odpowiedzi i analiz.
-- Analiza reputacji przez OpenAI.
-- Moduł `/nfc` z Google review URL.
+- Dashboard z danymi opinii.
+- Wykres nowych opinii w czasie.
+- Business Insights.
+- `/reviews` z paginacją.
+- `/responses` z generowaniem i edycją odpowiedzi.
+- Automatyczne odpowiedzi po zapisie ustawień.
+- `/analysis` z raportem reputacji.
+- `/settings` z profilem firmy i stylem odpowiedzi.
+- `/nfc` z Google review URL.
+- Limity AI w `ai_usage`.
 
 ## Częściowe
 
-- NFC: działa link i instrukcja, ale nie tracking skanów.
-- Trend reputacji: statyczny wykres SVG.
-- Powiadomienia: widoczne w UI, ale bez logiki i bazy.
-- Cennik: widoczny na landing page, ale pełna obsługa upgrade/downgrade zależy od Stripe Customer Portal.
+- NFC bez realnych skanów.
+- Powiadomienia bez backendu.
+- Automatyczne odpowiedzi bez background joba.
+- Layout dashboardowy jest nadal powielany w kilku stronach zamiast wydzielonego wspólnego shell komponentu.
 
-## Poza MVP / niegotowe
+## Poza MVP
 
 - Google Reviews API.
-- Własny formularz opinii NuvoRate.
-- Wielu pracowników.
+- Własny publiczny formularz opinii.
 - Wiele lokalizacji.
-- Raporty PDF/e-mail.
-- Automatyczne harmonogramy analiz.
+- Role pracowników.
+- Eksport raportów.
 
 ## Powiązane notatki
 
 - [[Roadmap]]
-- [[Starter]]
-- [[Business]]
-- [[Frontend]]
-- [[Backend]]
-- [[Development MOC]]
+- [[Dashboard MVP]]
+- [[Odpowiedzi]]
+- [[Settings]]

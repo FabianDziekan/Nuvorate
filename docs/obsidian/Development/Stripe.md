@@ -8,17 +8,38 @@ tags:
 
 # Stripe
 
-Stripe obsługuje subskrypcje planów Starter i Business. Webhook Stripe jest źródłem prawdy dla zmiany planu w `public.profiles`.
+Stripe obsługuje subskrypcje Starter i Business. Webhook Stripe jest źródłem prawdy dla `profiles.plan`.
 
-## Plany
+## Plany i ceny
 
-- Starter: 49,99 zł miesięcznie.
-- Business: 229,99 zł miesięcznie.
+Starter:
 
-Price IDs są pobierane ze zmiennych:
+- 49,99 zł miesięcznie,
+- 499,99 zł rocznie.
 
-- `STRIPE_STARTER_PRICE_ID`,
-- `STRIPE_BUSINESS_PRICE_ID`.
+Business:
+
+- 229,99 zł miesięcznie,
+- 2299,99 zł rocznie.
+
+Limity planów nie zależą od cyklu rozliczenia.
+
+## Env
+
+Wymagane:
+
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_STARTER_PRICE_ID`
+- `STRIPE_BUSINESS_PRICE_ID`
+- `NEXT_PUBLIC_APP_URL`
+
+Opcjonalne dla rocznych checkoutów:
+
+- `STRIPE_STARTER_YEARLY_PRICE_ID`
+- `STRIPE_BUSINESS_YEARLY_PRICE_ID`
+
+Jeżeli roczny Price ID nie jest ustawiony, UI może pokazać cenę roczną, ale checkout dla tego wariantu jest blokowany kontrolowanym błędem.
 
 ## Checkout
 
@@ -26,20 +47,24 @@ Route handler:
 
 - `app/checkout/route.ts`
 
+Parametry:
+
+- `plan=starter|business`
+- `billing=monthly|yearly`
+
 Przepływ:
 
-1. Użytkownik wchodzi na `/checkout?plan=starter` albo `/checkout?plan=business`.
-2. Route sprawdza sesję Supabase.
-3. Pobiera profil użytkownika.
-4. Jeżeli profil nie ma `stripe_customer_id`, tworzy Stripe Customer.
-5. Zapisuje `stripe_customer_id` do `profiles`.
-6. Tworzy Stripe Checkout Session w trybie `subscription`.
-7. Dodaje metadata:
-   - `user_id`,
-   - `plan`.
-8. Przekierowuje użytkownika do Stripe.
+1. Waliduje plan i cykl rozliczenia.
+2. Sprawdza, czy Price ID istnieje.
+3. Pobiera sesję Supabase.
+4. Pobiera profil użytkownika.
+5. Tworzy Stripe Customer, jeśli go brakuje.
+6. Zapisuje `stripe_customer_id` w `profiles`.
+7. Tworzy Checkout Session `mode=subscription`.
+8. Dodaje metadata: `user_id`, `plan`, `billing_cycle`.
+9. Przekierowuje do Stripe.
 
-Ważne: powrót na `success_url` nie aktywuje planu. Plan zmienia webhook.
+`success_url` prowadzi do `/dashboard?checkout=success`, ale nie aktywuje planu. Aktywacja następuje tylko przez webhook.
 
 ## Webhook
 
@@ -49,35 +74,34 @@ Route handler:
 
 Obsługiwane eventy:
 
-- `checkout.session.completed`,
-- `checkout.session.expired`,
-- `customer.subscription.created`,
-- `customer.subscription.updated`,
-- `customer.subscription.deleted`,
-- `invoice.payment_succeeded`,
-- `invoice.payment_failed`.
+- `checkout.session.completed`
+- `checkout.session.expired`
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+- `invoice.payment_succeeded`
+- `invoice.payment_failed`
 
 Webhook aktualizuje:
 
-- `profiles.plan`,
-- `profiles.stripe_customer_id`,
-- `profiles.stripe_subscription_id`,
-- `profiles.subscription_status`,
-- `profiles.current_period_end`.
+- `profiles.plan`
+- `profiles.stripe_customer_id`
+- `profiles.stripe_subscription_id`
+- `profiles.subscription_status`
+- `profiles.current_period_end`
 
-## Anulowanie i brak płatności
+Statusy `canceled`, `unpaid`, `incomplete_expired` ustawiają `profiles.plan = unpaid`.
 
-Statusy:
+## Mapowanie price ID
 
-- `canceled`,
-- `unpaid`,
-- `incomplete_expired`
+Funkcja:
 
-ustawiają:
+- `getPlanFromPriceId()` w `lib/stripe.ts`
 
-- `profiles.plan = unpaid`.
+Mapuje miesięczne i roczne Price ID na ten sam plan:
 
-`customer.subscription.deleted` nie rzuca błędu 500, jeżeli testowy customer ze Stripe CLI nie istnieje w `profiles`; event jest ignorowany z `console.warn`.
+- Starter monthly/yearly -> `starter`
+- Business monthly/yearly -> `business`
 
 ## Customer Portal
 
@@ -90,42 +114,28 @@ Wymaga:
 - zalogowanego użytkownika,
 - `profiles.stripe_customer_id`.
 
-Tworzy Stripe Billing Portal Session i przekierowuje użytkownika do Stripe.
+Tworzy Stripe Billing Portal Session i wraca do `/dashboard`.
 
-## Mapa techniczna
-
-- **Odpowiedzialne pliki**: `app/checkout/route.ts`, `app/api/stripe/webhook/route.ts`, `app/billing/portal/route.ts`, `lib/stripe.ts`.
-- **Używane tabele**: `profiles`.
-- **Server actions**: brak; integracja Stripe działa przez route handlers.
-- **Route handlers**: `/checkout`, `/api/stripe/webhook`, `/billing/portal`.
-- **Zależności**: Stripe API, Supabase service role, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_STARTER_PRICE_ID`, `STRIPE_BUSINESS_PRICE_ID`, `NEXT_PUBLIC_APP_URL`.
-- **Dokumenty źródłowe cen i limitów**: [[Cennik]], [[Starter]], [[Business]].
-
-## Helper Stripe
-
-Plik:
+## Pliki
 
 - `lib/stripe.ts`
-
-Zawiera:
-
-- walidację envów,
-- tworzenie customer,
-- tworzenie checkout session,
-- tworzenie portal session,
-- pobieranie subskrypcji,
-- ręczną weryfikację podpisu webhooka przez HMAC.
+- `app/checkout/route.ts`
+- `app/api/stripe/webhook/route.ts`
+- `app/billing/portal/route.ts`
+- `components/billing/plan-picker.tsx`
+- `components/billing/checkout-activation-status.tsx`
+- `lib/pricing.ts`
 
 ## Diagram
 
 ```mermaid
 flowchart TD
-  User["Owner"] --> Checkout["/checkout"]
-  Checkout --> SupabaseProfile["profiles"]
+  User["Owner"] --> Checkout["/checkout?plan&billing"]
+  Checkout --> Profiles["profiles"]
   Checkout --> StripeCheckout["Stripe Checkout"]
   StripeCheckout --> Webhook["/api/stripe/webhook"]
   Webhook --> ProfilesUpdate["Update profiles"]
-  ProfilesUpdate --> Dashboard["Dashboard plan"]
+  ProfilesUpdate --> Dashboard["Dashboard / active plan"]
   User --> Portal["/billing/portal"]
   Portal --> StripePortal["Stripe Customer Portal"]
   StripePortal --> Webhook
@@ -135,7 +145,6 @@ flowchart TD
 
 - [[Starter]]
 - [[Business]]
+- [[Cennik]]
 - [[Supabase]]
-- [[Backend]]
-- [[Roadmap]]
-- [[Development MOC]]
+- [[Deployment]]

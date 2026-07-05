@@ -86,6 +86,48 @@ body {
   .analysis-scroll-area:hover::-webkit-scrollbar-thumb {
     background: rgba(91, 92, 246, 0.7);
   }
+
+  .review-highlight {
+    animation: review-highlight 2.8s ease-out;
+  }
+
+  .sidebar-nav-item {
+    @apply justify-start text-left;
+  }
+
+  .sidebar-nav-item:has(.notification-sidebar-badge) {
+    color: #5b5cf6;
+  }
+
+  .notification-sidebar-badge,
+  .notification-topbar-badge {
+    animation: notification-badge-pulse 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes review-highlight {
+  0% {
+    box-shadow: 0 0 0 0 rgba(91, 92, 246, 0.28);
+  }
+
+  18% {
+    box-shadow: 0 0 0 5px rgba(91, 92, 246, 0.14);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(91, 92, 246, 0);
+  }
+}
+
+@keyframes notification-badge-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(91, 92, 246, 0.38);
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px rgba(91, 92, 246, 0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

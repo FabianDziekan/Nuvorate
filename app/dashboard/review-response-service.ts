@@ -11,6 +11,7 @@ import {
   generateStructuredOutput,
   openAIModel,
 } from "@/lib/openai";
+import { createNotification } from "@/lib/notifications";
 import {
   currentPeriodMonth,
   getAiLimit,
@@ -275,8 +276,16 @@ export async function generateReviewResponseForReview(
       periodMonth: limitCheck.usage.periodMonth,
     });
 
+    await createNotification({
+      businessId: business.id,
+      type: "response_generated",
+      title: "Odpowiedź gotowa",
+      message: "Wygenerowano odpowiedź na opinię klienta.",
+    });
+
     revalidatePath("/dashboard");
     revalidatePath("/responses");
+    revalidatePath("/notifications");
 
     return {
       ok: true,
