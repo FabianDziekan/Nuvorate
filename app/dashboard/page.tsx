@@ -1070,7 +1070,7 @@ export default async function DashboardPage({
       </aside>
 
       <div className="lg:pl-[252px]">
-        <header className="sticky top-0 z-20 border-b border-black/[0.06] bg-white/90 backdrop-blur-xl">
+        <header className="dashboard-topbar sticky top-0 z-20 border-b border-black/[0.06] bg-white/90 backdrop-blur-xl">
           <div className="flex h-[74px] items-center justify-between gap-4 px-5 sm:px-8 lg:px-9">
             <div className="lg:hidden">
               <BrandLogo />

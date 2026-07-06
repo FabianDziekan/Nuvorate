@@ -123,6 +123,10 @@ html.dark body {
   .notification-topbar-badge {
     animation: notification-badge-pulse 2.4s ease-in-out infinite;
   }
+
+  .dashboard-topbar {
+    background-color: rgba(255, 255, 255, 0.9);
+  }
 }
 
 @layer utilities {
@@ -192,6 +196,16 @@ html.dark body {
 
   html.dark .bg-white {
     background-color: #181923;
+  }
+
+  html.dark .bg-white\/90,
+  html.dark .dashboard-topbar {
+    background-color: rgba(9, 10, 15, 0.78);
+  }
+
+  html.dark .dashboard-topbar {
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: none;
   }
 
   html.dark .bg-\[\#F7F7FA\],
