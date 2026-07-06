@@ -531,7 +531,7 @@ function AiUsageCard({
       ) : null}
 
       <div className="mt-5 grid min-w-0 gap-4 sm:grid-cols-2">
-        <div className="min-w-0 rounded-2xl bg-[#FAFAFC] p-4">
+        <div className="min-w-0 rounded-2xl border border-black/[0.05] bg-[#FAFAFC] p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-semibold">Odpowiedzi na opinie</p>
             <p className="text-sm font-semibold text-brand">
@@ -546,7 +546,7 @@ function AiUsageCard({
             Wykorzystano {repliesUsed} z {repliesLimit}
           </p>
         </div>
-        <div className="min-w-0 rounded-2xl bg-[#FAFAFC] p-4">
+        <div className="min-w-0 rounded-2xl border border-black/[0.05] bg-[#FAFAFC] p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-semibold">Analizy reputacji</p>
             <p className="text-sm font-semibold text-brand">
@@ -591,7 +591,7 @@ function TrendChart({ points }: { points: ReviewActivityTrendPoint[] }) {
                 x2="702"
                 y2={y}
                 stroke="#0F0F10"
-                strokeOpacity=".035"
+                strokeOpacity=".06"
                 strokeDasharray="4 9"
               />
             ))}
@@ -601,7 +601,7 @@ function TrendChart({ points }: { points: ReviewActivityTrendPoint[] }) {
               x2="702"
               y2={chartBottom}
               stroke="#0F0F10"
-              strokeOpacity=".12"
+              strokeOpacity=".18"
             />
           </svg>
           {points.map((point) => {

@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { saveSettings } from "@/app/settings/actions";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 type SettingsFormProps = {
   business: {
@@ -56,6 +57,8 @@ export function SettingsForm({
           {state.error}
         </div>
       )}
+
+      <ThemeToggle />
 
       <section className="rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
         <div className="flex flex-col gap-2">

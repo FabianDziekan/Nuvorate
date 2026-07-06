@@ -5,6 +5,7 @@ import { BrandLogo } from "@/components/brand/logo";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationLink } from "@/components/notifications/notification-link";
 import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
+import { Pagination } from "@/components/ui/pagination";
 import {
   formatNotificationMessage,
   formatRelativeNotificationTime,
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
 };
 
 type NotificationsPageProps = {
-  searchParams: Promise<{ filter?: string }>;
+  searchParams: Promise<{ filter?: string; page?: string }>;
 };
 
 type NotificationIcon =
@@ -137,6 +138,8 @@ const navigation = [
   { label: "Ustawienia", icon: "settings" as const, href: "/settings" },
 ];
 
+const notificationsPerPage = 10;
+
 function notificationTypeLabel(type: string) {
   const labels: Record<string, string> = {
     analysis_ready: "Analiza",
@@ -154,6 +157,7 @@ export default async function NotificationsPage({
 }: NotificationsPageProps) {
   const params = await searchParams;
   const filter = params.filter === "unread" ? "unread" : "all";
+  const requestedPage = Number(params.page ?? "1");
   const supabase = await createClient();
   const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
 
@@ -217,6 +221,30 @@ export default async function NotificationsPage({
 
   const notificationItems = (notifications ?? []) as Notification[];
   const unreadCount = notificationItems.filter((item) => !item.is_read).length;
+  const totalPages = Math.max(
+    1,
+    Math.ceil(notificationItems.length / notificationsPerPage),
+  );
+  const currentPage = Number.isInteger(requestedPage)
+    ? Math.min(Math.max(requestedPage, 1), totalPages)
+    : 1;
+  const pageStart = (currentPage - 1) * notificationsPerPage;
+  const pageEnd = pageStart + notificationsPerPage;
+  const paginatedNotifications = notificationItems.slice(pageStart, pageEnd);
+  const buildNotificationsHref = (page: number) => {
+    const query = new URLSearchParams();
+
+    if (filter === "unread") {
+      query.set("filter", "unread");
+    }
+
+    if (page > 1) {
+      query.set("page", String(page));
+    }
+
+    const queryString = query.toString();
+    return queryString ? `/notifications?${queryString}` : "/notifications";
+  };
 
   return (
     <main className="min-h-screen bg-[#F7F7FA] text-ink">
@@ -368,7 +396,7 @@ export default async function NotificationsPage({
 
           <div className="overflow-hidden rounded-[28px] border border-black/[0.06] bg-white shadow-[0_18px_50px_rgba(15,15,16,0.04)]">
             {notificationItems.length > 0 ? (
-              notificationItems.map((notification) => {
+              paginatedNotifications.map((notification) => {
                 const view = getNotificationView(
                   notification.type,
                   notification.message,
@@ -444,6 +472,17 @@ export default async function NotificationsPage({
                 </p>
               </div>
             )}
+            {notificationItems.length > 0 ? (
+              <div className="px-5 py-5">
+                <Pagination
+                  buildHref={buildNotificationsHref}
+                  currentPage={currentPage}
+                  itemLabel="powiadomień"
+                  pageSize={notificationsPerPage}
+                  totalItems={notificationItems.length}
+                />
+              </div>
+            ) : null}
           </div>
         </section>
       </div>

@@ -25,14 +25,14 @@ export function AnalysisPreviewCard({
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div className="flex shrink-0 items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-white/40">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-white/50">
               Inteligentna analiza
             </p>
             <h2 className="mt-1 text-xl font-semibold">
               Analiza ostatnich 30 dni
             </h2>
             {reviewCount !== undefined && createdAt && (
-              <div className="mt-3 space-y-0.5 text-[10px] leading-4 text-white/35">
+              <div className="mt-3 space-y-0.5 text-[10px] leading-4 text-white/45">
                 <p>Analiza na podstawie {reviewCount} opinii</p>
                 <p>
                   Ostatnia aktualizacja:{" "}
@@ -41,7 +41,7 @@ export function AnalysisPreviewCard({
               </div>
             )}
           </div>
-          <span className="shrink-0 rounded-full bg-brand/20 px-2.5 py-1 text-[10px] font-semibold text-[#B6B7FF]">
+          <span className="shrink-0 rounded-full border border-white/10 bg-brand/20 px-2.5 py-1 text-[10px] font-semibold text-[#C7C8FF]">
             BUSINESS
           </span>
         </div>
@@ -53,7 +53,7 @@ export function AnalysisPreviewCard({
                 <p className="text-xs font-semibold text-[#B6B7FF]">
                   Podsumowanie
                 </p>
-                <p className="mt-2 text-sm leading-6 text-white/70">
+                <p className="mt-2 text-sm leading-6 text-white/78">
                   {summary}
                 </p>
               </div>
@@ -63,7 +63,7 @@ export function AnalysisPreviewCard({
                   Najczęściej chwalone
                 </p>
                 {praisedElements.length > 0 ? (
-                  <ul className="mt-2 space-y-1.5 text-xs leading-5 text-white/60">
+                  <ul className="mt-2 space-y-1.5 text-xs leading-5 text-white/68">
                     {praisedElements.map((item) => (
                       <li key={item}>• {item}</li>
                     ))}
@@ -78,7 +78,7 @@ export function AnalysisPreviewCard({
                   Najczęściej zgłaszane problemy
                 </p>
                 {reportedProblems.length > 0 ? (
-                  <ul className="mt-2 space-y-1.5 text-xs leading-5 text-white/60">
+                  <ul className="mt-2 space-y-1.5 text-xs leading-5 text-white/68">
                     {reportedProblems.map((item) => (
                       <li key={item}>• {item}</li>
                     ))}
@@ -93,7 +93,7 @@ export function AnalysisPreviewCard({
                   Rekomendacje działań
                 </p>
                 {recommendations.length > 0 ? (
-                  <ul className="mt-2 space-y-1.5 text-xs leading-5 text-white/60">
+                  <ul className="mt-2 space-y-1.5 text-xs leading-5 text-white/68">
                     {recommendations.map((item) => (
                       <li key={item}>• {item}</li>
                     ))}

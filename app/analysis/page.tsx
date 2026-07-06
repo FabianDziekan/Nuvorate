@@ -579,7 +579,7 @@ export default async function AnalysisPage({
                           {trend.description}
                         </p>
                       </div>
-                      <div className="rounded-2xl bg-[#FAFAFC] px-4 py-3 text-right">
+                      <div className="rounded-2xl border border-black/[0.05] bg-[#FAFAFC] px-4 py-3 text-right shadow-sm">
                         <p className="text-[10px] uppercase tracking-[0.1em] text-black/30">
                           Zakres raportu
                         </p>
@@ -647,7 +647,7 @@ export default async function AnalysisPage({
                       </div>
                       <ul className="mt-6 space-y-3">
                         {section.items.map((item) => (
-                          <li key={item} className="flex gap-3 rounded-2xl bg-[#FAFAFC] p-4 text-sm leading-6 text-black/55">
+                          <li key={item} className="flex gap-3 rounded-2xl border border-black/[0.04] bg-[#FAFAFC] p-4 text-sm leading-6 text-black/60 shadow-sm">
                             <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
                             {item}
                           </li>
