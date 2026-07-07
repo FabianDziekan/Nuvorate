@@ -780,7 +780,7 @@ export default async function DashboardPage({
 
   if (!isPaid && isCheckoutSuccess) {
     return (
-      <main className="min-h-screen bg-[#F6F6F9] text-ink">
+      <main className="min-h-screen bg-[#F7F7FA] text-ink">
         <div className="flex min-h-screen items-center justify-center px-5 py-12">
           <section className="w-full max-w-3xl rounded-[32px] border border-black/[0.06] bg-white p-7 text-center shadow-card sm:p-10">
             <div className="mx-auto flex justify-center">
@@ -800,7 +800,7 @@ export default async function DashboardPage({
 
   if (!isPaid) {
     return (
-      <main className="min-h-screen bg-[#F6F6F9] text-ink">
+      <main className="min-h-screen bg-[#F7F7FA] text-ink">
         <div className="flex min-h-screen items-center justify-center px-5 py-12">
           <section className="w-full max-w-5xl rounded-[32px] border border-black/[0.06] bg-white p-7 text-center shadow-card sm:p-10">
             <div className="mx-auto flex justify-center">
@@ -855,7 +855,8 @@ export default async function DashboardPage({
       .from("reviews")
       .select("id, author_name, rating, content, created_at")
       .eq("business_id", business.id)
-      .order("created_at", { ascending: false })
+      .order("created_at", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: false })
       .limit(3),
     supabase
       .from("reviews")
@@ -911,6 +912,19 @@ export default async function DashboardPage({
   }
 
   const ratings = reviewRatings.map((review) => Number(review.rating));
+  const latestReviews = [...((reviews ?? []) as Review[])]
+    .sort((firstReview, secondReview) => {
+      const createdAtDifference =
+        new Date(secondReview.created_at).getTime() -
+        new Date(firstReview.created_at).getTime();
+
+      if (createdAtDifference !== 0) {
+        return createdAtDifference;
+      }
+
+      return secondReview.id.localeCompare(firstReview.id);
+    })
+    .slice(0, 3);
   const totalReviews = reviewsCount ?? ratings.length;
   const averageRating =
     totalReviews > 0
@@ -991,7 +1005,7 @@ export default async function DashboardPage({
     : [];
 
   return (
-    <main className="min-h-screen bg-[#F6F6F9] text-ink">
+    <main className="min-h-screen bg-[#F7F7FA] text-ink">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col border-r border-black/[0.06] bg-white px-5 py-6 lg:flex">
         <BrandLogo />
         <div className="mt-9 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-3.5">
@@ -1338,9 +1352,9 @@ export default async function DashboardPage({
                   </button>
                 </div>
               </div>
-              {reviews.length > 0 ? (
+              {latestReviews.length > 0 ? (
                 <div className="mt-5 grid gap-3 lg:grid-cols-3">
-                  {(reviews as Review[]).map((review) => (
+                  {latestReviews.map((review) => (
                     <article key={review.id} className="rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
