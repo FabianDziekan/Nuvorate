@@ -13,7 +13,6 @@ import {
   generateStructuredOutput,
   openAIModel,
 } from "@/lib/openai";
-import { createNotification } from "@/lib/notifications";
 import {
   currentPeriodMonth,
   getAiLimit,
@@ -29,6 +28,102 @@ export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/login");
+}
+
+export async function syncGoogleReviews(): Promise<{
+  lastSyncedAt: string;
+  message: string;
+  newReviews: number;
+  success: boolean;
+}> {
+  const supabase = await createClient();
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
+
+  if (!user) {
+    redirect("/login?next=/dashboard");
+  }
+
+  const { data: business, error: businessError } = await supabase
+    .from("businesses")
+    .select("id, google_review_url")
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  if (businessError || !business) {
+    return {
+      lastSyncedAt: new Date().toISOString(),
+      message: "Nie udało się odczytać danych firmy.",
+      newReviews: 0,
+      success: false,
+    };
+  }
+
+  // Future integration point: fetch Google Business Profile reviews here,
+  // upsert new reviews into public.reviews, then create notifications when newReviews > 0.
+  revalidatePath("/dashboard");
+
+  return {
+    lastSyncedAt: new Date().toISOString(),
+    message: "Brak nowych opinii",
+    newReviews: 0,
+    success: true,
+  };
+}
+
+export async function updateMonthlyReviewGoal(goal: number): Promise<{
+  error?: string;
+  success: boolean;
+}> {
+  const nextGoal = Math.round(Number(goal));
+
+  if (!Number.isFinite(nextGoal) || nextGoal < 1 || nextGoal > 1000) {
+    return {
+      error: "Podaj wartość od 1 do 1000.",
+      success: false,
+    };
+  }
+
+  const supabase = await createClient();
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
+
+  if (!user) {
+    redirect("/login?next=/dashboard");
+  }
+
+  const { data: business, error: businessLookupError } = await supabase
+    .from("businesses")
+    .select("id")
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  if (businessLookupError || !business) {
+    console.error("Monthly review goal business lookup failed", businessLookupError);
+    return {
+      error: "Nie udało się odczytać firmy.",
+      success: false,
+    };
+  }
+
+  const { error: updateError } = await supabase
+    .from("businesses")
+    .update({ monthly_review_goal: nextGoal })
+    .eq("id", business.id);
+
+  if (updateError) {
+    console.error("Monthly review goal update failed", updateError);
+    return {
+      error: "Nie udało się zapisać celu.",
+      success: false,
+    };
+  }
+
+  revalidatePath("/dashboard");
+
+  return {
+    success: true,
+  };
 }
 
 function aiErrorRedirect(path: string, message: string): never {
@@ -273,15 +368,7 @@ export async function generateReviewResponse(
       periodMonth: limitCheck.usage.periodMonth,
     });
 
-    await createNotification({
-      businessId: business.id,
-      type: "response_generated",
-      title: "Odpowiedź gotowa",
-      message: "Wygenerowano odpowiedź na opinię klienta.",
-    });
-
     revalidatePath("/dashboard");
-    revalidatePath("/notifications");
 
     return {
       ok: true,
@@ -421,14 +508,6 @@ export async function generateBusinessAnalysis(formData?: FormData) {
     periodMonth: usage.periodMonth,
   });
 
-  await createNotification({
-    businessId: business.id,
-    type: "analysis_ready",
-    title: "Analiza gotowa",
-    message: "Nowa analiza reputacji jest gotowa do sprawdzenia.",
-  });
-
   revalidatePath("/dashboard");
   revalidatePath("/analysis");
-  revalidatePath("/notifications");
 }

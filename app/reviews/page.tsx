@@ -5,6 +5,10 @@ import { BrandLogo } from "@/components/brand/logo";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
 import { Pagination } from "@/components/ui/pagination";
+import {
+  RatingFilter,
+  ratingFilterValues,
+} from "@/components/ui/rating-filter";
 import { getPlanLabel, isPaidPlan, normalizePlan } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/dashboard/actions";
@@ -34,7 +38,8 @@ type ReviewsIcon =
   | "nfc"
   | "responses"
   | "reviews"
-  | "settings";
+  | "settings"
+  | "verification";
 
 function Icon({
   name,
@@ -95,6 +100,12 @@ function Icon({
         <path d="M8 13h5" />
       </>
     ),
+    verification: (
+      <>
+        <path d="M12 3 5 6v5c0 4.4 2.9 8.4 7 10 4.1-1.6 7-5.6 7-10V6l-7-3Z" />
+        <path d="m9 12 2 2 4-4" />
+      </>
+    ),
     settings: (
       <>
         <circle cx="12" cy="12" r="3" />
@@ -126,12 +137,16 @@ const navigation = [
   { label: "Opinie", icon: "reviews" as const, href: "/reviews" },
   { label: "Analiza", icon: "analysis" as const, href: "/analysis" },
   { label: "Odpowiedzi", icon: "responses" as const, href: "/responses" },
+  {
+    label: "Weryfikacja autora",
+    icon: "verification" as const,
+    href: "/author-verification",
+  },
   { label: "NFC", icon: "nfc" as const, href: "/nfc" },
   { label: "Powiadomienia", icon: "bell" as const, href: "/notifications" },
   { label: "Ustawienia", icon: "settings" as const, href: "/settings" },
 ];
 
-const ratingFilters = ["all", "5", "4", "3", "2", "1"] as const;
 const reviewsPerPage = 10;
 
 function formatReviewDate(createdAt: string) {
@@ -177,8 +192,8 @@ function buildReviewsHref(rating: string, page: number) {
 
 export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
   const params = await searchParams;
-  const selectedRating = ratingFilters.includes(
-    params.rating as (typeof ratingFilters)[number],
+  const selectedRating = ratingFilterValues.includes(
+    params.rating as (typeof ratingFilterValues)[number],
   )
     ? params.rating!
     : "all";
@@ -213,7 +228,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
       .maybeSingle(),
     supabase
       .from("profiles")
-      .select("plan")
+      .select("first_name, plan")
       .eq("user_id", user.id)
       .maybeSingle(),
   ]);
@@ -236,7 +251,9 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
 
   const appPlan = normalizePlan(profile.plan);
   const plan = getPlanLabel(appPlan);
-  const displayName = user.email?.split("@")[0] ?? "użytkowniku";
+  const firstName =
+    typeof profile.first_name === "string" ? profile.first_name.trim() : "";
+  const displayName = firstName || user.email || "NU";
 
   if (!isPaidPlan(appPlan)) {
     return (
@@ -480,27 +497,12 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                     {filteredReviews.length === 1 ? "opinia" : "opinii"}
                   </h2>
                 </div>
-                <div className="flex flex-wrap gap-2" aria-label="Filtr ocen">
-                  {ratingFilters.map((rating) => {
-                    const active = selectedRating === rating;
-                    const href =
-                      rating === "all" ? "/reviews" : `/reviews?rating=${rating}`;
-
-                    return (
-                      <Link
-                        key={rating}
-                        href={href}
-                        className={`rounded-xl px-3.5 py-2.5 text-xs font-semibold transition ${
-                          active
-                            ? "bg-brand text-white shadow-sm"
-                            : "border border-black/[0.08] bg-white text-black/50 hover:border-brand/30 hover:text-brand"
-                        }`}
-                      >
-                        {rating === "all" ? "Wszystkie" : `${rating} ★`}
-                      </Link>
-                    );
-                  })}
-                </div>
+                <RatingFilter
+                  selectedRating={selectedRating}
+                  buildHref={(rating) =>
+                    rating === "all" ? "/reviews" : `/reviews?rating=${rating}`
+                  }
+                />
               </div>
 
               {filteredReviews.length > 0 ? (

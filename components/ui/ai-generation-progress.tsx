@@ -49,26 +49,26 @@ export function AiGenerationProgress({
       return;
     }
 
-    setProgress(8);
+    setProgress(4);
     setMessageIndex(0);
 
     const progressInterval = window.setInterval(() => {
       setProgress((currentProgress) => {
-        if (currentProgress < 25) {
-          return Math.min(25, currentProgress + 4);
+        if (currentProgress < 40) {
+          return Math.min(40, currentProgress + 3.2);
         }
 
-        if (currentProgress < 60) {
-          return Math.min(60, currentProgress + 3);
+        if (currentProgress < 75) {
+          return Math.min(75, currentProgress + 1.6);
         }
 
-        if (currentProgress < 90) {
-          return Math.min(90, currentProgress + 1.5);
+        if (currentProgress < 88) {
+          return Math.min(88, currentProgress + 0.45);
         }
 
         return currentProgress;
       });
-    }, 220);
+    }, 260);
 
     const messageInterval = window.setInterval(() => {
       setMessageIndex((currentIndex) =>

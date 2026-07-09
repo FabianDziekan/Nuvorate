@@ -10,6 +10,7 @@ export async function NotificationSidebarBadge({
     .from("notifications")
     .select("id", { count: "exact", head: true })
     .eq("business_id", businessId)
+    .eq("type", "new_review")
     .eq("is_read", false);
 
   if (error || !count) {

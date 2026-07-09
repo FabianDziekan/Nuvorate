@@ -20,9 +20,10 @@ Mapa wiedzy dla funkcji produktu i planów NuvoRate.
 
 - [[NFC]]: link do opinii i instrukcja konfiguracji plakietki.
 - [[Inteligentna analiza]]: analiza reputacji na bazie opinii.
-- [[Powiadomienia]]: funkcja planowana, widoczna częściowo w UI.
+- [[Powiadomienia]]: działające powiadomienia in-app dla nowych opinii.
 - [[Opinie]]: lista opinii i odpowiedzi na opinie.
 - [[Odpowiedzi]]: pełny moduł zarządzania odpowiedziami.
+- [[Weryfikacja autora]]: Business Feature przygotowany pod publiczny profil autora Google.
 - [[Analiza]]: ekran analizy reputacji.
 - [[Settings]]: styl odpowiedzi używany przez OpenAI.
 

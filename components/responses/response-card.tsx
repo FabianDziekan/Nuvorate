@@ -334,27 +334,6 @@ export function ResponseCard({
         </div>
       )}
 
-      {responseText && (
-        <div className="mt-5 rounded-2xl border border-brand/10 bg-brand-soft/60 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-brand">
-                Proponowana odpowiedź
-              </p>
-              <span className="rounded-full bg-white px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-brand shadow-sm">
-                AI
-              </span>
-            </div>
-            <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-black/40 shadow-sm">
-              {currentStatus === "responded" ? "Odpowiedź zapisana" : "Gotowa do użycia"}
-            </span>
-          </div>
-          <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-black/65">
-            {responseText}
-          </p>
-        </div>
-      )}
-
       {isEditorOpen && (
         <div className="mt-4 transition duration-300">
           <textarea

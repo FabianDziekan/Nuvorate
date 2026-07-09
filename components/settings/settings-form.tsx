@@ -9,6 +9,7 @@ type SettingsFormProps = {
     industry: string;
     name: string;
   };
+  firstName: string;
   responseTone: string;
 };
 
@@ -22,10 +23,12 @@ const responseToneOptions = [
 const initialState = {
   ok: false,
   error: "",
+  message: "",
 };
 
 export function SettingsForm({
   business,
+  firstName,
   responseTone,
 }: SettingsFormProps) {
   const [state, formAction, isPending] = useActionState(
@@ -39,7 +42,7 @@ export function SettingsForm({
       return;
     }
 
-    setToast("Ustawienia zapisane");
+    setToast(state.message || "Ustawienia zapisane");
     const timeout = window.setTimeout(() => setToast(""), 2200);
     return () => window.clearTimeout(timeout);
   }, [state]);
@@ -59,6 +62,34 @@ export function SettingsForm({
       )}
 
       <ThemeToggle />
+
+      <section className="rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
+            Konto
+          </p>
+          <h2 className="text-xl font-semibold tracking-tight">
+            Dane właściciela
+          </h2>
+          <p className="max-w-2xl text-sm leading-6 text-black/45">
+            Imię wykorzystujemy w powitaniu i elementach konta, aby panel był
+            bardziej osobisty.
+          </p>
+        </div>
+
+        <label className="mt-6 block max-w-md space-y-2">
+          <span className="text-xs font-semibold text-black/45">Imię</span>
+          <input
+            name="firstName"
+            defaultValue={firstName}
+            className="w-full rounded-2xl border border-black/[0.08] bg-[#FAFAFC] px-4 py-3 text-sm outline-none transition focus:border-brand/30 focus:bg-white focus:ring-4 focus:ring-brand/10"
+            maxLength={40}
+            minLength={2}
+            placeholder="Fabian"
+            required
+          />
+        </label>
+      </section>
 
       <section className="rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
         <div className="flex flex-col gap-2">

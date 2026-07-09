@@ -6,6 +6,21 @@ tags:
 
 # Changelog
 
+## 2026-07-09
+
+- Dodano `profiles.first_name`, pole imienia w rejestracji i edycję imienia w `/settings`.
+- Dashboard używa imienia właściciela w powitaniu.
+- Dodano `businesses.monthly_review_goal` i inline edycję celu miesiąca na Dashboardzie.
+- Dodano date range picker na Dashboardzie.
+- Zmieniono Business Insights: usunięto „Powtarzalność”, dodano „Ten miesiąc”.
+- Dodano mock „Synchronizuj z Google”.
+- Dodano kopiowanie wygenerowanej odpowiedzi z karty opinii na Dashboardzie.
+- Uproszczono powiadomienia do `new_review` i dodano czyszczenie historii.
+- Dodano zakładkę `/author-verification` z wyszukiwarką, filtrem ocen, filtrem statusu, sortowaniem, paginacją i drawerem.
+- Wydzielono wspólny `RatingFilter` dla `/reviews` i `/author-verification`.
+- Dopracowano wykres „Nowe opinie w czasie” oraz widoczność zerowych słupków w light/dark mode.
+- Dopracowano progress bar generowania AI.
+
 ## 2026-07-05
 
 - Zsynchronizowano `pnpm-lock.yaml` po błędzie Vercel `ERR_PNPM_OUTDATED_LOCKFILE`.

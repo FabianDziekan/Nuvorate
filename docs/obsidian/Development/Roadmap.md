@@ -23,15 +23,23 @@ Roadmap opisuje aktualny stan kodu i najbliższe kierunki rozwoju.
 - Dashboard dla płatnych planów.
 - Ekran aktywacji planu dla `unpaid`.
 - Statystyki opinii z `reviews`.
-- Wykres „Nowe opinie w czasie” z RPC `get_review_activity_trend`.
+- Wykres „Nowe opinie w czasie” z realnych danych `public.reviews`, presetami i zakresem niestandardowym.
 - Business Insights dla planu Business.
+- Date range picker na Dashboardzie z presetami i zakresem niestandardowym.
+- Inline edycja miesięcznego celu opinii na Dashboardzie.
+- Statystyka Business Insights „Ten miesiąc”.
+- Mock „Synchronizuj z Google” przygotowany pod Google Business Profile API.
 - Lista opinii `/reviews` z filtrem i paginacją.
+- Kopiowanie wygenerowanej odpowiedzi z karty opinii na Dashboardzie.
 - Zakładka `/responses` z generowaniem, edycją, kopiowaniem i statusami odpowiedzi.
 - Automatyczne generowanie odpowiedzi po zapisie ustawień.
+- Zakładka `/author-verification` jako Business Feature, z wyszukiwarką, filtrem ocen, filtrem statusu, sortowaniem, paginacją i drawerem autora.
+- Powiadomienia in-app wyłącznie dla nowych opinii.
+- Czyszczenie historii powiadomień.
 - OpenAI Structured Outputs.
 - Analiza reputacji z ostatnich 30 dni.
 - Limity AI w `ai_usage`.
-- Ustawienia `/settings` dla nazwy firmy, branży i stylu odpowiedzi.
+- Ustawienia `/settings` dla imienia właściciela, nazwy firmy, branży, stylu odpowiedzi i light/dark mode.
 - Moduł `/nfc` z Google review URL i kopiowaniem linku.
 - Dokumentacja Obsidian z mapami MOC.
 - Deployment GitHub + Vercel z aktualnym `pnpm-lock.yaml`.
@@ -40,8 +48,8 @@ Roadmap opisuje aktualny stan kodu i najbliższe kierunki rozwoju.
 
 - Dashboard shell jest powielony w kilku stronach, bez wspólnego layoutu.
 - NFC bez realnego trackingu skanów.
-- Powiadomienia widoczne w UI, ale bez działającej logiki.
 - Google review URL jest zapisywany ręcznie, bez Google Reviews API.
+- Weryfikacja autora ma UI i drawer, ale nie pobiera jeszcze publicznych profili Google.
 - Automatyczne odpowiedzi działają po zapisie ustawień, ale nie jako background job.
 - Ustawienie `response_tone` wpływa na payload OpenAI, ale prompt można jeszcze dopracować semantycznie.
 
@@ -49,11 +57,13 @@ Roadmap opisuje aktualny stan kodu i najbliższe kierunki rozwoju.
 
 - Wydzielić wspólny dashboard layout.
 - Dodać tracking NFC i redirect do Google review URL.
-- Dodać moduł powiadomień.
 - Dodać wyszukiwanie opinii.
 - Dodać Google Reviews API albo import opinii.
+- Podpiąć Google Business Profile API do synchronizacji opinii.
+- Podpiąć `authorProfileUrl` do Weryfikacji autora.
 - Dodać automatyczne harmonogramy analiz.
 - Dodać historię billingową/status planu w UI.
+- Przygotować dokumenty prawne przed publicznym SaaS: regulamin, politykę prywatności, politykę cookies i dane kontaktowe.
 - Uporządkować `package-lock.json` vs `pnpm-lock.yaml` w repo.
 
 ## 💡 Pomysły

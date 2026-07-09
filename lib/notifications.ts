@@ -2,12 +2,7 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export type NotificationType =
-  | "analysis_ready"
-  | "limit_warning"
-  | "new_review"
-  | "response_generated"
-  | "subscription";
+export type NotificationType = "new_review";
 
 export type AppNotification = {
   id: string;

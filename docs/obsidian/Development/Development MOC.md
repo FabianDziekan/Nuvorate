@@ -19,6 +19,7 @@ Mapa wiedzy dla architektury i implementacji NuvoRate.
 - [[Roadmap]]: gotowe, w trakcie, następne i pomysły.
 - [[Changelog]]: ostatnie zmiany opisane w dokumentacji.
 - [[Deployment]]: GitHub, Vercel, lockfile i env deploymentowe.
+- [[Dokumenty prawne SaaS]]: lista dokumentów wymaganych przed publicznym uruchomieniem płatnej usługi.
 
 ## Integracje
 
@@ -33,3 +34,4 @@ Mapa wiedzy dla architektury i implementacji NuvoRate.
 - [[NuvoRate Hub]]
 - [[Dashboard MOC]]
 - [[Product MOC]]
+- [[Dokumenty prawne SaaS]]

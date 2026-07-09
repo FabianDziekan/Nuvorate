@@ -5,6 +5,8 @@ import { CheckoutActivationStatus } from "@/components/billing/checkout-activati
 import { PlanPicker } from "@/components/billing/plan-picker";
 import { BrandLogo } from "@/components/brand/logo";
 import { AnalysisPreviewCard } from "@/components/dashboard/analysis-preview-card";
+import { GoogleSyncButton } from "@/components/dashboard/google-sync-button";
+import { MonthlyGoalCard } from "@/components/dashboard/monthly-goal-card";
 import { ReviewResponseForm } from "@/components/dashboard/review-response-form";
 import {
   TrendRangeSelect,
@@ -37,6 +39,7 @@ type DashboardIcon =
   | "responses"
   | "reviews"
   | "settings"
+  | "verification"
   | "star"
   | "trend";
 
@@ -99,6 +102,12 @@ function Icon({
         <path d="M8 13h5" />
       </>
     ),
+    verification: (
+      <>
+        <path d="M12 3 5 6v5c0 4.4 2.9 8.4 7 10 4.1-1.6 7-5.6 7-10V6l-7-3Z" />
+        <path d="m9 12 2 2 4-4" />
+      </>
+    ),
     settings: (
       <>
         <circle cx="12" cy="12" r="3" />
@@ -135,6 +144,11 @@ const navigation = [
   { label: "Opinie", icon: "reviews" as const },
   { label: "Analiza", icon: "analysis" as const, href: "/analysis" },
   { label: "Odpowiedzi", icon: "responses" as const, href: "/responses" },
+  {
+    label: "Weryfikacja autora",
+    icon: "verification" as const,
+    href: "/author-verification",
+  },
   { label: "NFC", icon: "nfc" as const, href: "/nfc" },
   { label: "Powiadomienia", icon: "bell" as const, href: "/notifications" },
   { label: "Ustawienia", icon: "settings" as const, href: "/settings" },
@@ -157,6 +171,11 @@ type ReviewInsightSource = {
   created_at: string;
 };
 
+type ReviewRangeSource = {
+  created_at: string;
+  rating: number | null;
+};
+
 type ReviewActivityTrendBucket = {
   average_rating: number | null;
   period_end: string;
@@ -166,6 +185,8 @@ type ReviewActivityTrendBucket = {
 
 type ReviewActivityTrendPoint = {
   averageRating: number | null;
+  displayHeight: number;
+  displayValue: number;
   label: string;
   value: number;
   tooltipLabel: string;
@@ -239,6 +260,14 @@ function startOfCurrentMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }
 
+function startOfPreviousMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth() - 1, 1);
+}
+
+function endOfPreviousMonth(date: Date) {
+  return endOfDay(new Date(date.getFullYear(), date.getMonth(), 0));
+}
+
 function addDays(date: Date, days: number) {
   const nextDate = new Date(date);
   nextDate.setDate(nextDate.getDate() + days);
@@ -247,6 +276,24 @@ function addDays(date: Date, days: number) {
 
 function startOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function endOfDay(date: Date) {
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    23,
+    59,
+    59,
+    999,
+  );
+}
+
+function addMonths(date: Date, months: number) {
+  const nextDate = new Date(date);
+  nextDate.setMonth(nextDate.getMonth() + months);
+  return nextDate;
 }
 
 function formatDateKey(date: Date) {
@@ -268,6 +315,14 @@ function formatTooltipDate(date: Date) {
   return date.toLocaleDateString("pl-PL", {
     day: "numeric",
     month: "long",
+  });
+}
+
+function formatDisplayDate(date: Date) {
+  return date.toLocaleDateString("pl-PL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
   });
 }
 
@@ -317,6 +372,85 @@ function normalizeTrendRange(range?: string): TrendRange {
   return "30d";
 }
 
+function parseDateParam(value?: string) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+
+  if (!Number.isFinite(date.getTime()) || formatDateKey(date) !== value) {
+    return null;
+  }
+
+  return date;
+}
+
+function getTrendRangeLabel(range: TrendRange) {
+  if (range === "3m") {
+    return "Ostatnie 3 miesiące";
+  }
+
+  if (range === "12m") {
+    return "Ostatnie 12 miesięcy";
+  }
+
+  return "Ostatnie 30 dni";
+}
+
+function getDashboardDateRange({
+  from,
+  range,
+  to,
+}: {
+  from?: string;
+  range?: string;
+  to?: string;
+}) {
+  const customFrom = parseDateParam(from);
+  const customTo = parseDateParam(to);
+
+  if (customFrom && customTo && customFrom <= customTo) {
+    return {
+      bestDayTitle: "Najlepszy dzień okresu",
+      displayLabel: `${formatDisplayDate(customFrom)} – ${formatDisplayDate(customTo)}`,
+      from: formatDateKey(customFrom),
+      isCustom: true,
+      preset: normalizeTrendRange(range),
+      start: startOfDay(customFrom),
+      to: formatDateKey(customTo),
+      end: endOfDay(customTo),
+    };
+  }
+
+  const preset = normalizeTrendRange(range);
+  const today = new Date();
+  const end = endOfDay(today);
+  let start = startOfDay(addDays(today, -29));
+  let bestDayTitle = "Najlepszy dzień miesiąca";
+
+  if (preset === "3m") {
+    start = startOfDay(addMonths(today, -3));
+    bestDayTitle = "Najlepszy dzień z 3 miesięcy";
+  }
+
+  if (preset === "12m") {
+    start = startOfDay(addMonths(today, -12));
+    bestDayTitle = "Najlepszy dzień z 12 miesięcy";
+  }
+
+  return {
+    bestDayTitle,
+    displayLabel: getTrendRangeLabel(preset),
+    from: undefined,
+    isCustom: false,
+    preset,
+    start,
+    to: undefined,
+    end,
+  };
+}
+
 function getBestWeekday(reviews: ReviewInsightSource[]) {
   if (reviews.length === 0) {
     return null;
@@ -363,6 +497,7 @@ function buildReviewActivityTrend(buckets: ReviewActivityTrendBucket[]) {
 
   const points = buckets.map((bucket, index) => {
     const value = dailyCounts[index];
+    const displayValue = value === 0 ? 0.2 : value;
     const averageRating = Number(bucket.average_rating);
     const periodStart = new Date(bucket.period_start);
     const periodEnd = new Date(bucket.period_end);
@@ -372,9 +507,17 @@ function buildReviewActivityTrend(buckets: ReviewActivityTrendBucket[]) {
         : chartWidth / 2;
     const height =
       maxDailyCount > 0 ? (value / maxDailyCount) * chartHeight : 0;
+    const displayHeight =
+      maxDailyCount > 0
+        ? (displayValue / maxDailyCount) * chartHeight
+        : value === 0
+          ? 4
+          : 0;
 
     return {
       averageRating: Number.isFinite(averageRating) ? averageRating : null,
+      displayHeight,
+      displayValue,
       label: formatShortDate(periodStart),
       tooltipLabel: formatTooltipRange(periodStart, periodEnd),
       value,
@@ -389,80 +532,180 @@ function buildReviewActivityTrend(buckets: ReviewActivityTrendBucket[]) {
   };
 }
 
-function buildBusinessInsights(reviews: ReviewInsightSource[]) {
-  const now = new Date();
-  const currentWeekStart = addDays(now, -7);
-  const previousWeekStart = addDays(now, -14);
-  const monthStart = startOfCurrentMonth(now);
-  const monthlyGoal = 30;
+function getBucketMode(rangeStart: Date, rangeEnd: Date, preset: TrendRange) {
+  const days =
+    Math.floor(
+      (startOfDay(rangeEnd).getTime() - startOfDay(rangeStart).getTime()) /
+        (1000 * 60 * 60 * 24),
+    ) + 1;
 
-  const currentWeekReviews = reviews.filter((review) => {
+  if (preset === "3m" || (preset === "30d" && days > 62 && days <= 180)) {
+    return "week";
+  }
+
+  if (preset === "12m" || days > 180) {
+    return "month";
+  }
+
+  return "day";
+}
+
+function startOfWeek(date: Date) {
+  const nextDate = startOfDay(date);
+  const day = nextDate.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  nextDate.setDate(nextDate.getDate() + mondayOffset);
+  return nextDate;
+}
+
+function buildReviewActivityBuckets({
+  end,
+  preset,
+  reviews,
+  start,
+}: {
+  end: Date;
+  preset: TrendRange;
+  reviews: ReviewRangeSource[];
+  start: Date;
+}): ReviewActivityTrendBucket[] {
+  const mode = getBucketMode(start, end, preset);
+  const buckets: Array<{
+    end: Date;
+    ratings: number[];
+    start: Date;
+  }> = [];
+  let cursor =
+    mode === "week"
+      ? startOfWeek(start)
+      : mode === "month"
+        ? new Date(start.getFullYear(), start.getMonth(), 1)
+        : startOfDay(start);
+
+  while (cursor <= end) {
+    const bucketStart = new Date(cursor);
+    let bucketEnd = endOfDay(cursor);
+
+    if (mode === "week") {
+      bucketEnd = endOfDay(addDays(bucketStart, 6));
+    }
+
+    if (mode === "month") {
+      bucketEnd = endOfDay(
+        new Date(bucketStart.getFullYear(), bucketStart.getMonth() + 1, 0),
+      );
+    }
+
+    buckets.push({
+      end: bucketEnd > end ? end : bucketEnd,
+      ratings: [],
+      start: bucketStart < start ? start : bucketStart,
+    });
+
+    if (mode === "week") {
+      cursor = addDays(cursor, 7);
+    } else if (mode === "month") {
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    } else {
+      cursor = addDays(cursor, 1);
+    }
+  }
+
+  reviews.forEach((review) => {
     const createdAt = new Date(review.created_at);
-    return createdAt >= currentWeekStart && createdAt <= now;
-  });
-  const previousWeekReviews = reviews.filter((review) => {
-    const createdAt = new Date(review.created_at);
-    return createdAt >= previousWeekStart && createdAt < currentWeekStart;
-  });
-  const currentMonthReviews = reviews.filter((review) => {
-    const createdAt = new Date(review.created_at);
-    return createdAt >= monthStart && createdAt <= now;
+    const rating = Number(review.rating);
+    const bucket = buckets.find(
+      (item) => createdAt >= item.start && createdAt <= item.end,
+    );
+
+    if (bucket && Number.isFinite(rating)) {
+      bucket.ratings.push(rating);
+    }
   });
 
-  const bestCurrentDay = getBestWeekday(currentWeekReviews);
-  const bestPreviousDay = getBestWeekday(previousWeekReviews);
+  return buckets.map((bucket) => {
+    const reviewCount = bucket.ratings.length;
+    const averageRating =
+      reviewCount > 0
+        ? bucket.ratings.reduce((sum, rating) => sum + rating, 0) / reviewCount
+        : null;
+
+    return {
+      average_rating:
+        averageRating === null ? null : Number(averageRating.toFixed(2)),
+      period_end: formatDateKey(bucket.end),
+      period_start: formatDateKey(bucket.start),
+      review_count: reviewCount,
+    };
+  });
+}
+
+function normalizeMonthlyReviewGoal(value: unknown) {
+  const goal = Number(value);
+
+  if (!Number.isFinite(goal)) {
+    return 30;
+  }
+
+  return Math.min(1000, Math.max(1, Math.round(goal)));
+}
+
+function buildBusinessInsights(
+  reviews: ReviewInsightSource[],
+  currentMonthReviews: ReviewInsightSource[],
+  previousMonthReviews: ReviewInsightSource[],
+  monthlyReviewGoal: number,
+  bestDayTitle: string,
+) {
+  const monthlyGoal = normalizeMonthlyReviewGoal(monthlyReviewGoal);
+  const bestCurrentDay = getBestWeekday(reviews);
   const monthlyCount = currentMonthReviews.length;
   const monthlyProgress = Math.min(
     100,
     Math.round((monthlyCount / monthlyGoal) * 100),
   );
-
-  let repeatability = "Zbieramy dane do porównania.";
-
-  if (bestCurrentDay && bestPreviousDay) {
-    repeatability =
-      bestCurrentDay.dayIndex === bestPreviousDay.dayIndex
-        ? `${bestCurrentDay.label} dominuje 2 tygodnie z rzędu`
-        : `Zmiana z ${bestPreviousDay.label.toLowerCase()} na ${bestCurrentDay.label.toLowerCase()}`;
-  } else if (!bestCurrentDay && !bestPreviousDay) {
-    repeatability = "Pierwsze porównanie pojawi się po zebraniu opinii.";
-  }
-
-  let reviewPace = "Pierwsze tempo pojawi się po zebraniu opinii.";
-
-  if (currentWeekReviews.length > 0 || previousWeekReviews.length > 0) {
-    if (previousWeekReviews.length === 0 && currentWeekReviews.length > 0) {
-      reviewPace = "Nowe opinie w tym tygodniu";
-    } else {
-      const paceChange = Math.round(
-        ((currentWeekReviews.length - previousWeekReviews.length) /
-          previousWeekReviews.length) *
-          100,
-      );
-      reviewPace = `${paceChange > 0 ? "+" : ""}${paceChange}% względem poprzedniego tygodnia`;
-    }
-  }
+  const monthlyDifference = monthlyCount - previousMonthReviews.length;
 
   return {
     bestDay: bestCurrentDay
       ? {
-          detail: `${bestCurrentDay.percentage}% opinii wpada w ${bestCurrentDay.label.toLowerCase()}`,
+          detail: `${bestCurrentDay.percentage}% opinii wpadło w ${bestCurrentDay.label.toLowerCase()} w tym okresie.`,
           label: bestCurrentDay.label,
+          title: bestDayTitle,
           value: `${bestCurrentDay.count} opinii`,
         }
-      : null,
+      : {
+          detail: "Pierwsze dane pojawią się po nowej opinii.",
+          label: "Brak danych",
+          title: bestDayTitle,
+          value: "",
+        },
+    currentMonthComparison: {
+      difference: monthlyDifference,
+      helperText:
+        monthlyDifference > 0
+          ? `+${monthlyDifference} względem poprzedniego miesiąca`
+          : monthlyDifference < 0
+            ? `${monthlyDifference} względem poprzedniego miesiąca`
+            : "Bez zmian względem poprzedniego miesiąca",
+      marker:
+        monthlyDifference > 0
+          ? "bg-emerald-500"
+          : monthlyDifference < 0
+            ? "bg-red-500"
+            : "bg-black/25",
+      value: `${monthlyCount} ${monthlyCount === 1 ? "opinia" : "opinii"}`,
+    },
     monthlyGoal: {
       count: monthlyCount,
       goal: monthlyGoal,
       helperText:
         monthlyCount === 0
           ? "Rozpocznij zbieranie opinii"
-          : "Domyślny cel: 30 opinii miesięcznie.",
+          : `Twój cel: ${monthlyGoal} opinii miesięcznie.`,
       progress: monthlyProgress,
       reached: monthlyCount >= monthlyGoal,
     },
-    repeatability,
-    reviewPace,
   };
 }
 
@@ -605,7 +848,10 @@ function TrendChart({ points }: { points: ReviewActivityTrendPoint[] }) {
             />
           </svg>
           {points.map((point) => {
-            const visibleHeight = Math.max(point.height, point.value > 0 ? 10 : 3);
+            const visibleHeight = Math.max(
+              point.displayHeight,
+              point.value > 0 ? 10 : 4,
+            );
             const leftPercent = (point.x / 720) * 100;
             const tooltipEdgeClass =
               point.x < 150
@@ -613,6 +859,10 @@ function TrendChart({ points }: { points: ReviewActivityTrendPoint[] }) {
                 : point.x > 570
                   ? "right-0"
                   : "left-1/2 -translate-x-1/2";
+            const barClassName =
+              point.value > 0
+                ? "bg-brand opacity-[0.86]"
+                : "bg-[#D1D5DB] dark:bg-[#4B5563]";
 
             return (
               <div
@@ -628,11 +878,9 @@ function TrendChart({ points }: { points: ReviewActivityTrendPoint[] }) {
                 tabIndex={0}
               >
                 <div
-                  className="absolute bottom-0 left-1/2 rounded-t-[4px] transition-colors duration-200 group-hover:bg-brand group-focus:bg-brand"
+                  className={`absolute bottom-0 left-1/2 rounded-t-[4px] transition-colors duration-200 ${barClassName}`}
                   style={{
-                    backgroundColor: point.value > 0 ? "#5B5CF6" : "#0F0F10",
                     height: `${visibleHeight}px`,
-                    opacity: point.value > 0 ? 0.86 : 0.18,
                     transform: "translateX(-50%)",
                     width: `${barWidth}px`,
                   }}
@@ -675,12 +923,19 @@ export default async function DashboardPage({
     ai_error?: string;
     billing_error?: string;
     checkout?: string;
+    from?: string;
+    to?: string;
     trend_range?: string;
   }>;
 }) {
   const params = await searchParams;
   const isCheckoutSuccess = params.checkout === "success";
-  const trendRange = normalizeTrendRange(params.trend_range);
+  const selectedRange = getDashboardDateRange({
+    from: params.from,
+    range: params.trend_range,
+    to: params.to,
+  });
+  const trendRange = selectedRange.preset;
   const dashboardMessage =
     params.ai_error ??
     params.billing_error ??
@@ -707,12 +962,12 @@ export default async function DashboardPage({
   ] = await Promise.all([
     supabase
       .from("businesses")
-      .select("id, name, industry, city")
+      .select("id, name, industry, city, monthly_review_goal")
       .eq("owner_id", user.id)
       .maybeSingle(),
     supabase
       .from("profiles")
-      .select("plan, stripe_customer_id, subscription_status")
+      .select("first_name, plan, stripe_customer_id, subscription_status")
       .eq("user_id", user.id)
       .maybeSingle(),
   ]);
@@ -739,7 +994,9 @@ export default async function DashboardPage({
   const businessIndustry = business.industry ?? "Branża nieuzupełniona";
   const businessCity = business.city ?? "Miasto nieuzupełnione";
   const plan = getPlanLabel(appPlan);
-  const displayName = user.email?.split("@")[0] ?? "użytkowniku";
+  const firstName =
+    typeof profile.first_name === "string" ? profile.first_name.trim() : "";
+  const accountDisplayName = firstName || user.email || "NU";
   const hasActiveSubscription =
     Boolean(profile.stripe_customer_id) &&
     ["active", "trialing"].includes(profile.subscription_status ?? "");
@@ -833,13 +1090,9 @@ export default async function DashboardPage({
   }
 
   const now = new Date();
-  const insightRangeStart = new Date(
-    Math.min(
-      startOfCurrentMonth(now).getTime(),
-      addDays(now, -14).getTime(),
-    ),
-  ).toISOString();
-  const insightRangeEnd = now.toISOString();
+  const currentMonthStart = startOfCurrentMonth(now);
+  const previousMonthStart = startOfPreviousMonth(now);
+  const previousMonthEnd = endOfPreviousMonth(now);
 
   const [
     { data: reviews, error: reviewsError },
@@ -849,37 +1102,50 @@ export default async function DashboardPage({
       error: reviewStatsError,
     },
     { data: insightReviews, error: insightReviewsError },
-    { data: trendReviews, error: trendReviewsError },
+    { data: currentMonthReviews, error: currentMonthReviewsError },
+    { data: previousMonthReviews, error: previousMonthReviewsError },
   ] = await Promise.all([
     supabase
       .from("reviews")
       .select("id, author_name, rating, content, created_at")
       .eq("business_id", business.id)
+      .gte("created_at", selectedRange.start.toISOString())
+      .lte("created_at", selectedRange.end.toISOString())
       .order("created_at", { ascending: false, nullsFirst: false })
       .order("id", { ascending: false })
       .limit(3),
     supabase
       .from("reviews")
-      .select("rating", { count: "exact" })
-      .eq("business_id", business.id),
+      .select("rating, created_at", { count: "exact" })
+      .eq("business_id", business.id)
+      .gte("created_at", selectedRange.start.toISOString())
+      .lte("created_at", selectedRange.end.toISOString()),
     supabase
       .from("reviews")
       .select("created_at")
       .eq("business_id", business.id)
-      .gte("created_at", insightRangeStart)
-      .lte("created_at", insightRangeEnd),
+      .gte("created_at", selectedRange.start.toISOString())
+      .lte("created_at", selectedRange.end.toISOString()),
     supabase
-      .rpc("get_review_activity_trend", {
-        p_business_id: business.id,
-        p_range: trendRange,
-      }),
+      .from("reviews")
+      .select("created_at")
+      .eq("business_id", business.id)
+      .gte("created_at", currentMonthStart.toISOString())
+      .lte("created_at", now.toISOString()),
+    supabase
+      .from("reviews")
+      .select("created_at")
+      .eq("business_id", business.id)
+      .gte("created_at", previousMonthStart.toISOString())
+      .lte("created_at", previousMonthEnd.toISOString()),
   ]);
 
   if (
     reviewsError ||
     reviewStatsError ||
     insightReviewsError ||
-    trendReviewsError
+    currentMonthReviewsError ||
+    previousMonthReviewsError
   ) {
     throw new Error(
       "Nie udało się odczytać opinii. Uruchom migrację reviews w Supabase.",
@@ -911,7 +1177,9 @@ export default async function DashboardPage({
     );
   }
 
-  const ratings = reviewRatings.map((review) => Number(review.rating));
+  const ratings = (reviewRatings ?? [])
+    .map((review) => Number(review.rating))
+    .filter((rating) => Number.isFinite(rating));
   const latestReviews = [...((reviews ?? []) as Review[])]
     .sort((firstReview, secondReview) => {
       const createdAtDifference =
@@ -937,18 +1205,30 @@ export default async function DashboardPage({
       : 0;
   const businessInsights =
     appPlan === "business"
-      ? buildBusinessInsights((insightReviews ?? []) as ReviewInsightSource[])
+      ? buildBusinessInsights(
+          (insightReviews ?? []) as ReviewInsightSource[],
+          (currentMonthReviews ?? []) as ReviewInsightSource[],
+          (previousMonthReviews ?? []) as ReviewInsightSource[],
+          normalizeMonthlyReviewGoal(business.monthly_review_goal),
+          selectedRange.bestDayTitle,
+        )
       : null;
+  const reviewActivityBuckets = buildReviewActivityBuckets({
+    end: selectedRange.end,
+    preset: trendRange,
+    reviews: (reviewRatings ?? []) as ReviewRangeSource[],
+    start: selectedRange.start,
+  });
   const reviewActivityTrend = buildReviewActivityTrend(
-    (trendReviews ?? []) as ReviewActivityTrendBucket[],
+    reviewActivityBuckets,
   );
 
   const metrics = [
     {
       label: "Nowe opinie",
       value: totalReviews.toLocaleString("pl-PL"),
-      change: "Łącznie",
-      detail: "wszystkie opinie",
+      change: selectedRange.displayLabel,
+      detail: "w wybranym okresie",
       icon: "reviews" as const,
     },
     {
@@ -1094,11 +1374,17 @@ export default async function DashboardPage({
               <p className="mt-0.5 text-sm font-semibold">Pulpit główny</p>
             </div>
             <div className="flex items-center gap-2.5">
-              <TrendRangeSelect value={trendRange} />
+              <TrendRangeSelect
+                from={selectedRange.from}
+                isCustom={selectedRange.isCustom}
+                label={selectedRange.displayLabel}
+                to={selectedRange.to}
+                value={trendRange}
+              />
               <NotificationBell businessId={business.id} />
               <div className="hidden items-center gap-3 rounded-xl border border-black/[0.08] bg-white py-1.5 pl-1.5 pr-3 sm:flex">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft text-xs font-bold uppercase text-brand">
-                  {displayName.slice(0, 2)}
+                  {accountDisplayName.slice(0, 2)}
                 </span>
                 <div className="max-w-[150px]">
                   <p className="truncate text-xs font-semibold">{user.email}</p>
@@ -1150,15 +1436,13 @@ export default async function DashboardPage({
             <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
               <div>
                 <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-                  Dzień dobry, {displayName}
+                  Dzień dobry{firstName ? `, ${firstName}` : ""}
                 </h1>
                 <p className="mt-2 text-sm leading-6 text-black/45">
                   Podsumowanie reputacji firmy {businessName}.
                 </p>
               </div>
-              <button type="button" className="button-primary self-start sm:self-auto">
-                Skopiuj link do opinii
-              </button>
+              <GoogleSyncButton />
             </div>
 
             <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Najważniejsze statystyki">
@@ -1244,80 +1528,46 @@ export default async function DashboardPage({
                         Business
                       </span>
                     </div>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
                       <article className="rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4">
                         <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">
-                          Najlepszy dzień
-                        </p>
-                        {businessInsights.bestDay ? (
-                          <>
-                            <p className="mt-3 text-lg font-semibold tracking-tight">
-                              {businessInsights.bestDay.label}
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-brand">
-                              {businessInsights.bestDay.value}
-                            </p>
-                            <p className="mt-2 text-xs leading-5 text-black/45">
-                              {businessInsights.bestDay.detail}
-                            </p>
-                          </>
-                        ) : (
-                          <p className="mt-3 text-sm font-semibold text-black/45">
-                            Pierwsze dane pojawią się po nowej opinii
-                          </p>
-                        )}
-                      </article>
-
-                      <article className="rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4">
-                        <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">
-                          Powtarzalność
-                        </p>
-                        <p className="mt-3 text-sm font-semibold leading-5 text-ink">
-                          {businessInsights.repeatability}
-                        </p>
-                        <p className="mt-2 text-xs leading-5 text-black/45">
-                          Porównanie najlepszego dnia tydzień do tygodnia.
-                        </p>
-                      </article>
-
-                      <article className="rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4">
-                        <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">
-                          Tempo opinii
+                          {businessInsights.bestDay.title}
                         </p>
                         <p className="mt-3 text-lg font-semibold tracking-tight">
-                          {businessInsights.reviewPace}
+                          {businessInsights.bestDay.label}
                         </p>
+                        {businessInsights.bestDay.value ? (
+                          <p className="mt-1 text-sm font-semibold text-brand">
+                            {businessInsights.bestDay.value}
+                          </p>
+                        ) : null}
                         <p className="mt-2 text-xs leading-5 text-black/45">
-                          Ostatnie 7 dni vs poprzednie 7 dni.
+                          {businessInsights.bestDay.detail}
                         </p>
                       </article>
 
                       <article className="rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4">
                         <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">
-                          Cel miesiąca
+                          Ten miesiąc
                         </p>
-                        <div className="mt-3 flex items-center justify-between gap-3">
-                          <p className="text-lg font-semibold tracking-tight">
-                            {businessInsights.monthlyGoal.count} / {businessInsights.monthlyGoal.goal} opinii
-                          </p>
-                          {businessInsights.monthlyGoal.reached && (
-                            <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">
-                              Cel osiągnięty
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/[0.07]">
-                          <div
-                            className="h-full rounded-full bg-brand"
-                            style={{
-                              width: `${businessInsights.monthlyGoal.progress}%`,
-                            }}
+                        <p className="mt-3 text-lg font-semibold tracking-tight">
+                          {businessInsights.currentMonthComparison.value}
+                        </p>
+                        <p className="mt-2 flex items-center gap-2 text-xs leading-5 text-black/45">
+                          <span
+                            className={`h-2 w-2 rounded-full ${businessInsights.currentMonthComparison.marker}`}
                           />
-                        </div>
-                        <p className="mt-2 text-xs leading-5 text-black/45">
-                          {businessInsights.monthlyGoal.helperText}
+                          {businessInsights.currentMonthComparison.helperText}
                         </p>
                       </article>
+
+                      <MonthlyGoalCard
+                        count={businessInsights.monthlyGoal.count}
+                        goal={businessInsights.monthlyGoal.goal}
+                        helperText={businessInsights.monthlyGoal.helperText}
+                        progress={businessInsights.monthlyGoal.progress}
+                        reached={businessInsights.monthlyGoal.reached}
+                      />
                     </div>
                   </div>
                 )}
@@ -1344,12 +1594,9 @@ export default async function DashboardPage({
                   </h2>
                 </div>
                 <div className="flex gap-2">
-                  <button type="button" className="rounded-xl border border-black/[0.08] px-3.5 py-2.5 text-xs font-semibold text-black/50">
-                    Filtry
-                  </button>
-                  <button type="button" className="rounded-xl bg-brand-soft px-3.5 py-2.5 text-xs font-semibold text-brand">
+                  <Link href="/reviews" className="rounded-xl bg-brand-soft px-3.5 py-2.5 text-xs font-semibold text-brand">
                     Zobacz wszystkie
-                  </button>
+                  </Link>
                 </div>
               </div>
               {latestReviews.length > 0 ? (

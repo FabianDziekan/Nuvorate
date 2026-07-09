@@ -8,6 +8,7 @@ export async function NotificationBell({ businessId }: { businessId: string }) {
     .from("notifications")
     .select("id, business_id, type, title, message, is_read, created_at")
     .eq("business_id", businessId)
+    .eq("type", "new_review")
     .order("created_at", { ascending: false })
     .limit(10);
 

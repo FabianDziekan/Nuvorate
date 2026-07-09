@@ -44,7 +44,8 @@ type ResponsesIcon =
   | "nfc"
   | "responses"
   | "reviews"
-  | "settings";
+  | "settings"
+  | "verification";
 
 function Icon({
   name,
@@ -105,6 +106,12 @@ function Icon({
         <path d="M8 13h5" />
       </>
     ),
+    verification: (
+      <>
+        <path d="M12 3 5 6v5c0 4.4 2.9 8.4 7 10 4.1-1.6 7-5.6 7-10V6l-7-3Z" />
+        <path d="m9 12 2 2 4-4" />
+      </>
+    ),
     settings: (
       <>
         <circle cx="12" cy="12" r="3" />
@@ -136,6 +143,11 @@ const navigation = [
   { label: "Opinie", icon: "reviews" as const, href: "/reviews" },
   { label: "Analiza", icon: "analysis" as const, href: "/analysis" },
   { label: "Odpowiedzi", icon: "responses" as const, href: "/responses" },
+  {
+    label: "Weryfikacja autora",
+    icon: "verification" as const,
+    href: "/author-verification",
+  },
   { label: "NFC", icon: "nfc" as const, href: "/nfc" },
   { label: "Powiadomienia", icon: "bell" as const, href: "/notifications" },
   { label: "Ustawienia", icon: "settings" as const, href: "/settings" },
@@ -225,7 +237,7 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
       .maybeSingle(),
     supabase
       .from("profiles")
-      .select("plan")
+      .select("first_name, plan")
       .eq("user_id", user.id)
       .maybeSingle(),
   ]);
@@ -244,7 +256,9 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
 
   const appPlan = normalizePlan(profile.plan);
   const plan = getPlanLabel(appPlan);
-  const displayName = user.email?.split("@")[0] ?? "użytkowniku";
+  const firstName =
+    typeof profile.first_name === "string" ? profile.first_name.trim() : "";
+  const displayName = firstName || user.email || "NU";
 
   if (!isPaidPlan(appPlan)) {
     return (

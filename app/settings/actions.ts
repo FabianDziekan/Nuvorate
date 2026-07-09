@@ -31,14 +31,24 @@ function isMissingColumnError(error: unknown) {
 }
 
 export async function saveSettings(_previousState: unknown, formData: FormData) {
+  const firstName = textValue(formData, "firstName");
   const name = textValue(formData, "name");
   const industry = textValue(formData, "industry");
   const responseTone = textValue(formData, "responseTone") || "professional";
+
+  if (firstName.length < 2 || firstName.length > 40) {
+    return {
+      ok: false,
+      error: "Imię musi mieć od 2 do 40 znaków.",
+      message: "",
+    };
+  }
 
   if (!name || !industry) {
     return {
       ok: false,
       error: "Uzupełnij nazwę firmy i branżę.",
+      message: "",
     };
   }
 
@@ -46,6 +56,7 @@ export async function saveSettings(_previousState: unknown, formData: FormData) 
     return {
       ok: false,
       error: "Wybierz prawidłowy ton odpowiedzi.",
+      message: "",
     };
   }
 
@@ -68,6 +79,25 @@ export async function saveSettings(_previousState: unknown, formData: FormData) 
     return {
       ok: false,
       error: "Nie udało się odczytać firmy.",
+      message: "",
+    };
+  }
+
+  const { error: profileUpdateError } = await supabase
+    .from("profiles")
+    .update({
+      first_name: firstName,
+    })
+    .eq("user_id", user.id);
+
+  if (profileUpdateError) {
+    console.error("Settings profile update failed", profileUpdateError);
+    return {
+      ok: false,
+      error: isMissingColumnError(profileUpdateError)
+        ? "Uruchom migrację 014_profile_first_name.sql, aby zapisać imię."
+        : "Nie udało się zapisać imienia.",
+      message: "",
     };
   }
 
@@ -84,6 +114,7 @@ export async function saveSettings(_previousState: unknown, formData: FormData) 
     return {
       ok: false,
       error: "Nie udało się zapisać profilu firmy.",
+      message: "",
     };
   }
 
@@ -105,13 +136,20 @@ export async function saveSettings(_previousState: unknown, formData: FormData) 
       error: isMissingColumnError(responseSettingsError)
         ? "Uruchom migrację 009_settings_fields.sql, aby zapisać ton odpowiedzi."
         : "Nie udało się zapisać tonu odpowiedzi.",
+      message: "",
     };
   }
 
   revalidatePath("/settings");
   revalidatePath("/dashboard");
+  revalidatePath("/reviews");
+  revalidatePath("/analysis");
+  revalidatePath("/responses");
+  revalidatePath("/nfc");
+  revalidatePath("/notifications");
 
   return {
     ok: true,
+    message: "Imię zapisane",
   };
 }

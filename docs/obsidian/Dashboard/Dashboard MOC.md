@@ -15,13 +15,14 @@ Mapa wiedzy dla części produktowej związanej z panelem po zalogowaniu.
 - [[Statystyki]]: widgety, limity planu i wykres nowych opinii.
 - [[Opinie]]: lista opinii, filtrowanie i paginacja.
 - [[Odpowiedzi]]: generowanie, edycja, statusy i automatyczne odpowiedzi.
+- [[Weryfikacja autora]]: Business Feature do sprawdzania autora opinii i przyszłego linku do profilu Google.
 - [[Analiza]]: analiza reputacji, odświeżanie i limity analiz.
 - [[Settings]]: nazwa firmy, branża, styl odpowiedzi i konto.
 - [[Mockup panelu]]: tekstowy obraz aktualnego layoutu.
 
 ## Zależności techniczne
 
-- [[Supabase]]: `profiles`, `businesses`, `reviews`, `ai_usage`, `ai_review_responses`, `ai_business_analyses`.
+- [[Supabase]]: `profiles`, `businesses`, `reviews`, `notifications`, `ai_usage`, `ai_review_responses`, `ai_business_analyses`.
 - [[Server Actions]]: `signOut`, `generateBusinessAnalysis`, `generateReviewResponse`, `saveSettings`.
 - [[OpenAI]]: odpowiedzi na opinie i analiza reputacji.
 - [[Stripe]]: aktywny plan i Customer Portal.

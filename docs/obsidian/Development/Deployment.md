@@ -77,6 +77,15 @@ flowchart TD
   GitHub --> Vercel["Vercel deployment"]
 ```
 
+## Przed publicznym SaaS
+
+Przed publicznym uruchomieniem płatnej wersji NuvoRate trzeba przygotować i podlinkować dokumenty opisane w [[Dokumenty prawne SaaS]]:
+
+- regulamin usługi,
+- politykę prywatności,
+- politykę cookies,
+- dane kontaktowe operatora.
+
 ## Ostatnia poprawka deploymentu
 
 Problem:
@@ -95,3 +104,4 @@ Rozwiązanie:
 - [[Backend]]
 - [[Stripe]]
 - [[Supabase]]
+- [[Dokumenty prawne SaaS]]

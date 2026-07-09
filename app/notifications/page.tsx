@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand/logo";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { NotificationHistoryActions } from "@/components/notifications/notification-history-actions";
 import { NotificationLink } from "@/components/notifications/notification-link";
 import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
 import { Pagination } from "@/components/ui/pagination";
@@ -14,7 +15,6 @@ import {
 import { getPlanLabel, normalizePlan } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/dashboard/actions";
-import { markAllNotificationsAsRead } from "./actions";
 
 export const metadata: Metadata = {
   title: "Powiadomienia | NuvoRate",
@@ -32,7 +32,8 @@ type NotificationIcon =
   | "nfc"
   | "responses"
   | "reviews"
-  | "settings";
+  | "settings"
+  | "verification";
 
 type Notification = {
   id: string;
@@ -102,6 +103,12 @@ function Icon({
         <path d="M8 13h5" />
       </>
     ),
+    verification: (
+      <>
+        <path d="M12 3 5 6v5c0 4.4 2.9 8.4 7 10 4.1-1.6 7-5.6 7-10V6l-7-3Z" />
+        <path d="m9 12 2 2 4-4" />
+      </>
+    ),
     settings: (
       <>
         <circle cx="12" cy="12" r="3" />
@@ -133,6 +140,11 @@ const navigation = [
   { label: "Opinie", icon: "reviews" as const, href: "/reviews" },
   { label: "Analiza", icon: "analysis" as const, href: "/analysis" },
   { label: "Odpowiedzi", icon: "responses" as const, href: "/responses" },
+  {
+    label: "Weryfikacja autora",
+    icon: "verification" as const,
+    href: "/author-verification",
+  },
   { label: "NFC", icon: "nfc" as const, href: "/nfc" },
   { label: "Powiadomienia", icon: "bell" as const, href: "/notifications" },
   { label: "Ustawienia", icon: "settings" as const, href: "/settings" },
@@ -142,11 +154,7 @@ const notificationsPerPage = 10;
 
 function notificationTypeLabel(type: string) {
   const labels: Record<string, string> = {
-    analysis_ready: "Analiza",
-    limit_warning: "Limity",
     new_review: "Opinie",
-    response_generated: "Odpowiedzi",
-    subscription: "Subskrypcja",
   };
 
   return labels[type] ?? "System";
@@ -183,7 +191,7 @@ export default async function NotificationsPage({
       .maybeSingle(),
     supabase
       .from("profiles")
-      .select("plan")
+      .select("first_name, plan")
       .eq("user_id", user.id)
       .maybeSingle(),
   ]);
@@ -201,11 +209,14 @@ export default async function NotificationsPage({
   }
 
   const plan = getPlanLabel(normalizePlan(profile.plan));
-  const displayName = user.email?.split("@")[0] ?? "NU";
+  const firstName =
+    typeof profile.first_name === "string" ? profile.first_name.trim() : "";
+  const displayName = firstName || user.email || "NU";
   let notificationsQuery = supabase
     .from("notifications")
     .select("id, type, title, message, is_read, created_at")
     .eq("business_id", business.id)
+    .eq("type", "new_review")
     .order("created_at", { ascending: false });
 
   if (filter === "unread") {
@@ -360,15 +371,10 @@ export default async function NotificationsPage({
                 w jednym miejscu.
               </p>
             </div>
-            <form action={markAllNotificationsAsRead}>
-              <button
-                type="submit"
-                disabled={unreadCount === 0}
-                className="rounded-xl bg-ink px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-black disabled:cursor-not-allowed disabled:bg-black/20"
-              >
-                Oznacz wszystkie jako przeczytane
-              </button>
-            </form>
+            <NotificationHistoryActions
+              totalCount={notificationItems.length}
+              unreadCount={unreadCount}
+            />
           </div>
 
           <div className="mb-5 flex flex-wrap gap-2">
@@ -465,10 +471,10 @@ export default async function NotificationsPage({
                   <Icon name="bell" className="h-5 w-5" />
                 </div>
                 <h2 className="mt-5 text-lg font-semibold text-ink">
-                  Brak nowych powiadomień
+                  Brak powiadomień
                 </h2>
                 <p className="mt-2 text-sm text-black/45">
-                  Gdy pojawią się ważne zdarzenia, zobaczysz je tutaj.
+                  Nowe opinie będą pojawiać się tutaj automatycznie.
                 </p>
               </div>
             )}

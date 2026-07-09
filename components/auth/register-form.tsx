@@ -21,9 +21,15 @@ export function RegisterForm({ initialPlan = "starter" }: { initialPlan?: Plan }
     setSuccess("");
 
     const formData = new FormData(event.currentTarget);
+    const firstName = String(formData.get("firstName") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
     const passwordConfirmation = String(formData.get("passwordConfirmation") ?? "");
+
+    if (firstName.length < 2 || firstName.length > 40) {
+      setError("Imię musi mieć od 2 do 40 znaków.");
+      return;
+    }
 
     if (password.length < 8) {
       setError("Hasło musi mieć co najmniej 8 znaków.");
@@ -46,6 +52,10 @@ export function RegisterForm({ initialPlan = "starter" }: { initialPlan?: Plan }
           emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
             `/checkout?plan=${plan}`,
           )}`,
+          data: {
+            first_name: firstName,
+            full_name: firstName,
+          },
         },
       });
 
@@ -119,6 +129,16 @@ export function RegisterForm({ initialPlan = "starter" }: { initialPlan?: Plan }
         </div>
       </fieldset>
 
+      <FormField
+        label="Imię"
+        name="firstName"
+        type="text"
+        autoComplete="given-name"
+        placeholder="Fabian"
+        minLength={2}
+        maxLength={40}
+        required
+      />
       <FormField
         label="Adres e-mail"
         name="email"

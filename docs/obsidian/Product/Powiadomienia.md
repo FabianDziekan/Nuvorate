@@ -1,46 +1,112 @@
 ---
 tags:
   - notifications
+  - opinie
   - product
-  - roadmap
+  - supabase
 ---
 
 # Powiadomienia
 
-Powiadomienia są obecnie elementem planowanym. W kodzie istnieją ikony i pozycje nawigacji „Powiadomienia”, ale nie ma jeszcze działającego modułu powiadomień, tabeli zdarzeń ani kanałów wysyłki.
+Powiadomienia są działającym modułem aplikacji NuvoRate, ale w obecnym MVP obejmują wyłącznie nowe opinie klientów.
 
-## Co istnieje w kodzie
+## Aktualny zakres
 
-- Ikona powiadomień w topbarze dashboardu, opinii, analizy i NFC.
-- Pozycja „Powiadomienia” w sidebarze.
-- Wizualna kropka przy ikonie powiadomień.
+NuvoRate tworzy i pokazuje tylko powiadomienia typu:
 
-## Czego jeszcze nie ma
+- `new_review`
 
-- Brak route `/notifications`.
-- Brak tabeli `notifications`.
-- Brak generowania powiadomień po nowej opinii.
-- Brak alertów dla negatywnych opinii.
-- Brak alertów o spadku średniej oceny.
-- Brak ustawień kanałów powiadomień.
+Nie są obecnie tworzone powiadomienia dla:
 
-## Plan funkcji
+- analizy reputacji,
+- wygenerowanej odpowiedzi,
+- limitów AI,
+- subskrypcji,
+- innych zdarzeń systemowych.
 
-Docelowo powiadomienia powinny obejmować:
+## UI
 
-- nową opinię,
-- negatywną opinię,
-- spadek średniej oceny,
-- wykorzystanie limitu odpowiedzi lub analiz,
-- zdarzenia billingowe.
+Powiadomienia są widoczne w:
 
-Do czasu implementacji nie należy opisywać powiadomień jako gotowej funkcji sprzedażowej.
+- dzwonku w topbarze,
+- badge przy pozycji „Powiadomienia” w sidebarze,
+- stronie `/notifications`.
+
+Dropdown pokazuje ostatnie 10 powiadomień `new_review`. Strona `/notifications` pokazuje pełną historię z paginacją po 10 rekordów.
+
+## Interakcje
+
+Użytkownik może:
+
+- kliknąć powiadomienie i przejść do `/reviews`,
+- automatycznie podświetlić konkretną opinię, jeśli `reviewId` jest zapisany w `message`,
+- oznaczyć pojedyncze powiadomienie jako przeczytane,
+- oznaczyć wszystkie powiadomienia jako przeczytane,
+- wyczyścić historię powiadomień.
+
+Po kliknięciu „Oznacz wszystkie jako przeczytane” przycisk zmienia tekst na „✓ Wszystkie przeczytane” i przechodzi w stan disabled, dopóki nie pojawi się nowe powiadomienie.
+
+## Baza danych
+
+Tabela:
+
+- `notifications`
+
+Najważniejsze kolumny:
+
+- `id`
+- `business_id`
+- `type`
+- `title`
+- `message`
+- `is_read`
+- `created_at`
+
+Aktualne odczyty UI filtrują po:
+
+```sql
+type = 'new_review'
+```
+
+Stare rekordy innych typów mogą istnieć w bazie, ale aplikacja ich nie pokazuje i nie liczy w badge.
+
+## Tworzenie powiadomień
+
+Powiadomienia o nowych opiniach tworzy trigger SQL `create_new_review_notification()`.
+
+`message` powinien zawierać JSON z:
+
+- `reviewId`
+- `authorName`
+- `rating`
+- `contentPreview`
+
+## Odpowiedzialne pliki
+
+- `components/notifications/notification-bell.tsx`
+- `components/notifications/notification-dropdown.tsx`
+- `components/notifications/notification-sidebar-badge.tsx`
+- `components/notifications/notification-history-actions.tsx`
+- `components/notifications/notification-link.tsx`
+- `app/notifications/page.tsx`
+- `app/notifications/actions.ts`
+- `app/api/notifications/[id]/read/route.ts`
+- `app/api/notifications/read-all/route.ts`
+- `lib/notification-ui.ts`
+- `lib/notifications.ts`
+
+## Ograniczenia
+
+- Brak e-maili.
+- Brak push notifications.
+- Brak powiadomień o analizach, limitach i subskrypcjach.
+- Czyszczenie historii usuwa tylko wpisy z `notifications`, bez wpływu na opinie, analizy i dane firmy.
 
 ## Powiązane notatki
 
 - [[Opinie]]
-- [[Analiza]]
-- [[Business]]
+- [[Dashboard MVP]]
+- [[Supabase]]
 - [[Backend]]
 - [[Roadmap]]
 - [[Product MOC]]

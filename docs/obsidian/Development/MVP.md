@@ -7,7 +7,7 @@ tags:
 
 # MVP
 
-MVP NuvoRate obejmuje konto ownera, firmę, płatny plan, dashboard, opinie, odpowiedzi, analizę reputacji, ustawienia, NFC i Stripe Subscriptions.
+MVP NuvoRate obejmuje konto ownera, firmę, płatny plan, dashboard, opinie, odpowiedzi, analizę reputacji, powiadomienia o nowych opiniach, weryfikację autora, ustawienia, NFC i Stripe Subscriptions.
 
 ## Gotowe
 
@@ -19,18 +19,24 @@ MVP NuvoRate obejmuje konto ownera, firmę, płatny plan, dashboard, opinie, odp
 - Dashboard z danymi opinii.
 - Wykres nowych opinii w czasie.
 - Business Insights.
+- Date range picker na Dashboardzie.
+- Inline edycja miesięcznego celu opinii.
 - `/reviews` z paginacją.
 - `/responses` z generowaniem i edycją odpowiedzi.
+- Kopiowanie odpowiedzi na Dashboardzie.
+- `/author-verification` z filtrami, wyszukiwarką, sortowaniem, paginacją i drawerem.
 - Automatyczne odpowiedzi po zapisie ustawień.
 - `/analysis` z raportem reputacji.
 - `/settings` z profilem firmy i stylem odpowiedzi.
+- Light/dark mode.
+- `/notifications` tylko dla nowych opinii.
 - `/nfc` z Google review URL.
 - Limity AI w `ai_usage`.
 
 ## Częściowe
 
 - NFC bez realnych skanów.
-- Powiadomienia bez backendu.
+- Weryfikacja autora bez Google Business Profile API.
 - Automatyczne odpowiedzi bez background joba.
 - Layout dashboardowy jest nadal powielany w kilku stronach zamiast wydzielonego wspólnego shell komponentu.
 

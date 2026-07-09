@@ -24,6 +24,7 @@ export async function PATCH() {
     .from("notifications")
     .update({ is_read: true })
     .eq("business_id", business.id)
+    .eq("type", "new_review")
     .eq("is_read", false);
 
   if (error) {

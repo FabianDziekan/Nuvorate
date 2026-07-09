@@ -70,18 +70,6 @@ export function getNotificationView(type: string, message: string | null): Notif
     };
   }
 
-  if (type === "analysis_ready") {
-    return { href: "/analysis", preview: null };
-  }
-
-  if (type === "response_generated") {
-    return { href: "/responses", preview: null };
-  }
-
-  if (type === "limit_warning" || type === "subscription") {
-    return { href: "/settings", preview: null };
-  }
-
   return { href: "/notifications", preview: null };
 }
 

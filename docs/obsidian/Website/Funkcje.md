@@ -24,6 +24,8 @@ Sekcja funkcji powinna prezentować wyłącznie to, co aplikacja rzeczywiście o
 - Automatyczne generowanie odpowiedzi po zapisie ustawień.
 - Limity planu i karta wykorzystania.
 - Analiza reputacji z ostatnich 30 dni.
+- Weryfikacja autora jako Business Feature przygotowana pod Google Business Profile API.
+- Powiadomienia in-app dla nowych opinii.
 - Ustawienia firmy i stylu odpowiedzi.
 - Moduł NFC pokazujący Google review URL.
 - Stripe Checkout i Customer Portal.
@@ -31,13 +33,14 @@ Sekcja funkcji powinna prezentować wyłącznie to, co aplikacja rzeczywiście o
 ## Funkcje częściowe
 
 - NFC: link i instrukcja działają, ale skany nie są jeszcze realnie mierzone.
-- Powiadomienia: widoczne w UI, ale bez backendu.
+- Weryfikacja autora: UI, filtry, paginacja i drawer działają, ale publiczny profil autora z Google nie jest jeszcze pobierany.
+- Synchronizacja Google: przycisk na Dashboardzie jest gotowym mockiem pod przyszłe API.
 
 ## Funkcje planowane
 
 - Google Reviews API.
 - Tracking skanów NFC.
-- Powiadomienia i alerty.
+- Zaawansowane alerty, np. negatywne opinie i spadki średniej oceny.
 - Wyszukiwarka opinii.
 - Raporty okresowe.
 - Wiele lokalizacji.

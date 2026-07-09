@@ -28,13 +28,14 @@ Aktualny przepływ NuvoRate prowadzi ownera od konta do płatnego planu, onboard
 4. Dashboard i `/reviews` pokazują opinie aktualnej firmy.
 5. Użytkownik może wygenerować odpowiedź na opinię.
 6. Użytkownik może wygenerować analizę reputacji z ostatnich 30 dni.
+7. Nowa opinia tworzy powiadomienie in-app typu `new_review`.
 
 ## Czego nie należy komunikować jako gotowe
 
 - Automatyczne pobieranie opinii z Google Reviews API.
 - Publiczny formularz zbierania opinii NuvoRate.
 - Realne śledzenie skanów NFC.
-- Powiadomienia o nowych lub negatywnych opiniach.
+- Powiadomienia o negatywnych opiniach, limitach, subskrypcji lub analizach.
 
 ## Powiązane notatki
 

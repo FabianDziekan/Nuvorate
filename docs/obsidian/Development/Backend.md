@@ -14,9 +14,9 @@ Backend NuvoRate działa w Next.js App Router z Supabase, Stripe i OpenAI.
 ## Główne elementy
 
 - Supabase Auth: konto, sesje, reset hasła.
-- Supabase Database: profile, firmy, opinie, odpowiedzi, analizy, ustawienia i limity.
-- Server Actions: onboarding, wylogowanie, analiza, odpowiedzi, ustawienia.
-- Route handlers: Stripe, auth callback, API odpowiedzi.
+- Supabase Database: profile, firmy, opinie, odpowiedzi, analizy, ustawienia, powiadomienia i limity.
+- Server Actions: onboarding, wylogowanie, analiza, odpowiedzi, ustawienia, powiadomienia.
+- Route handlers: Stripe, auth callback, API odpowiedzi, API powiadomień.
 - OpenAI Responses API: Structured Outputs.
 - Stripe Subscriptions: checkout, webhook, portal klienta.
 
@@ -26,6 +26,7 @@ Backend NuvoRate działa w Next.js App Router z Supabase, Stripe i OpenAI.
 - `profiles`: plan, status subskrypcji, identyfikatory Stripe.
 - `businesses`: firma ownera.
 - `reviews`: opinie i statusy odpowiedzi.
+- `notifications`: historia powiadomień `new_review`.
 - `business_response_settings`: automatyczne odpowiedzi i styl odpowiedzi.
 - `ai_usage`: limity miesięczne.
 - Stripe webhook: aktywacja i dezaktywacja planu.
@@ -40,6 +41,8 @@ Backend NuvoRate działa w Next.js App Router z Supabase, Stripe i OpenAI.
 - `/api/responses/settings`
 - `/api/responses/[id]`
 - `/api/responses/[id]/responded`
+- `/api/notifications/[id]/read`
+- `/api/notifications/read-all`
 - `/auth/callback`
 
 ## Ograniczenia
@@ -49,7 +52,7 @@ Backend NuvoRate działa w Next.js App Router z Supabase, Stripe i OpenAI.
 - Brak wielu lokalizacji.
 - Brak Google Reviews API.
 - Brak realnego trackingu NFC.
-- Powiadomienia nie mają jeszcze backendu.
+- Powiadomienia obejmują tylko nowe opinie.
 
 ## Powiązane notatki
 

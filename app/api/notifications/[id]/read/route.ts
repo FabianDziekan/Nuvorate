@@ -31,7 +31,8 @@ export async function PATCH(_request: Request, context: RouteContext) {
     .from("notifications")
     .update({ is_read: true })
     .eq("id", id)
-    .eq("business_id", business.id);
+    .eq("business_id", business.id)
+    .eq("type", "new_review");
 
   if (error) {
     console.error("Notification mark read failed", error);

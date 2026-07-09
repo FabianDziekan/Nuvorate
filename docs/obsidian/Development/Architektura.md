@@ -28,8 +28,10 @@ NuvoRate jest aplikacją Next.js App Router z Supabase Auth, Supabase Database, 
 - `/dashboard`: główny pulpit.
 - `/reviews`: lista opinii z filtrem i paginacją.
 - `/responses`: zarządzanie odpowiedziami.
+- `/author-verification`: weryfikacja autora jako Business Feature przygotowana pod Google.
 - `/analysis`: pełna analiza reputacji.
 - `/nfc`: link Google review URL i instrukcja NFC.
+- `/notifications`: historia powiadomień o nowych opiniach.
 - `/settings`: nazwa firmy, branża, styl odpowiedzi, konto i plan.
 - `/checkout`: Stripe Checkout.
 - `/billing/portal`: Stripe Customer Portal.
@@ -44,6 +46,8 @@ NuvoRate jest aplikacją Next.js App Router z Supabase Auth, Supabase Database, 
 - `app/api/responses/settings/route.ts`: zapisuje ustawienia automatycznych odpowiedzi.
 - `app/api/responses/[id]/route.ts`: zapisuje/edytuje odpowiedź.
 - `app/api/responses/[id]/responded/route.ts`: oznacza odpowiedź jako `responded`.
+- `app/api/notifications/[id]/read/route.ts`: oznacza pojedyncze powiadomienie jako przeczytane.
+- `app/api/notifications/read-all/route.ts`: oznacza wszystkie powiadomienia typu `new_review` jako przeczytane.
 - `app/auth/callback/route.ts`: callback Supabase Auth.
 
 ## Server/client boundary
@@ -84,10 +88,14 @@ flowchart LR
   Businesses["businesses"] --> Dashboard
   Businesses --> ReviewsPage["/reviews"]
   Businesses --> ResponsesPage["/responses"]
+  Businesses --> AuthorVerification["/author-verification"]
   Businesses --> Nfc["/nfc"]
+  Businesses --> NotificationsPage["/notifications"]
   Businesses --> Settings["/settings"]
   Reviews["reviews"] --> Dashboard
   Reviews --> ResponsesPage
+  Reviews --> AuthorVerification
+  Reviews --> Notifications["notifications"]
   ResponsesPage --> ResponseSettings["business_response_settings"]
   Reviews --> OpenAIService["review-response-service"]
   OpenAIService --> ReviewResponses["ai_review_responses"]

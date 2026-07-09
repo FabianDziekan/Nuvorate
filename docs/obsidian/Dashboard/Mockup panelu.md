@@ -21,6 +21,7 @@ Mockup panelu powinien odpowiadać aktualnemu dashboardowi NuvoRate, a nie funkc
 │ Opinie                                  │ [Pozytywne]   [Skany NFC]      │
 │ Analiza                                 │                                │
 │ Odpowiedzi                              │ [Limity planu]                 │
+│ Weryfikacja autora                      │                                │
 │ NFC                                     │                                │
 │ Powiadomienia                           │                                │
 │ Ustawienia                              │ [Nowe opinie w czasie] [Analiza]│
@@ -36,19 +37,24 @@ Mockup panelu powinien odpowiadać aktualnemu dashboardowi NuvoRate, a nie funkc
 - Plan użytkownika.
 - Linki do `/dashboard`, `/reviews`, `/analysis`, `/responses`, `/nfc`, `/settings`.
 - Statystyki opinii z `public.reviews`.
-- Wykres „Nowe opinie w czasie” z agregacji RPC `get_review_activity_trend`.
+- Wykres „Nowe opinie w czasie” z realnych opinii z `public.reviews`, z presetami i zakresem niestandardowym.
 - Business Insights dla planu Business.
+- Inline edycja miesięcznego celu opinii w karcie „Cel miesiąca”.
 - Karta limitów planu z `public.ai_usage`.
 - Generowanie i ponowne generowanie odpowiedzi na opinie.
+- Kopiowanie istniejącej odpowiedzi bezpośrednio z karty opinii na Dashboardzie.
 - Blokada generowania odpowiedzi po wykorzystaniu limitu.
 - Generowanie i odświeżanie analizy reputacji.
 - Ustawienia firmy i stylu odpowiedzi w `/settings`.
+- Light/dark mode zapisywany lokalnie.
+- Powiadomienia in-app dla nowych opinii.
 - Stripe Customer Portal dla profilu z `stripe_customer_id`.
 
 ## Elementy częściowe
 
 - Skany NFC są widoczne jako `0`, bez realnego trackingu.
-- Powiadomienia są widoczne w nawigacji, ale nie mają osobnego działającego widoku.
+- Synchronizacja Google na Dashboardzie jest mockiem przygotowanym pod Google Business Profile API.
+- Weryfikacja autora ma UI, filtry i drawer, ale nie pobiera jeszcze publicznych profili Google.
 
 ## Powiązane notatki
 
@@ -56,7 +62,9 @@ Mockup panelu powinien odpowiadać aktualnemu dashboardowi NuvoRate, a nie funkc
 - [[Statystyki]]
 - [[Opinie]]
 - [[Odpowiedzi]]
+- [[Weryfikacja autora]]
 - [[Analiza]]
 - [[Settings]]
+- [[Powiadomienia]]
 - [[Frontend]]
 - [[Dashboard MOC]]
