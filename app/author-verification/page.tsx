@@ -6,6 +6,8 @@ import {
   type AuthorVerificationReview,
 } from "@/components/author-verification/author-verification-list";
 import { BrandLogo } from "@/components/brand/logo";
+import { BusinessFeatureLock } from "@/components/billing/business-feature-lock";
+import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
 import { Pagination } from "@/components/ui/pagination";
@@ -13,7 +15,11 @@ import {
   RatingFilter,
   ratingFilterValues,
 } from "@/components/ui/rating-filter";
-import { getPlanLabel, normalizePlan } from "@/lib/plans";
+import {
+  getPlanLabel,
+  hasPlanCapability,
+  normalizePlan,
+} from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/dashboard/actions";
 
@@ -265,11 +271,15 @@ export default async function AuthorVerificationPage({
     throw new Error("Nie znaleziono profilu użytkownika.");
   }
 
-  const { data: reviews, error: reviewsError } = await supabase
-    .from("reviews")
-    .select("id, author_name, rating, content, created_at, source")
-    .eq("business_id", business.id)
-    .order("created_at", { ascending: false });
+  const appPlan = normalizePlan(profile.plan);
+  const canVerifyAuthors = hasPlanCapability(appPlan, "authorVerification");
+  const { data: reviews, error: reviewsError } = canVerifyAuthors
+    ? await supabase
+        .from("reviews")
+        .select("id, author_name, rating, content, created_at, source")
+        .eq("business_id", business.id)
+        .order("created_at", { ascending: false })
+    : { data: [], error: null };
 
   if (reviewsError) {
     throw new Error(
@@ -277,7 +287,6 @@ export default async function AuthorVerificationPage({
     );
   }
 
-  const appPlan = normalizePlan(profile.plan);
   const plan = getPlanLabel(appPlan);
   const firstName =
     typeof profile.first_name === "string" ? profile.first_name.trim() : "";
@@ -389,6 +398,12 @@ export default async function AuthorVerificationPage({
               <Link key={item.label} href={item.href} className={className}>
                 <Icon name={item.icon} className="h-[18px] w-[18px]" />
                 <span className="min-w-0 flex-1">{item.label}</span>
+                <BusinessNavBadge
+                  show={
+                    item.label === "Weryfikacja autora" &&
+                    !canVerifyAuthors
+                  }
+                />
                 {item.label === "Powiadomienia" ? (
                   <NotificationSidebarBadge businessId={business.id} />
                 ) : null}
@@ -436,9 +451,6 @@ export default async function AuthorVerificationPage({
               </p>
             </div>
             <div className="flex min-w-0 items-center gap-2.5">
-              <span className="hidden rounded-xl border border-brand/20 bg-brand-soft px-4 py-2.5 text-sm font-semibold text-brand sm:block">
-                Business Feature
-              </span>
               <NotificationBell businessId={business.id} />
               <div className="hidden items-center gap-3 rounded-xl border border-black/[0.08] bg-white py-1.5 pl-1.5 pr-3 sm:flex">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft text-xs font-bold uppercase text-brand">
@@ -490,9 +502,6 @@ export default async function AuthorVerificationPage({
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">
                     Weryfikacja opinii
                   </p>
-                  <span className="rounded-full border border-brand/20 bg-brand-soft px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand">
-                    Business Feature
-                  </span>
                 </div>
                 <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
                   Weryfikacja autora
@@ -504,6 +513,75 @@ export default async function AuthorVerificationPage({
               </div>
             </div>
 
+            {!canVerifyAuthors ? (
+              <BusinessFeatureLock
+                className="mt-8 min-h-[520px]"
+                title="Weryfikacja autora"
+                description="Sprawdź publiczną aktywność autora opinii i uzyskaj dodatkowy kontekst recenzji."
+                preview={
+                  <div className="p-5 sm:p-6">
+                    <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
+                          Przykładowa lista opinii
+                        </p>
+                        <h2 className="mt-1 text-xl font-semibold tracking-tight">
+                          3 autorów
+                        </h2>
+                      </div>
+                      <div className="rounded-xl border border-black/[0.08] bg-[#FAFAFC] px-4 py-2.5 text-xs text-black/40">
+                        Szukaj autora…
+                      </div>
+                    </div>
+                    <div className="mt-6 space-y-3">
+                      {[
+                        {
+                          author: "Anna K.",
+                          rating: "★★★★★",
+                          review: "Bardzo dobra obsługa i przyjazna atmosfera.",
+                          status: "Aktywność publiczna",
+                        },
+                        {
+                          author: "Marek P.",
+                          rating: "★★★☆☆",
+                          review: "Wizyta przebiegła sprawnie, choć czas oczekiwania był dłuższy.",
+                          status: "Profil do sprawdzenia",
+                        },
+                        {
+                          author: "Katarzyna W.",
+                          rating: "★★★★☆",
+                          review: "Profesjonalne podejście i dobry kontakt z klientem.",
+                          status: "Zweryfikowany kontekst",
+                        },
+                      ].map((item) => (
+                        <article
+                          key={item.author}
+                          className="grid gap-4 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4 sm:grid-cols-[1fr_auto] sm:items-center"
+                        >
+                          <div>
+                            <div className="flex items-center gap-3">
+                              <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-soft text-xs font-semibold text-brand">
+                                {item.author.slice(0, 2)}
+                              </span>
+                              <div>
+                                <p className="text-sm font-semibold">{item.author}</p>
+                                <p className="text-xs text-amber-500">{item.rating}</p>
+                              </div>
+                            </div>
+                            <p className="mt-3 text-sm leading-6 text-black/50">
+                              {item.review}
+                            </p>
+                          </div>
+                          <span className="rounded-xl border border-brand/15 bg-brand-soft px-3 py-2 text-xs font-semibold text-brand">
+                            {item.status}
+                          </span>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                }
+              />
+            ) : (
             <section className="mt-8 min-w-0 overflow-hidden rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                 <div>
@@ -646,6 +724,7 @@ export default async function AuthorVerificationPage({
                 />
               </div>
             </section>
+            )}
           </div>
         </div>
       </div>

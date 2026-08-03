@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { generateBusinessAnalysis } from "@/app/dashboard/actions";
 import {
@@ -12,17 +13,23 @@ import {
 type AnalysisActionFormProps = {
   buttonClassName?: string;
   hasSummary: boolean;
+  isLimitReached?: boolean;
   progressClassName?: string;
   progressVariant?: "light" | "dark";
   redirectTo: string;
+  showLimitDetails?: boolean;
+  usageLabel?: string;
 };
 
 export function AnalysisActionForm({
   buttonClassName = "button-primary",
   hasSummary,
+  isLimitReached = false,
   progressClassName = "mt-3",
   progressVariant = "light",
   redirectTo,
+  showLimitDetails = true,
+  usageLabel,
 }: AnalysisActionFormProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -34,6 +41,11 @@ export function AnalysisActionForm({
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (isLimitReached) {
+      return;
+    }
+
     setError("");
     setProgressStatus("running");
 
@@ -61,7 +73,7 @@ export function AnalysisActionForm({
           redirectTo,
         });
         setProgressStatus("idle");
-        setError("Nie udało się odświeżyć analizy");
+        setError("Nie udało się wygenerować analizy. Spróbuj ponownie.");
       }
     });
   }
@@ -90,10 +102,14 @@ export function AnalysisActionForm({
       )}
       <button
         type="submit"
-        disabled={isRunning}
-        className={`${buttonClassName} ${progressStatus !== "idle" || error ? "mt-3" : ""} disabled:cursor-wait disabled:opacity-70`}
+        disabled={isRunning || isLimitReached}
+        className={`${buttonClassName} ${progressStatus !== "idle" || error ? "mt-3" : ""} disabled:opacity-60 ${
+          isLimitReached ? "cursor-not-allowed" : "disabled:cursor-wait"
+        }`}
       >
-        {isRunning
+        {isLimitReached
+          ? "Limit analiz wykorzystany"
+          : isRunning
           ? hasSummary
             ? "Odświeżanie analizy..."
             : "Generowanie analizy..."
@@ -101,6 +117,29 @@ export function AnalysisActionForm({
             ? "Odśwież analizę"
             : "Wygeneruj analizę"}
       </button>
+      {isLimitReached && showLimitDetails ? (
+        <div
+          className={`mt-3 rounded-xl border p-3 ${
+            progressVariant === "dark"
+              ? "border-white/10 bg-white/[0.04]"
+              : "border-black/[0.06] bg-[#FAFAFC]"
+          }`}
+        >
+          <p
+            className={`text-xs leading-5 ${
+              progressVariant === "dark" ? "text-white/55" : "text-black/45"
+            }`}
+          >
+            {usageLabel ?? "Wykorzystano 1 z 1 analiz w tym miesiącu"}
+          </p>
+          <Link
+            href="/checkout?plan=business"
+            className="mt-2 inline-flex min-h-9 items-center justify-center rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-white outline-none transition hover:bg-brand-dark focus-visible:ring-4 focus-visible:ring-brand/25"
+          >
+            Przejdź na Business
+          </Link>
+        </div>
+      ) : null}
     </form>
   );
 }

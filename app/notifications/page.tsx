@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand/logo";
+import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationHistoryActions } from "@/components/notifications/notification-history-actions";
 import { NotificationLink } from "@/components/notifications/notification-link";
@@ -12,7 +13,11 @@ import {
   formatRelativeNotificationTime,
   getNotificationView,
 } from "@/lib/notification-ui";
-import { getPlanLabel, normalizePlan } from "@/lib/plans";
+import {
+  getPlanLabel,
+  hasPlanCapability,
+  normalizePlan,
+} from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/dashboard/actions";
 
@@ -208,7 +213,8 @@ export default async function NotificationsPage({
     throw new Error("Nie znaleziono profilu użytkownika.");
   }
 
-  const plan = getPlanLabel(normalizePlan(profile.plan));
+  const appPlan = normalizePlan(profile.plan);
+  const plan = getPlanLabel(appPlan);
   const firstName =
     typeof profile.first_name === "string" ? profile.first_name.trim() : "";
   const displayName = firstName || user.email || "NU";
@@ -285,6 +291,12 @@ export default async function NotificationsPage({
               <Link key={item.label} href={item.href} className={className}>
                 <Icon name={item.icon} className="h-[18px] w-[18px]" />
                 <span className="min-w-0 flex-1">{item.label}</span>
+                <BusinessNavBadge
+                  show={
+                    item.label === "Weryfikacja autora" &&
+                    !hasPlanCapability(appPlan, "authorVerification")
+                  }
+                />
                 {item.label === "Powiadomienia" ? (
                   <NotificationSidebarBadge businessId={business.id} />
                 ) : null}

@@ -12,6 +12,7 @@ export type StripeCustomer = {
 export type StripeCheckoutSession = {
   id: string;
   url: string | null;
+  client_reference_id?: string | null;
   customer: string | null;
   subscription: string | null;
   metadata?: Record<string, string>;
@@ -209,6 +210,7 @@ export async function createStripeCheckoutSession({
 
   params.set("mode", "subscription");
   params.set("customer", customerId);
+  params.set("client_reference_id", userId);
   params.set("line_items[0][price]", getPriceIdForPlan(plan, cycle));
   params.set("line_items[0][quantity]", "1");
   params.set("success_url", `${appUrl}/dashboard?checkout=success`);

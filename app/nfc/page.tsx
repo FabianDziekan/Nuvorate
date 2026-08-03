@@ -2,10 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand/logo";
-import { CopyLinkButton } from "@/components/nfc/copy-link-button";
+import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
+import { NfcTagManager } from "@/components/nfc/nfc-tag-manager";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
-import { getPlanLabel, isPaidPlan, normalizePlan } from "@/lib/plans";
+import {
+  getPlanLabel,
+  hasPlanCapability,
+  normalizePlan,
+} from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/dashboard/actions";
 
@@ -131,10 +136,11 @@ const navigation = [
 ];
 
 const setupSteps = [
-  "Skopiuj link do opinii",
-  "Zapisz link na plakietce NFC",
-  "Umieść plakietkę przy kasie lub stanowisku",
-  "Klient przykłada telefon i zostawia opinię",
+  "Otwórz aplikację do zapisu NFC.",
+  "Wybierz zapis pojedynczego rekordu URL.",
+  "Wklej link NuvoRate.",
+  "Zapisz go na plakietce.",
+  "Zbliż telefon i sprawdź, czy otwiera Google Reviews.",
 ];
 
 export default async function NfcPage() {
@@ -186,15 +192,7 @@ export default async function NfcPage() {
     typeof profile.first_name === "string" ? profile.first_name.trim() : "";
   const displayName = firstName || user.email || "NU";
   const businessName = business.name ?? "Twoja firma";
-  const reviewLink = business.google_review_url ?? "";
-  const scansLast30Days = 0;
-  const scansTotal = 0;
-  const conversion =
-    scansTotal > 0
-      ? "0%"
-      : "Brak danych";
-
-  if (!isPaidPlan(appPlan)) {
+  if (!hasPlanCapability(appPlan, "nfcBasicStats")) {
     return (
       <main className="min-h-screen bg-[#F7F7FA] text-ink">
         <div className="flex min-h-screen items-center justify-center px-5 py-12">
@@ -231,6 +229,47 @@ export default async function NfcPage() {
     );
   }
 
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const [
+    { data: nfcTag, error: nfcTagError },
+    { count: scansTotal, error: scansTotalError },
+    { count: scansLast30Days, error: scansLast30DaysError },
+    { data: lastScan, error: lastScanError },
+  ] = await Promise.all([
+    supabase
+      .from("nfc_tags")
+      .select("id, name, public_token, destination_url, is_active")
+      .eq("business_id", business.id)
+      .maybeSingle(),
+    supabase
+      .from("nfc_scans")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", business.id),
+    supabase
+      .from("nfc_scans")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", business.id)
+      .gte("scanned_at", thirtyDaysAgo.toISOString()),
+    supabase
+      .from("nfc_scans")
+      .select("scanned_at")
+      .eq("business_id", business.id)
+      .order("scanned_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  if (nfcTagError || scansTotalError || scansLast30DaysError || lastScanError) {
+    throw new Error("Nie udało się odczytać danych NFC. Uruchom migrację 016_nfc_tags_and_scans.sql w Supabase.");
+  }
+
+  const nfcBaseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const publicNfcUrl = nfcTag ? `${nfcBaseUrl}/r/${nfcTag.public_token}` : "";
+  const lastScanLabel = lastScan?.scanned_at
+    ? new Intl.DateTimeFormat("pl-PL", { dateStyle: "medium", timeStyle: "short" }).format(new Date(lastScan.scanned_at))
+    : "Brak skanów";
+
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#F7F7FA] text-ink">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col border-r border-black/[0.06] bg-white px-5 py-6 lg:flex">
@@ -264,6 +303,12 @@ export default async function NfcPage() {
                 <Link key={item.label} href={item.href} className={className}>
                   <Icon name={item.icon} className="h-[18px] w-[18px]" />
                   <span className="min-w-0 flex-1">{item.label}</span>
+                  <BusinessNavBadge
+                    show={
+                      item.label === "Weryfikacja autora" &&
+                      !hasPlanCapability(appPlan, "authorVerification")
+                    }
+                  />
                   {item.label === "Powiadomienia" ? (
                     <NotificationSidebarBadge businessId={business.id} />
                   ) : null}
@@ -275,6 +320,12 @@ export default async function NfcPage() {
               <button key={item.label} type="button" className={className}>
                 <Icon name={item.icon} className="h-[18px] w-[18px]" />
                 <span className="min-w-0 flex-1">{item.label}</span>
+                <BusinessNavBadge
+                  show={
+                    item.label === "Weryfikacja autora" &&
+                    !hasPlanCapability(appPlan, "authorVerification")
+                  }
+                />
                 {item.label === "Powiadomienia" ? (
                   <NotificationSidebarBadge businessId={business.id} />
                 ) : null}
@@ -390,32 +441,17 @@ export default async function NfcPage() {
                   Link dla klientów {businessName}
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-black/45">
-                  Ten link zapisz na plakietce NFC albo kodzie QR.
+                  Zapisz ten link na plakietce. NuvoRate policzy skan i od razu otworzy Google Reviews.
                 </p>
-                <div className="mt-5 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4">
-                  {reviewLink ? (
-                    <p className="break-all text-sm font-medium text-black/60">
-                      {reviewLink}
-                    </p>
-                  ) : (
-                    <p className="text-sm font-medium text-black/45">
-                      Brak linku do opinii. Uzupełnij Google review URL w danych firmy.
-                    </p>
-                  )}
-                </div>
-                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <CopyLinkButton value={reviewLink} />
-                  {reviewLink && (
-                    <Link
-                      href={reviewLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="button-secondary"
-                    >
-                      Otwórz link
-                    </Link>
-                  )}
-                </div>
+                <NfcTagManager
+                  tag={nfcTag ? {
+                    id: nfcTag.id,
+                    name: nfcTag.name,
+                    destinationUrl: nfcTag.destination_url,
+                    isActive: nfcTag.is_active,
+                    publicUrl: publicNfcUrl,
+                  } : null}
+                />
               </article>
 
               <article className="rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
@@ -441,9 +477,9 @@ export default async function NfcPage() {
                     </p>
                   </div>
                   <div className="rounded-2xl bg-[#FAFAFC] p-4">
-                    <p className="text-xs text-black/40">Konwersja do opinii</p>
-                    <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-                      {conversion}
+                    <p className="text-xs text-black/40">Ostatni skan</p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-black/75">
+                      {lastScanLabel}
                     </p>
                   </div>
                 </div>
@@ -457,14 +493,14 @@ export default async function NfcPage() {
               <h2 className="mt-1 text-xl font-semibold tracking-tight">
                 Jak skonfigurować NFC
               </h2>
-              <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
                 {setupSteps.map((step, index) => (
                   <div key={step} className="rounded-2xl bg-[#FAFAFC] p-4">
                     <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-soft text-sm font-bold text-brand">
                       {index + 1}
                     </span>
-                    <p className="mt-4 text-sm font-semibold leading-6">
-                      {step}
+                  <p className="mt-4 text-sm font-semibold leading-6">
+                    {step}
                     </p>
                   </div>
                 ))}

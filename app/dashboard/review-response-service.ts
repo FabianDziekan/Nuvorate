@@ -12,14 +12,14 @@ import {
   openAIModel,
 } from "@/lib/openai";
 import {
-  currentPeriodMonth,
-  getAiLimit,
-  getAiLimitMessage,
+  hasPlanCapability,
   normalizePlan,
-  type AiUsageKind,
-  type AppPlan,
 } from "@/lib/plans";
-import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  completeAiUsageReservation,
+  releaseAiUsageReservation,
+  reserveAiUsage,
+} from "@/lib/ai-usage";
 import { createClient } from "@/lib/supabase/server";
 
 const responseToneLabels: Record<string, string> = {
@@ -28,107 +28,6 @@ const responseToneLabels: Record<string, string> = {
   professional: "profesjonalny",
   short: "krótki",
 };
-
-async function getCurrentAiUsage(userId: string) {
-  const supabaseAdmin = createAdminClient();
-  const periodMonth = currentPeriodMonth();
-  const { data, error } = await supabaseAdmin
-    .from("ai_usage")
-    .select("ai_replies_used, ai_analyses_used")
-    .eq("user_id", userId)
-    .eq("period_month", periodMonth)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error("Nie udało się odczytać limitów AI.");
-  }
-
-  return {
-    periodMonth,
-    repliesUsed: Number(data?.ai_replies_used ?? 0),
-    analysesUsed: Number(data?.ai_analyses_used ?? 0),
-  };
-}
-
-async function checkAiLimit({
-  userId,
-  plan,
-  usageKind,
-}: {
-  userId: string;
-  plan: AppPlan;
-  usageKind: AiUsageKind;
-}): Promise<
-  | {
-      ok: true;
-      usage: Awaited<ReturnType<typeof getCurrentAiUsage>>;
-    }
-  | {
-      ok: false;
-      error: string;
-    }
-> {
-  let usage: Awaited<ReturnType<typeof getCurrentAiUsage>>;
-
-  try {
-    usage = await getCurrentAiUsage(userId);
-  } catch (error) {
-    console.error("AI usage limit check failed", error);
-    return {
-      ok: false,
-      error: "Nie udało się wygenerować odpowiedzi. Spróbuj ponownie.",
-    };
-  }
-
-  const limit = getAiLimit(plan, usageKind);
-  const used =
-    usageKind === "reply" ? usage.repliesUsed : usage.analysesUsed;
-  const allLimitsReached =
-    usage.repliesUsed >= getAiLimit(plan, "reply") &&
-    usage.analysesUsed >= getAiLimit(plan, "analysis");
-
-  if (used >= limit) {
-    return {
-      ok: false,
-      error: getAiLimitMessage(plan, usageKind, allLimitsReached),
-    };
-  }
-
-  return {
-    ok: true,
-    usage,
-  };
-}
-
-async function incrementAiUsage({
-  userId,
-  usageKind,
-  periodMonth,
-}: {
-  userId: string;
-  usageKind: AiUsageKind;
-  periodMonth: string;
-}) {
-  const supabaseAdmin = createAdminClient();
-  const usage = await getCurrentAiUsage(userId);
-  const nextReplies =
-    usageKind === "reply" ? usage.repliesUsed + 1 : usage.repliesUsed;
-  const nextAnalyses =
-    usageKind === "analysis" ? usage.analysesUsed + 1 : usage.analysesUsed;
-  const { error } = await supabaseAdmin.from("ai_usage").upsert(
-    {
-      user_id: userId,
-      period_month: periodMonth,
-      ai_replies_used: nextReplies,
-      ai_analyses_used: nextAnalyses,
-    },
-    { onConflict: "user_id,period_month" },
-  );
-
-  if (error) {
-    throw new Error("Nie udało się zaktualizować licznika AI.");
-  }
-}
 
 export async function generateReviewResponseForReview(
   _previousState: GenerateReviewResponseState,
@@ -166,16 +65,24 @@ export async function generateReviewResponseForReview(
   }
 
   const plan = normalizePlan(profile.plan);
-  const limitCheck = await checkAiLimit({
-    userId: user.id,
-    plan,
-    usageKind: "reply",
-  });
 
-  if (!limitCheck.ok) {
+  if (!hasPlanCapability(plan, "manualReviewResponses")) {
     return {
       ok: false,
-      error: limitCheck.error,
+      error: "Wybierz plan, aby generować odpowiedzi na opinie.",
+    };
+  }
+
+  const reservation = await reserveAiUsage({
+    plan,
+    usageKind: "reply",
+    userId: user.id,
+  });
+
+  if (!reservation.ok) {
+    return {
+      ok: false,
+      error: reservation.error,
     };
   }
 
@@ -269,11 +176,7 @@ export async function generateReviewResponseForReview(
       console.warn("Review response fields sync skipped", reviewSyncError);
     }
 
-    await incrementAiUsage({
-      userId: user.id,
-      usageKind: "reply",
-      periodMonth: limitCheck.usage.periodMonth,
-    });
+    await completeAiUsageReservation(reservation.id, user.id);
 
     revalidatePath("/dashboard");
     revalidatePath("/responses");
@@ -283,6 +186,7 @@ export async function generateReviewResponseForReview(
       responseText,
     };
   } catch (error) {
+    await releaseAiUsageReservation(reservation.id, user.id);
     console.error("AI review response generation failed", error);
     return {
       ok: false,

@@ -2,12 +2,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand/logo";
+import { BusinessFeatureLock } from "@/components/billing/business-feature-lock";
+import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
 import { ResponseCard } from "@/components/responses/response-card";
 import { ResponseSettingsCard } from "@/components/responses/response-settings-card";
 import { Pagination } from "@/components/ui/pagination";
-import { getPlanLabel, isPaidPlan, normalizePlan } from "@/lib/plans";
+import {
+  getPlanLabel,
+  hasPlanCapability,
+  normalizePlan,
+} from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/dashboard/actions";
 
@@ -260,7 +266,7 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
     typeof profile.first_name === "string" ? profile.first_name.trim() : "";
   const displayName = firstName || user.email || "NU";
 
-  if (!isPaidPlan(appPlan)) {
+  if (!hasPlanCapability(appPlan, "manualReviewResponses")) {
     return (
       <main className="min-h-screen bg-[#F7F7FA] text-ink">
         <div className="flex min-h-screen items-center justify-center px-5 py-12">
@@ -366,6 +372,12 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
                 <Link key={item.label} href={item.href} className={className}>
                   <Icon name={item.icon} className="h-[18px] w-[18px]" />
                   <span className="min-w-0 flex-1">{item.label}</span>
+                  <BusinessNavBadge
+                    show={
+                      item.label === "Weryfikacja autora" &&
+                      !hasPlanCapability(appPlan, "authorVerification")
+                    }
+                  />
                   {item.label === "Powiadomienia" ? (
                     <NotificationSidebarBadge businessId={business.id} />
                   ) : null}
@@ -377,6 +389,12 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
               <button key={item.label} type="button" className={className}>
                 <Icon name={item.icon} className="h-[18px] w-[18px]" />
                 <span className="min-w-0 flex-1">{item.label}</span>
+                <BusinessNavBadge
+                  show={
+                    item.label === "Weryfikacja autora" &&
+                    !hasPlanCapability(appPlan, "authorVerification")
+                  }
+                />
                 {item.label === "Powiadomienia" ? (
                   <NotificationSidebarBadge businessId={business.id} />
                 ) : null}
@@ -491,11 +509,81 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
               </div>
             </div>
 
-            <ResponseSettingsCard
-              businessId={business.id}
-              initialAutoGenerate={Boolean(responseSettings?.auto_generate)}
-              initialEnabledRatings={enabledRatings}
-            />
+            {hasPlanCapability(appPlan, "automaticReviewResponses") ? (
+              <ResponseSettingsCard
+                businessId={business.id}
+                initialAutoGenerate={Boolean(responseSettings?.auto_generate)}
+                initialEnabledRatings={enabledRatings}
+              />
+            ) : (
+              <BusinessFeatureLock
+                className="mt-8 min-h-[390px]"
+                title="Automatyczne odpowiedzi"
+                description="Automatycznie przygotowuj propozycje odpowiedzi dla wybranych ocen i oszczędzaj czas zespołu."
+                preview={
+                  <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(300px,0.8fr)]">
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
+                        Automatyczne odpowiedzi
+                      </p>
+                      <h2 className="mt-1 text-xl font-semibold tracking-tight">
+                        Ustawienia generowania
+                      </h2>
+                      <div className="mt-4 flex items-center justify-between gap-4 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] px-4 py-3">
+                        <div>
+                          <p className="text-sm font-semibold">
+                            Automatycznie generuj odpowiedzi
+                          </p>
+                          <p className="mt-1 text-xs text-black/40">
+                            Przygotuj propozycję po pojawieniu się nowej opinii.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled
+                          className="relative h-6 w-11 shrink-0 rounded-full bg-brand"
+                          aria-label="Automatyczne generowanie włączone — przykład"
+                        >
+                          <span className="absolute left-6 top-1 h-4 w-4 rounded-full bg-white" />
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-black/35">
+                        Generuj dla ocen
+                      </p>
+                      <div className="mt-3 grid gap-2">
+                        {[5, 4, 3].map((rating) => (
+                          <div
+                            key={rating}
+                            className="flex items-center justify-between rounded-xl border border-black/[0.06] bg-[#FAFAFC] px-3.5 py-2.5"
+                          >
+                            <span className="text-sm font-semibold text-amber-500">
+                              {"★".repeat(rating)}
+                              {"☆".repeat(5 - rating)}
+                            </span>
+                            <button
+                              type="button"
+                              disabled
+                              className={`relative h-6 w-11 rounded-full ${
+                                rating >= 4 ? "bg-brand" : "bg-black/10"
+                              }`}
+                              aria-label={`Ocena ${rating} — przykład`}
+                            >
+                              <span
+                                className={`absolute top-1 h-4 w-4 rounded-full bg-white ${
+                                  rating >= 4 ? "left-6" : "left-1"
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                }
+              />
+            )}
 
             <section className="mt-6 rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">

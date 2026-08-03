@@ -1,11 +1,30 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { BusinessFeatureLock } from "@/components/billing/business-feature-lock";
+import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { BrandLogo } from "@/components/brand/logo";
 import { AnalysisActionForm } from "@/components/dashboard/analysis-action-form";
+import { AnalysisContextAlert } from "@/components/dashboard/analysis-context-alert";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
-import { getPlanLabel, isPaidPlan, normalizePlan } from "@/lib/plans";
+import {
+  getPlanLabel,
+  currentPeriodMonth,
+  getAiLimit,
+  hasPlanCapability,
+  normalizePlan,
+} from "@/lib/plans";
+import {
+  projectAnalysisForPlan,
+  type StoredBusinessAnalysis,
+} from "@/lib/analysis-projection";
+import {
+  getAnalysisFeedback,
+  isStarterAnalysisLimitReached,
+  normalizeAnalysisErrorCode,
+} from "@/lib/analysis-feedback";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/dashboard/actions";
 
@@ -29,18 +48,7 @@ type AnalysisIcon =
   | "verification"
   | "warning";
 
-type BusinessAnalysis = {
-  created_at: string;
-  period_start: string;
-  period_end: string;
-  review_count: number;
-  score: number | null;
-  trend: "up" | "down" | "stable" | null;
-  summary: string;
-  praised_elements: unknown;
-  reported_problems: unknown;
-  recommendations: unknown;
-};
+type BusinessAnalysis = StoredBusinessAnalysis;
 
 type LegacyBusinessAnalysis = Omit<BusinessAnalysis, "score" | "trend">;
 
@@ -274,13 +282,35 @@ export default async function AnalysisPage({
   }
 
   const appPlan = normalizePlan(profile.plan);
-  const isBusiness = appPlan === "business";
-  const isPaid = isPaidPlan(appPlan);
+  const isBusiness = hasPlanCapability(appPlan, "fullAnalysis");
+  const isPaid = hasPlanCapability(appPlan, "basicAnalysis");
+  const analysesLimit = getAiLimit(appPlan, "analysis");
+  const { data: aiUsage, error: aiUsageError } = await supabase
+    .from("ai_usage")
+    .select("ai_analyses_used")
+    .eq("user_id", user.id)
+    .eq("period_month", currentPeriodMonth())
+    .maybeSingle();
+
+  if (aiUsageError) {
+    console.warn("Analysis usage lookup failed", aiUsageError);
+  }
+
+  const analysesUsedValue = Number(aiUsage?.ai_analyses_used ?? 0);
+  const analysesUsed = Number.isFinite(analysesUsedValue)
+    ? analysesUsedValue
+    : 0;
+  const starterAnalysisLimitReached = isStarterAnalysisLimitReached({
+    analysesLimit,
+    analysesUsed,
+    plan: appPlan,
+  });
   let analysis: BusinessAnalysis | null = null;
 
   if (isPaid) {
+    const analysisClient = createAdminClient();
     const selectLatestAnalysis = (columns: string) =>
-      supabase
+      analysisClient
         .from("ai_business_analyses")
         .select(columns)
         .eq("business_id", business.id)
@@ -328,15 +358,26 @@ export default async function AnalysisPage({
   const firstName =
     typeof profile.first_name === "string" ? profile.first_name.trim() : "";
   const displayName = firstName || user.email || "NU";
-  const strengths = stringList(analysis?.praised_elements);
-  const problems = stringList(analysis?.reported_problems);
-  const recommendations = stringList(analysis?.recommendations);
+  const analysisProjection = analysis
+    ? projectAnalysisForPlan(appPlan, analysis)
+    : null;
+  const fullAnalysis =
+    analysisProjection?.kind === "full" ? analysisProjection : null;
+  const strengths = stringList(fullAnalysis?.praised_elements);
+  const problems = stringList(fullAnalysis?.reported_problems);
+  const recommendations = stringList(fullAnalysis?.recommendations);
   const completeAnalysis =
-    analysis !== null &&
-    typeof analysis.score === "number" &&
-    analysis.trend !== null
-      ? analysis
+    fullAnalysis !== null &&
+    typeof fullAnalysis.score === "number" &&
+    typeof fullAnalysis.trend === "string"
+      ? fullAnalysis
       : null;
+  const basicAnalysis =
+    analysisProjection?.kind === "basic" ? analysisProjection : null;
+  const analysisErrorCode = normalizeAnalysisErrorCode(params.ai_error);
+  const analysisFeedback = analysisErrorCode
+    ? getAnalysisFeedback(analysisErrorCode, appPlan)
+    : null;
   const score = completeAnalysis?.score ?? 0;
   const trend = completeAnalysis?.trend
     ? trendDetails[completeAnalysis.trend]
@@ -344,6 +385,7 @@ export default async function AnalysisPage({
 
   return (
     <main className="min-h-screen bg-[#F7F7FA] text-ink">
+      <AnalysisContextAlert feedback={analysisFeedback} />
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col border-r border-black/[0.06] bg-white px-5 py-6 lg:flex">
         <BrandLogo />
         <div className="mt-9 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-3.5">
@@ -375,6 +417,12 @@ export default async function AnalysisPage({
                 <Link key={item.label} href={item.href} className={className}>
                   <Icon name={item.icon} className="h-[18px] w-[18px]" />
                   <span className="min-w-0 flex-1">{item.label}</span>
+                  <BusinessNavBadge
+                    show={
+                      item.label === "Weryfikacja autora" &&
+                      !hasPlanCapability(appPlan, "authorVerification")
+                    }
+                  />
                   {item.label === "Powiadomienia" ? (
                     <NotificationSidebarBadge businessId={business.id} />
                   ) : null}
@@ -386,6 +434,12 @@ export default async function AnalysisPage({
               <button key={item.label} type="button" className={className}>
                 <Icon name={item.icon} className="h-[18px] w-[18px]" />
                 <span className="min-w-0 flex-1">{item.label}</span>
+                <BusinessNavBadge
+                  show={
+                    item.label === "Weryfikacja autora" &&
+                    !hasPlanCapability(appPlan, "authorVerification")
+                  }
+                />
                 {item.label === "Powiadomienia" ? (
                   <NotificationSidebarBadge businessId={business.id} />
                 ) : null}
@@ -486,7 +540,7 @@ export default async function AnalysisPage({
             <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">
-                  Business Intelligence
+                  {isBusiness ? "Business Intelligence" : "Analiza podstawowa"}
                 </p>
                 <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
                   Analiza reputacji
@@ -498,22 +552,13 @@ export default async function AnalysisPage({
               </div>
               {isPaid && (
                 <AnalysisActionForm
-                  hasSummary={Boolean(completeAnalysis)}
+                  hasSummary={Boolean(analysisProjection)}
+                  isLimitReached={starterAnalysisLimitReached}
                   redirectTo="/analysis"
+                  usageLabel={`Wykorzystano ${analysesUsed} z ${analysesLimit} analiz w tym miesiącu`}
                 />
               )}
             </div>
-
-            {params.ai_error && (
-              <div className="mt-8 flex flex-col gap-3 rounded-[22px] border border-brand/15 bg-brand-soft p-5 text-sm font-semibold text-brand shadow-card sm:flex-row sm:items-center sm:justify-between">
-                <span>{params.ai_error}</span>
-                {appPlan === "starter" && (
-                  <Link href="/checkout?plan=business" className="rounded-xl bg-brand px-4 py-2.5 text-center text-xs font-semibold text-white transition hover:bg-[#4D4EE8]">
-                    Przejdź na Business
-                  </Link>
-                )}
-              </div>
-            )}
 
             {!isPaid ? (
               <section className="mt-8 overflow-hidden rounded-[28px] bg-ink p-7 text-white shadow-card sm:p-10">
@@ -539,6 +584,128 @@ export default async function AnalysisPage({
                   </div>
                 </div>
               </section>
+            ) : basicAnalysis ? (
+              <>
+                <section className="mt-8 grid gap-4 lg:grid-cols-[0.72fr_1.28fr]">
+                  <article className="relative overflow-hidden rounded-[28px] bg-ink p-7 text-white shadow-card">
+                    <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand/30 blur-3xl" />
+                    <div className="relative">
+                      <p className="text-xs font-medium uppercase tracking-[0.12em] text-white/40">
+                        Reputation Score
+                      </p>
+                      <div className="mt-7 flex items-center gap-5">
+                        <div
+                          className="grid h-32 w-32 shrink-0 place-items-center rounded-full p-3"
+                          style={{
+                            background: `conic-gradient(#5B5CF6 ${basicAnalysis.reputationScore}%, rgba(255,255,255,.1) ${basicAnalysis.reputationScore}% 100%)`,
+                          }}
+                        >
+                          <div className="grid h-full w-full place-items-center rounded-full bg-ink">
+                            <div className="text-center">
+                              <p className="text-4xl font-semibold tracking-[-0.05em]">
+                                {basicAnalysis.reputationScore}
+                              </p>
+                              <p className="mt-1 text-[10px] uppercase tracking-wider text-white/35">
+                                na 100
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-sm leading-6 text-white/55">
+                          Syntetyczna ocena reputacji z ostatnich 30 dni.
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+
+                  <article className="rounded-[28px] border border-black/[0.06] bg-white p-6 shadow-card sm:p-8">
+                    <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
+                      Podsumowanie podstawowe
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+                      Najważniejsze wnioski
+                    </h2>
+                    <p className="mt-5 text-sm leading-7 text-black/60">
+                      {basicAnalysis.summary}
+                    </p>
+                  </article>
+                </section>
+
+                <section className="mt-4 grid gap-4 lg:grid-cols-3">
+                  {[
+                    {
+                      eyebrow: "Najmocniejsza strona",
+                      value: basicAnalysis.strongestStrength,
+                    },
+                    {
+                      eyebrow: "Najważniejszy problem",
+                      value: basicAnalysis.keyProblem,
+                    },
+                    {
+                      eyebrow: "Wskazówka do działania",
+                      value: basicAnalysis.actionTip,
+                    },
+                  ].map((item) => (
+                    <article
+                      key={item.eyebrow}
+                      className="rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card"
+                    >
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-brand">
+                        {item.eyebrow}
+                      </p>
+                      <p className="mt-3 text-sm leading-6 text-black/60">
+                        {item.value}
+                      </p>
+                    </article>
+                  ))}
+                </section>
+
+                <p className="mt-5 text-center text-[11px] text-black/30">
+                  Analiza na podstawie {basicAnalysis.reviewCount} opinii ·{" "}
+                  {formatDate(basicAnalysis.createdAt)}
+                </p>
+
+                <BusinessFeatureLock
+                  className="mt-6 min-h-[460px]"
+                  title="Pełna analiza reputacji"
+                  description="Odblokuj pełną analizę reputacji, aby zobaczyć wszystkie problemy, trendy i szczegółowe rekomendacje."
+                  preview={
+                    <div className="p-5 sm:p-7">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
+                            Przykładowe rozszerzenie raportu
+                          </p>
+                          <h2 className="mt-1 text-xl font-semibold">
+                            Pełny obraz reputacji
+                          </h2>
+                        </div>
+                        <span className="rounded-full bg-brand-soft px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-brand">
+                          Przykład
+                        </span>
+                      </div>
+                      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        {[
+                          ["Trend opinii", "Wzrost jakości obsługi w ostatnich tygodniach."],
+                          ["Mocne strony", "Obsługa, atmosfera, jakość wykonania."],
+                          ["Wykryte problemy", "Czas oczekiwania i dostępność terminów."],
+                          ["Priorytet", "Usprawnij komunikację przed wizytą."],
+                          ["Rekomendacje", "Trzy szczegółowe działania na kolejny miesiąc."],
+                          ["Rozszerzone podsumowanie", "Pełny kontekst zmian i powtarzających się tematów."],
+                        ].map(([label, text]) => (
+                          <article
+                            key={label}
+                            className="rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4"
+                          >
+                            <p className="text-xs font-semibold text-brand">{label}</p>
+                            <p className="mt-2 text-sm leading-6 text-black/50">{text}</p>
+                          </article>
+                        ))}
+                      </div>
+                    </div>
+                  }
+                />
+              </>
             ) : completeAnalysis ? (
               <>
                 <section className="mt-8 grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
@@ -685,8 +852,9 @@ export default async function AnalysisPage({
                   Brak wygenerowanej analizy
                 </h2>
                 <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-black/45">
-                  Wygeneruj raport, aby zobaczyć wynik reputacji, trend, mocne
-                  strony, problemy i rekomendacje działań.
+                  {isBusiness
+                    ? "Wygeneruj raport, aby zobaczyć wynik reputacji, trend, mocne strony, problemy i rekomendacje działań."
+                    : "Wygeneruj analizę, aby poznać wynik reputacji, najmocniejszą stronę firmy, główny problem i konkretną wskazówkę do działania."}
                 </p>
               </section>
             )}

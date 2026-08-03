@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { GenerateReviewResponseState } from "@/components/dashboard/review-response-state";
 import { createClient } from "@/lib/supabase/server";
 import { generateReviewResponseForReview } from "@/app/dashboard/review-response-service";
+import { hasPlanCapability, normalizePlan } from "@/lib/plans";
 
 type GeneratedResponse = {
   responseText: string;
@@ -41,6 +42,31 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Musisz się zalogować." },
         { status: 401 },
+      );
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("plan")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (profileError || !profile) {
+      return NextResponse.json(
+        { error: "Nie udało się sprawdzić planu." },
+        { status: 500 },
+      );
+    }
+
+    if (
+      !hasPlanCapability(
+        normalizePlan(profile.plan),
+        "automaticReviewResponses",
+      )
+    ) {
+      return NextResponse.json(
+        { error: "Automatyczne odpowiedzi są dostępne w planie Business." },
+        { status: 403 },
       );
     }
 

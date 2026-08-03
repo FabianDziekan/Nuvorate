@@ -1,22 +1,79 @@
 export type AppPlan = "unpaid" | "starter" | "business";
 export type PaidPlan = "starter" | "business";
 export type AiUsageKind = "reply" | "analysis";
+export type PlanCapability =
+  | "basicDashboard"
+  | "reviews"
+  | "manualReviewResponses"
+  | "basicAnalysis"
+  | "notifications"
+  | "nfcBasicStats"
+  | "settings"
+  | "businessInsights"
+  | "fullAnalysis"
+  | "authorVerification"
+  | "automaticReviewResponses"
+  | "nfcAdvancedStats";
+
+type PlanCapabilities = Readonly<Record<PlanCapability, boolean>>;
+
+const unpaidCapabilities = {
+  basicDashboard: false,
+  reviews: false,
+  manualReviewResponses: false,
+  basicAnalysis: false,
+  notifications: false,
+  nfcBasicStats: false,
+  settings: false,
+  businessInsights: false,
+  fullAnalysis: false,
+  authorVerification: false,
+  automaticReviewResponses: false,
+  nfcAdvancedStats: false,
+} as const satisfies PlanCapabilities;
+
+const starterCapabilities = {
+  basicDashboard: true,
+  reviews: true,
+  manualReviewResponses: true,
+  basicAnalysis: true,
+  notifications: true,
+  nfcBasicStats: true,
+  settings: true,
+  businessInsights: false,
+  fullAnalysis: false,
+  authorVerification: false,
+  automaticReviewResponses: false,
+  nfcAdvancedStats: false,
+} as const satisfies PlanCapabilities;
+
+const businessCapabilities = {
+  ...starterCapabilities,
+  businessInsights: true,
+  fullAnalysis: true,
+  authorVerification: true,
+  automaticReviewResponses: true,
+  nfcAdvancedStats: true,
+} as const satisfies PlanCapabilities;
 
 export const planConfig = {
   unpaid: {
     label: "Unpaid",
     aiRepliesLimit: 0,
     aiAnalysesLimit: 0,
+    capabilities: unpaidCapabilities,
   },
   starter: {
     label: "Starter",
     aiRepliesLimit: 50,
     aiAnalysesLimit: 1,
+    capabilities: starterCapabilities,
   },
   business: {
     label: "Business",
     aiRepliesLimit: 350,
     aiAnalysesLimit: 50,
+    capabilities: businessCapabilities,
   },
 } satisfies Record<
   AppPlan,
@@ -24,12 +81,32 @@ export const planConfig = {
     label: string;
     aiRepliesLimit: number;
     aiAnalysesLimit: number;
+    capabilities: PlanCapabilities;
   }
 >;
 
+export class PlanCapabilityError extends Error {
+  readonly capability: PlanCapability;
+  readonly plan: AppPlan;
+
+  constructor(plan: AppPlan, capability: PlanCapability) {
+    super(`Plan ${plan} nie udostępnia funkcji ${capability}.`);
+    this.name = "PlanCapabilityError";
+    this.plan = plan;
+    this.capability = capability;
+  }
+}
+
 export function normalizePlan(plan: unknown): AppPlan {
-  if (plan === "starter" || plan === "business" || plan === "unpaid") {
-    return plan;
+  const normalizedPlan =
+    typeof plan === "string" ? plan.trim().toLowerCase() : plan;
+
+  if (
+    normalizedPlan === "starter" ||
+    normalizedPlan === "business" ||
+    normalizedPlan === "unpaid"
+  ) {
+    return normalizedPlan;
   }
 
   return "unpaid";
@@ -39,8 +116,27 @@ export function getPlanLabel(plan: unknown) {
   return planConfig[normalizePlan(plan)].label;
 }
 
-export function isPaidPlan(plan: unknown): plan is PaidPlan {
-  return plan === "starter" || plan === "business";
+export function isPaidPlan(plan: unknown) {
+  const normalizedPlan = normalizePlan(plan);
+  return normalizedPlan === "starter" || normalizedPlan === "business";
+}
+
+export function hasPlanCapability(
+  plan: unknown,
+  capability: PlanCapability,
+) {
+  return planConfig[normalizePlan(plan)].capabilities[capability];
+}
+
+export function requirePlanCapability(
+  plan: unknown,
+  capability: PlanCapability,
+) {
+  const normalizedPlan = normalizePlan(plan);
+
+  if (!hasPlanCapability(normalizedPlan, capability)) {
+    throw new PlanCapabilityError(normalizedPlan, capability);
+  }
 }
 
 export function getAiLimit(plan: AppPlan, usageKind: AiUsageKind) {

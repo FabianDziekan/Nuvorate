@@ -2,10 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand/logo";
+import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
 import { SettingsForm } from "@/components/settings/settings-form";
-import { getPlanLabel, normalizePlan } from "@/lib/plans";
+import {
+  getPlanLabel,
+  hasPlanCapability,
+  normalizePlan,
+} from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/dashboard/actions";
 
@@ -247,6 +252,12 @@ export default async function SettingsPage() {
                 <Link key={item.label} href={item.href} className={className}>
                   <Icon name={item.icon} className="h-[18px] w-[18px]" />
                   <span className="min-w-0 flex-1">{item.label}</span>
+                  <BusinessNavBadge
+                    show={
+                      item.label === "Weryfikacja autora" &&
+                      !hasPlanCapability(appPlan, "authorVerification")
+                    }
+                  />
                   {item.label === "Powiadomienia" ? (
                     <NotificationSidebarBadge businessId={business.id} />
                   ) : null}
@@ -258,6 +269,12 @@ export default async function SettingsPage() {
               <button key={item.label} type="button" className={className}>
                 <Icon name={item.icon} className="h-[18px] w-[18px]" />
                 <span className="min-w-0 flex-1">{item.label}</span>
+                <BusinessNavBadge
+                  show={
+                    item.label === "Weryfikacja autora" &&
+                    !hasPlanCapability(appPlan, "authorVerification")
+                  }
+                />
                 {item.label === "Powiadomienia" ? (
                   <NotificationSidebarBadge businessId={business.id} />
                 ) : null}

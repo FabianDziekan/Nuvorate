@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CheckoutActivationStatus } from "@/components/billing/checkout-activation-status";
+import { BusinessFeatureLock } from "@/components/billing/business-feature-lock";
+import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { PlanPicker } from "@/components/billing/plan-picker";
 import { BrandLogo } from "@/components/brand/logo";
 import { AnalysisPreviewCard } from "@/components/dashboard/analysis-preview-card";
+import { AnalysisContextAlert } from "@/components/dashboard/analysis-context-alert";
 import { GoogleSyncButton } from "@/components/dashboard/google-sync-button";
 import { MonthlyGoalCard } from "@/components/dashboard/monthly-goal-card";
 import { ReviewResponseForm } from "@/components/dashboard/review-response-form";
@@ -18,17 +21,29 @@ import {
   currentPeriodMonth,
   getAiLimit,
   getPlanLabel,
-  isPaidPlan,
+  hasPlanCapability,
   normalizePlan,
   type AppPlan,
 } from "@/lib/plans";
 import { hasPriceIdForPlan } from "@/lib/stripe";
+import {
+  getAnalysisFeedback,
+  isStarterAnalysisLimitReached,
+  normalizeAnalysisErrorCode,
+} from "@/lib/analysis-feedback";
+import {
+  projectAnalysisForPlan,
+  type StoredBusinessAnalysis,
+} from "@/lib/analysis-projection";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "./actions";
 
 export const metadata: Metadata = {
   title: "Dashboard | NuvoRate",
 };
+
+export const dynamic = "force-dynamic";
 
 type DashboardIcon =
   | "analysis"
@@ -192,15 +207,6 @@ type ReviewActivityTrendPoint = {
   tooltipLabel: string;
   x: number;
   height: number;
-};
-
-type BusinessAnalysis = {
-  created_at: string;
-  review_count: number;
-  summary: string;
-  praised_elements: unknown;
-  reported_problems: unknown;
-  recommendations: unknown;
 };
 
 type AiUsage = {
@@ -759,8 +765,11 @@ function AiUsageCard({
             Limity planu
           </p>
           <h2 className="mt-1 text-xl font-semibold tracking-tight">
-            Okres rozliczeniowy
+            Miesięczne limity planu
           </h2>
+          <p className="mt-2 text-xs leading-5 text-black/40">
+            Limity odnawiają się na początku każdego miesiąca.
+          </p>
         </div>
         <span className="self-start rounded-full bg-brand-soft px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-brand">
           Plan {getPlanLabel(plan)}
@@ -937,7 +946,6 @@ export default async function DashboardPage({
   });
   const trendRange = selectedRange.preset;
   const dashboardMessage =
-    params.ai_error ??
     params.billing_error ??
     (isCheckoutSuccess
       ? "Plan został aktywowany. Możesz już korzystać z NuvoRate."
@@ -989,7 +997,7 @@ export default async function DashboardPage({
   }
 
   const appPlan = normalizePlan(profile.plan);
-  const isPaid = isPaidPlan(appPlan);
+  const isPaid = hasPlanCapability(appPlan, "basicDashboard");
   const businessName = business.name ?? "Twoja firma";
   const businessIndustry = business.industry ?? "Branża nieuzupełniona";
   const businessCity = business.city ?? "Miasto nieuzupełnione";
@@ -1090,6 +1098,10 @@ export default async function DashboardPage({
   }
 
   const now = new Date();
+  const canUseBusinessInsights = hasPlanCapability(
+    appPlan,
+    "businessInsights",
+  );
   const currentMonthStart = startOfCurrentMonth(now);
   const previousMonthStart = startOfPreviousMonth(now);
   const previousMonthEnd = endOfPreviousMonth(now);
@@ -1120,24 +1132,30 @@ export default async function DashboardPage({
       .eq("business_id", business.id)
       .gte("created_at", selectedRange.start.toISOString())
       .lte("created_at", selectedRange.end.toISOString()),
-    supabase
-      .from("reviews")
-      .select("created_at")
-      .eq("business_id", business.id)
-      .gte("created_at", selectedRange.start.toISOString())
-      .lte("created_at", selectedRange.end.toISOString()),
-    supabase
-      .from("reviews")
-      .select("created_at")
-      .eq("business_id", business.id)
-      .gte("created_at", currentMonthStart.toISOString())
-      .lte("created_at", now.toISOString()),
-    supabase
-      .from("reviews")
-      .select("created_at")
-      .eq("business_id", business.id)
-      .gte("created_at", previousMonthStart.toISOString())
-      .lte("created_at", previousMonthEnd.toISOString()),
+    canUseBusinessInsights
+      ? supabase
+          .from("reviews")
+          .select("created_at")
+          .eq("business_id", business.id)
+          .gte("created_at", selectedRange.start.toISOString())
+          .lte("created_at", selectedRange.end.toISOString())
+      : Promise.resolve({ data: [], error: null }),
+    canUseBusinessInsights
+      ? supabase
+          .from("reviews")
+          .select("created_at")
+          .eq("business_id", business.id)
+          .gte("created_at", currentMonthStart.toISOString())
+          .lte("created_at", now.toISOString())
+      : Promise.resolve({ data: [], error: null }),
+    canUseBusinessInsights
+      ? supabase
+          .from("reviews")
+          .select("created_at")
+          .eq("business_id", business.id)
+          .gte("created_at", previousMonthStart.toISOString())
+          .lte("created_at", previousMonthEnd.toISOString())
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   if (
@@ -1155,25 +1173,32 @@ export default async function DashboardPage({
   const [
     { data: reviewResponses, error: reviewResponsesError },
     { data: businessAnalysis, error: businessAnalysisError },
+    { count: nfcScans, error: nfcScansError },
   ] = await Promise.all([
     supabase
       .from("ai_review_responses")
       .select("review_id, response_text")
       .eq("business_id", business.id),
-    supabase
+    createAdminClient()
       .from("ai_business_analyses")
       .select(
-        "created_at, review_count, summary, praised_elements, reported_problems, recommendations",
+        "created_at, period_start, period_end, review_count, score, trend, summary, praised_elements, reported_problems, recommendations",
       )
       .eq("business_id", business.id)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    supabase
+      .from("nfc_scans")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", business.id)
+      .gte("scanned_at", selectedRange.start.toISOString())
+      .lte("scanned_at", selectedRange.end.toISOString()),
   ]);
 
-  if (reviewResponsesError || businessAnalysisError) {
+  if (reviewResponsesError || businessAnalysisError || nfcScansError) {
     throw new Error(
-      "Nie udało się odczytać danych odpowiedzi na opinie i analiz reputacji. Uruchom migrację 003_ai_features.sql w Supabase.",
+      "Nie udało się odczytać danych dashboardu. Uruchom wymagane migracje Supabase.",
     );
   }
 
@@ -1204,7 +1229,7 @@ export default async function DashboardPage({
       ? Math.round((positiveReviews / totalReviews) * 100)
       : 0;
   const businessInsights =
-    appPlan === "business"
+    canUseBusinessInsights
       ? buildBusinessInsights(
           (insightReviews ?? []) as ReviewInsightSource[],
           (currentMonthReviews ?? []) as ReviewInsightSource[],
@@ -1250,9 +1275,9 @@ export default async function DashboardPage({
     },
     {
       label: "Skany NFC",
-      value: "0",
-      change: "Śledzenie NFC",
-      detail: "skany z plakietek i kart",
+      value: (nfcScans ?? 0).toLocaleString("pl-PL"),
+      change: selectedRange.displayLabel,
+      detail: "skany z plakietki NFC",
       icon: "nfc" as const,
     },
   ];
@@ -1267,25 +1292,23 @@ export default async function DashboardPage({
           : null,
       ]),
   );
-  const latestAnalysis = businessAnalysis as BusinessAnalysis | null;
-  const praisedElements = Array.isArray(latestAnalysis?.praised_elements)
-    ? latestAnalysis.praised_elements.filter(
-        (item): item is string => typeof item === "string",
-      )
-    : [];
-  const reportedProblems = Array.isArray(latestAnalysis?.reported_problems)
-    ? latestAnalysis.reported_problems.filter(
-        (item): item is string => typeof item === "string",
-      )
-    : [];
-  const recommendations = Array.isArray(latestAnalysis?.recommendations)
-    ? latestAnalysis.recommendations.filter(
-        (item): item is string => typeof item === "string",
-      )
-    : [];
+  const latestAnalysis = businessAnalysis as StoredBusinessAnalysis | null;
+  const dashboardAnalysis = latestAnalysis
+    ? projectAnalysisForPlan(appPlan, latestAnalysis)
+    : null;
+  const analysisErrorCode = normalizeAnalysisErrorCode(params.ai_error);
+  const analysisFeedback = analysisErrorCode
+    ? getAnalysisFeedback(analysisErrorCode, appPlan)
+    : null;
+  const starterAnalysisLimitReached = isStarterAnalysisLimitReached({
+    analysesLimit: aiAnalysesLimit,
+    analysesUsed: aiAnalysesUsed,
+    plan: appPlan,
+  });
 
   return (
     <main className="min-h-screen bg-[#F7F7FA] text-ink">
+      <AnalysisContextAlert feedback={analysisFeedback} />
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col border-r border-black/[0.06] bg-white px-5 py-6 lg:flex">
         <BrandLogo />
         <div className="mt-9 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-3.5">
@@ -1314,6 +1337,12 @@ export default async function DashboardPage({
                 >
                   <Icon name={item.icon} className="h-[18px] w-[18px]" />
                   <span className="min-w-0 flex-1">{item.label}</span>
+                  <BusinessNavBadge
+                    show={
+                      item.label === "Weryfikacja autora" &&
+                      !hasPlanCapability(appPlan, "authorVerification")
+                    }
+                  />
                   {item.label === "Powiadomienia" ? (
                     <NotificationSidebarBadge businessId={business.id} />
                   ) : null}
@@ -1325,6 +1354,12 @@ export default async function DashboardPage({
               <button key={item.label} type="button" className={className}>
                 <Icon name={item.icon} className="h-[18px] w-[18px]" />
                 <span className="min-w-0 flex-1">{item.label}</span>
+                <BusinessNavBadge
+                  show={
+                    item.label === "Weryfikacja autora" &&
+                    !hasPlanCapability(appPlan, "authorVerification")
+                  }
+                />
                 {item.label === "Powiadomienia" ? (
                   <NotificationSidebarBadge businessId={business.id} />
                 ) : null}
@@ -1449,11 +1484,6 @@ export default async function DashboardPage({
               {dashboardMessage && (
                 <div className="flex flex-col gap-3 rounded-[22px] border border-brand/15 bg-brand-soft p-5 text-sm font-semibold text-brand shadow-card sm:col-span-2 sm:flex-row sm:items-center sm:justify-between xl:col-span-4">
                   <span>{dashboardMessage}</span>
-                  {params.ai_error && appPlan === "starter" && (
-                    <Link href="/checkout?plan=business" className="rounded-xl bg-brand px-4 py-2.5 text-center text-xs font-semibold text-white transition hover:bg-[#4D4EE8]">
-                      Przejdź na Business
-                    </Link>
-                  )}
                 </div>
               )}
               {metrics.map((metric) => (
@@ -1571,15 +1601,59 @@ export default async function DashboardPage({
                     </div>
                   </div>
                 )}
+                {!canUseBusinessInsights ? (
+                  <BusinessFeatureLock
+                    className="mt-4 min-h-[300px] border-t"
+                    title="Business Insights"
+                    description="Odkryj najlepszy dzień, porównuj wyniki miesięczne i kontroluj realizację celu opinii."
+                    preview={
+                      <div className="p-4 sm:p-5">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
+                              Business Insights
+                            </p>
+                            <p className="mt-1 text-sm text-black/45">
+                              Przykładowy podgląd możliwości planu Business
+                            </p>
+                          </div>
+                          <span className="rounded-full bg-brand-soft px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-brand">
+                            Przykład
+                          </span>
+                        </div>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                          {[
+                            ["Najlepszy dzień", "Sobota", "8 nowych opinii"],
+                            ["Ten miesiąc", "+24%", "Wzrost względem poprzedniego"],
+                            ["Cel miesiąca", "18 / 25", "72% realizacji celu"],
+                          ].map(([label, value, detail]) => (
+                            <article
+                              key={label}
+                              className="rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4"
+                            >
+                              <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">
+                                {label}
+                              </p>
+                              <p className="mt-3 text-lg font-semibold tracking-tight">
+                                {value}
+                              </p>
+                              <p className="mt-2 text-xs leading-5 text-black/45">
+                                {detail}
+                              </p>
+                            </article>
+                          ))}
+                        </div>
+                      </div>
+                    }
+                  />
+                ) : null}
               </article>
 
               <AnalysisPreviewCard
-                createdAt={latestAnalysis?.created_at}
-                praisedElements={praisedElements}
-                recommendations={recommendations}
-                reportedProblems={reportedProblems}
-                reviewCount={latestAnalysis?.review_count}
-                summary={latestAnalysis?.summary}
+                analysis={dashboardAnalysis}
+                isLimitReached={starterAnalysisLimitReached}
+                analysesUsed={aiAnalysesUsed}
+                analysesLimit={aiAnalysesLimit}
               />
             </section>
 

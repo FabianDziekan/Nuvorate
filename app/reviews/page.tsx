@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand/logo";
+import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
 import { Pagination } from "@/components/ui/pagination";
@@ -9,7 +10,11 @@ import {
   RatingFilter,
   ratingFilterValues,
 } from "@/components/ui/rating-filter";
-import { getPlanLabel, isPaidPlan, normalizePlan } from "@/lib/plans";
+import {
+  getPlanLabel,
+  hasPlanCapability,
+  normalizePlan,
+} from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/dashboard/actions";
 
@@ -255,7 +260,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
     typeof profile.first_name === "string" ? profile.first_name.trim() : "";
   const displayName = firstName || user.email || "NU";
 
-  if (!isPaidPlan(appPlan)) {
+  if (!hasPlanCapability(appPlan, "reviews")) {
     return (
       <main className="min-h-screen bg-[#F7F7FA] text-ink">
         <div className="flex min-h-screen items-center justify-center px-5 py-12">
@@ -361,6 +366,12 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                 <Link key={item.label} href={item.href} className={className}>
                   <Icon name={item.icon} className="h-[18px] w-[18px]" />
                   <span className="min-w-0 flex-1">{item.label}</span>
+                  <BusinessNavBadge
+                    show={
+                      item.label === "Weryfikacja autora" &&
+                      !hasPlanCapability(appPlan, "authorVerification")
+                    }
+                  />
                   {item.label === "Powiadomienia" ? (
                     <NotificationSidebarBadge businessId={business.id} />
                   ) : null}
@@ -372,6 +383,12 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
               <button key={item.label} type="button" className={className}>
                 <Icon name={item.icon} className="h-[18px] w-[18px]" />
                 <span className="min-w-0 flex-1">{item.label}</span>
+                <BusinessNavBadge
+                  show={
+                    item.label === "Weryfikacja autora" &&
+                    !hasPlanCapability(appPlan, "authorVerification")
+                  }
+                />
                 {item.label === "Powiadomienia" ? (
                   <NotificationSidebarBadge businessId={business.id} />
                 ) : null}

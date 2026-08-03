@@ -13,13 +13,15 @@ export const pricingPlans = [
     title: "NuvoRate Starter",
     subtitle: "Dobry początek",
     description:
-      "Dla małych firm, które chcą systematycznie zbierać i monitorować opinie.",
+      "Dla małych firm, które chcą zacząć budować swoją reputację i odpowiadać na opinie z jednego miejsca.",
     features: [
       "50 odpowiedzi na opinie miesięcznie",
-      "1 analiza reputacji miesięcznie",
-      "Podstawowy dashboard reputacji",
-      "Statystyki i trendy opinii",
-      "Podgląd skanów NFC",
+      "1 analiza opinii miesięcznie",
+      "Dashboard z podstawowymi statystykami",
+      "Monitorowanie nowych opinii Google",
+      "Powiadomienia o nowych opiniach",
+      "Liczba skanów plakietek NFC",
+      "Obsługa plakietek NFC i linków do opinii",
     ],
     prices: {
       monthly: {
@@ -42,14 +44,17 @@ export const pricingPlans = [
     title: "NuvoRate Business",
     subtitle: "Pełna kontrola reputacji",
     description:
-      "Dla firm, które potrzebują głębszych wniosków i inteligentnej analizy.",
+      "Pełne narzędzie do zarządzania reputacją dla firm, które chcą rozwijać swoją obecność w Google i oszczędzać czas.",
     featuredBadge: "Najczęściej wybierany",
     features: [
       "350 odpowiedzi na opinie miesięcznie",
-      "50 analiz reputacji miesięcznie",
-      "Wszystko z planu Starter",
-      "Inteligentna analiza opinii",
-      "Zaawansowane alerty i filtry",
+      "50 analiz opinii miesięcznie",
+      "Dashboard z zaawansowanymi statystykami",
+      "Zaawansowana analiza opinii",
+      "Weryfikacja autorów opinii",
+      "Statystyki skanów NFC",
+      "Obsługa wielu lokalizacji",
+      "Wszystkie funkcje planu Starter",
     ],
     prices: {
       monthly: {

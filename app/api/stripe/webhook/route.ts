@@ -56,6 +56,13 @@ function subscriptionPeriodEnd(subscription: StripeSubscription) {
   return periodEnd ? new Date(periodEnd * 1000).toISOString() : null;
 }
 
+function withUpdatedAt(values: ProfileUpdate) {
+  return {
+    ...values,
+    updated_at: new Date().toISOString(),
+  };
+}
+
 function invoiceSubscriptionId(invoice: StripeInvoice) {
   return stripeId(
     invoice.subscription ??
@@ -95,21 +102,24 @@ async function updateProfileBy(
         .eq(column, value)
         .maybeSingle();
 
-  console.log("EVENT:", context?.event ?? "brak");
-  console.log("USER_ID:", context?.userId ?? profileLookup.data?.user_id ?? "brak");
-  console.log("PLAN:", context?.plan ?? values.plan ?? profileLookup.data?.plan ?? "brak");
-  console.log("ROWS UPDATED:", rowsUpdated);
-  console.log("UPDATE ERROR:", error ?? "brak");
   if (error) {
-    console.error("SUPABASE UPDATE ERROR:", error);
+    console.error("Stripe webhook profile update failed", {
+      column,
+      event: context?.event,
+      plan: context?.plan ?? values.plan,
+      rowsUpdated,
+      supabaseError: error,
+      userId: context?.userId ?? null,
+    });
   }
   if (profileLookup.error) {
-    console.error("SUPABASE SELECT PROFILE ERROR:", profileLookup.error);
+    console.error("Stripe webhook profile lookup failed after update", {
+      column,
+      event: context?.event,
+      supabaseError: profileLookup.error,
+      userId: context?.userId ?? null,
+    });
   }
-  console.log("SELECT PROFILE:", {
-    plan: profileLookup.data?.plan ?? null,
-    subscription_status: profileLookup.data?.subscription_status ?? null,
-  });
 
   if (error) {
     throw new Error(`Supabase update failed: ${error.message}`);
@@ -120,27 +130,6 @@ async function updateProfileBy(
     rowsUpdated,
     updated: rowsUpdated > 0,
   } satisfies ProfileUpdateResult;
-}
-
-async function updateProfileByStripeCustomer(
-  customerId: string,
-  values: ProfileUpdate,
-  context?: ProfileUpdateLogContext,
-) {
-  const result = await updateProfileBy(
-    "stripe_customer_id",
-    customerId,
-    values,
-    context,
-  );
-
-  if (result.updated) {
-    return true;
-  }
-
-  throw new Error(
-    `Nie znaleziono profilu dla stripe_customer_id=${customerId}.`,
-  );
 }
 
 async function tryUpdateProfileByStripeCustomer(
@@ -197,6 +186,19 @@ async function updateProfileFromStripeIds({
     }
   }
 
+  if (customerId) {
+    const result = await updateProfileBy(
+      "stripe_customer_id",
+      customerId,
+      values,
+      context,
+    );
+
+    if (result.updated) {
+      return result;
+    }
+  }
+
   throw new Error(
     `Event Stripe bez metadata.user_id nie może bezpiecznie zmienić profilu. customer=${customerId ?? "brak"}, subscription=${subscriptionId ?? "brak"}.`,
   );
@@ -204,7 +206,8 @@ async function updateProfileFromStripeIds({
 
 async function handleCheckoutCompleted(session: StripeCheckoutSession) {
   const eventName = "checkout.session.completed";
-  const userId = session.metadata?.user_id;
+  const userId =
+    session.metadata?.user_id ?? session.client_reference_id ?? undefined;
   const metadataPlan = session.metadata?.plan ?? null;
   const customerId = stripeId(session.customer);
   const subscriptionId = stripeId(session.subscription);
@@ -220,12 +223,7 @@ async function handleCheckoutCompleted(session: StripeCheckoutSession) {
 
   const status = subscription?.status ?? "active";
 
-  console.log("USER_ID:", userId ?? "brak");
-  console.log("PLAN:", plan ?? "brak");
-  console.log("CUSTOMER_ID:", customerId ?? "brak");
-  console.log("SUBSCRIPTION_ID:", subscriptionId ?? "brak");
-
-  const updateResult = await updateProfileFromStripeIds({
+  await updateProfileFromStripeIds({
     customerId,
     subscriptionId,
     userId,
@@ -234,19 +232,16 @@ async function handleCheckoutCompleted(session: StripeCheckoutSession) {
       plan,
       userId,
     },
-    values: {
-      plan: isActiveSubscriptionStatus(status) ? plan : "starter",
+    values: withUpdatedAt({
+      plan: isActiveSubscriptionStatus(status) ? plan : "unpaid",
       stripe_customer_id: customerId,
       stripe_subscription_id: subscriptionId,
       subscription_status: status,
       current_period_end: subscription
         ? subscriptionPeriodEnd(subscription)
         : null,
-    },
+    }),
   });
-
-  console.log("PROFILE UPDATED:", updateResult.updated);
-  console.log("ROWS UPDATED:", updateResult.rowsUpdated);
 }
 
 async function handleSubscriptionChanged(
@@ -268,13 +263,8 @@ async function handleSubscriptionChanged(
     current_period_end: subscriptionPeriodEnd(subscription),
   };
 
-  console.log("USER_ID:", userId || "brak");
-  console.log("PLAN:", plan ?? "brak");
-  console.log("CUSTOMER_ID:", customerId);
-  console.log("SUBSCRIPTION_ID:", subscription.id);
-
   if (isUnpaidSubscriptionStatus(subscription.status)) {
-    const updateResult = await updateProfileFromStripeIds({
+    await updateProfileFromStripeIds({
       customerId,
       subscriptionId: subscription.id,
       userId,
@@ -283,20 +273,17 @@ async function handleSubscriptionChanged(
         plan: "unpaid",
         userId,
       },
-      values: {
-      ...subscriptionValues,
-      plan: "unpaid",
-      },
+      values: withUpdatedAt({
+        ...subscriptionValues,
+        plan: "unpaid",
+      }),
     });
-
-    console.log("PROFILE UPDATED:", updateResult.updated);
-    console.log("ROWS UPDATED:", updateResult.rowsUpdated);
 
     return;
   }
 
   if (!isActiveSubscriptionStatus(subscription.status)) {
-    const updateResult = await updateProfileFromStripeIds({
+    await updateProfileFromStripeIds({
       customerId,
       subscriptionId: subscription.id,
       userId,
@@ -305,11 +292,8 @@ async function handleSubscriptionChanged(
         plan,
         userId,
       },
-      values: subscriptionValues,
+      values: withUpdatedAt(subscriptionValues),
     });
-
-    console.log("PROFILE UPDATED:", updateResult.updated);
-    console.log("ROWS UPDATED:", updateResult.rowsUpdated);
 
     return;
   }
@@ -318,7 +302,7 @@ async function handleSubscriptionChanged(
     throw new Error("Aktywna subskrypcja Stripe nie zawiera rozpoznawalnego planu.");
   }
 
-  const updateResult = await updateProfileFromStripeIds({
+  await updateProfileFromStripeIds({
     customerId,
     subscriptionId: subscription.id,
     userId,
@@ -327,14 +311,11 @@ async function handleSubscriptionChanged(
       plan,
       userId,
     },
-    values: {
-    ...subscriptionValues,
-    plan,
-    },
+    values: withUpdatedAt({
+      ...subscriptionValues,
+      plan,
+    }),
   });
-
-  console.log("PROFILE UPDATED:", updateResult.updated);
-  console.log("ROWS UPDATED:", updateResult.rowsUpdated);
 }
 
 async function handleSubscriptionDeleted(subscription: StripeSubscription) {
@@ -345,15 +326,19 @@ async function handleSubscriptionDeleted(subscription: StripeSubscription) {
     throw new Error("Usunięta subskrypcja Stripe nie zawiera customer id.");
   }
 
-  const updated = await tryUpdateProfileByStripeCustomer(customerId, {
-    plan: "unpaid",
-    stripe_subscription_id: subscription.id,
-    subscription_status: subscription.status || "canceled",
-    current_period_end: subscriptionPeriodEnd(subscription),
-  }, {
-    event: eventName,
-    plan: "unpaid",
-  });
+  const updated = await tryUpdateProfileByStripeCustomer(
+    customerId,
+    withUpdatedAt({
+      plan: "unpaid",
+      stripe_subscription_id: subscription.id,
+      subscription_status: subscription.status || "canceled",
+      current_period_end: subscriptionPeriodEnd(subscription),
+    }),
+    {
+      event: eventName,
+      plan: "unpaid",
+    },
+  );
 
   if (!updated) {
     console.warn(
@@ -378,12 +363,7 @@ async function handleInvoicePaymentSucceeded(invoice: StripeInvoice) {
     throw new Error("Opłacona subskrypcja nie zawiera rozpoznawalnego planu.");
   }
 
-  console.log("USER_ID:", subscription.metadata.user_id || "brak");
-  console.log("PLAN:", plan);
-  console.log("CUSTOMER_ID:", customerId);
-  console.log("SUBSCRIPTION_ID:", subscription.id);
-
-  const updateResult = await updateProfileFromStripeIds({
+  await updateProfileFromStripeIds({
     customerId,
     subscriptionId: subscription.id,
     userId: subscription.metadata.user_id,
@@ -392,17 +372,14 @@ async function handleInvoicePaymentSucceeded(invoice: StripeInvoice) {
       plan,
       userId: subscription.metadata.user_id,
     },
-    values: {
-      plan: isActiveSubscriptionStatus(subscription.status) ? plan : "starter",
+    values: withUpdatedAt({
+      plan: isActiveSubscriptionStatus(subscription.status) ? plan : "unpaid",
       stripe_customer_id: customerId,
       stripe_subscription_id: subscription.id,
       subscription_status: subscription.status,
       current_period_end: subscriptionPeriodEnd(subscription),
-    },
+    }),
   });
-
-  console.log("PROFILE UPDATED:", updateResult.updated);
-  console.log("ROWS UPDATED:", updateResult.rowsUpdated);
 }
 
 async function handleInvoicePaymentFailed(invoice: StripeInvoice) {
@@ -424,10 +401,10 @@ async function handleInvoicePaymentFailed(invoice: StripeInvoice) {
       plan: "unpaid",
       userId: subscription?.metadata.user_id,
     },
-    values: {
+    values: withUpdatedAt({
       plan: "unpaid",
       subscription_status: "past_due",
-    },
+    }),
   });
 }
 
@@ -449,11 +426,11 @@ async function handleCheckoutExpired(session: StripeCheckoutSession) {
       plan: "unpaid",
       userId: session.metadata?.user_id,
     },
-    values: {
+    values: withUpdatedAt({
       plan: "unpaid",
       stripe_customer_id: customerId,
       subscription_status: "incomplete_expired",
-    },
+    }),
   });
 }
 
@@ -480,15 +457,13 @@ export async function POST(request: Request) {
   }
 
   try {
-  if (event.type === "checkout.session.completed") {
-      console.log("EVENT:", event.type);
+    if (event.type === "checkout.session.completed") {
       await handleCheckoutCompleted(
         event.data.object as StripeCheckoutSession,
       );
     }
 
     if (event.type === "checkout.session.expired") {
-      console.log("EVENT:", event.type);
       await handleCheckoutExpired(event.data.object as StripeCheckoutSession);
     }
 
@@ -496,7 +471,6 @@ export async function POST(request: Request) {
       event.type === "customer.subscription.created" ||
       event.type === "customer.subscription.updated"
     ) {
-      console.log("EVENT:", event.type);
       await handleSubscriptionChanged(
         event.data.object as StripeSubscription,
         event.type,
@@ -504,17 +478,17 @@ export async function POST(request: Request) {
     }
 
     if (event.type === "customer.subscription.deleted") {
-      console.log("EVENT:", event.type);
       await handleSubscriptionDeleted(event.data.object as StripeSubscription);
     }
 
-    if (event.type === "invoice.payment_succeeded") {
-      console.log("EVENT:", event.type);
+    if (
+      event.type === "invoice.payment_succeeded" ||
+      event.type === "invoice.paid"
+    ) {
       await handleInvoicePaymentSucceeded(event.data.object as StripeInvoice);
     }
 
     if (event.type === "invoice.payment_failed") {
-      console.log("EVENT:", event.type);
       await handleInvoicePaymentFailed(event.data.object as StripeInvoice);
     }
 
@@ -524,6 +498,11 @@ export async function POST(request: Request) {
       error instanceof Error
         ? error.message
         : "Nie udało się obsłużyć webhooka Stripe.";
+
+    console.error("Stripe webhook handling failed", {
+      eventType: event.type,
+      message,
+    });
 
     return NextResponse.json({ error: message }, { status: 500 });
   }

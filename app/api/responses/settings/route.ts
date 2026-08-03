@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasPlanCapability, normalizePlan } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 
 export async function PATCH(request: Request) {
@@ -22,10 +23,42 @@ export async function PATCH(request: Request) {
     const supabase = await createClient();
     const { data: userData } = await supabase.auth.getUser();
 
-    if (!userData.user) {
+    const user = userData.user;
+
+    if (!user) {
       return NextResponse.json(
         { error: "Musisz się zalogować." },
         { status: 401 },
+      );
+    }
+
+    const [{ data: profile }, { data: business }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("plan")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("businesses")
+        .select("id")
+        .eq("id", businessId)
+        .eq("owner_id", user.id)
+        .maybeSingle(),
+    ]);
+
+    if (!business) {
+      return NextResponse.json({ error: "Nie znaleziono firmy." }, { status: 404 });
+    }
+
+    if (
+      !hasPlanCapability(
+        normalizePlan(profile?.plan),
+        "automaticReviewResponses",
+      )
+    ) {
+      return NextResponse.json(
+        { error: "Automatyczne odpowiedzi są dostępne w planie Business." },
+        { status: 403 },
       );
     }
 
