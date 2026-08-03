@@ -6,6 +6,18 @@ tags:
 
 # Changelog
 
+## 2026-08-03
+
+### NFC: tracking, redirect i wiele plakietek
+
+- Dodano trwały model NFC: `nfc_tags`, `nfc_scans`, publiczną trasę `/r/[token]` oraz serwerowe przekierowanie `307` do Google Reviews.
+- Każdy skan jest przypisany do konkretnej plakietki i firmy, a jego dane zasilają zakładkę NFC oraz Dashboard.
+- Dodano obsługę wielu plakietek NFC na firmę — z osobnym tokenem, linkiem, statystykami, testem oraz możliwością włączenia i wyłączenia.
+- Dodano panel „Dodaj plakietkę”, szczegóły plakietki, kopiowanie linku i instrukcję zapisu na NFC.
+- Przebudowano ekran NFC: cztery czytelne statystyki, lista plakietek oraz pięciokrokowy onboarding.
+- Ujednolicono ikonografię NFC na symbol fal radiowych.
+- Dodano migrację `017_multiple_nfc_tags.sql`; należy ją uruchomić po `016_nfc_tags_and_scans.sql`.
+
 ## 2026-07-09
 
 - Dodano `profiles.first_name`, pole imienia w rejestracji i edycję imienia w `/settings`.

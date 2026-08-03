@@ -50,24 +50,12 @@ export async function createNfcTag(
   const context = await getOwnedNfcBusiness();
   if ("error" in context) return context;
 
-  const { data: existingTag, error: existingTagError } = await context.supabase
-    .from("nfc_tags")
-    .select("id")
-    .eq("business_id", context.business.id)
-    .maybeSingle();
-
-  if (existingTagError) {
-    return { error: "Nie udało się sprawdzić plakietki NFC." };
-  }
-
-  if (existingTag) {
-    return { error: "Ta firma ma już aktywną konfigurację NFC." };
-  }
+  const publicToken = randomBytes(24).toString("base64url");
 
   const { error } = await context.supabase.from("nfc_tags").insert({
     business_id: context.business.id,
     name: input.name,
-    public_token: randomBytes(24).toString("base64url"),
+    public_token: publicToken,
     destination_url: input.destinationUrl,
   });
 
@@ -77,7 +65,11 @@ export async function createNfcTag(
 
   revalidatePath("/nfc");
   revalidatePath("/dashboard");
-  return { success: "Link NFC został utworzony." };
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  return {
+    success: "Link NFC został utworzony.",
+    createdTag: { name: input.name, publicUrl: `${baseUrl}/r/${publicToken}` },
+  };
 }
 
 export async function updateNfcTag(

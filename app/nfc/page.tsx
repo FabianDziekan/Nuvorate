@@ -67,11 +67,9 @@ function Icon({
     ),
     nfc: (
       <>
-        <path d="M8.5 8.5a5 5 0 0 1 0 7" />
-        <path d="M5.5 5.5a9 9 0 0 1 0 13" />
-        <path d="M15.5 8.5a5 5 0 0 0 0 7" />
-        <path d="M18.5 5.5a9 9 0 0 0 0 13" />
-        <circle cx="12" cy="12" r="1" fill="currentColor" />
+        <path d="M3.5 9a12 12 0 0 1 17 0" />
+        <path d="M6.75 12.5a7.5 7.5 0 0 1 10.5 0" />
+        <path d="M10 16a3 3 0 0 1 4 0" />
       </>
     ),
     responses: (
@@ -133,14 +131,6 @@ const navigation = [
   { label: "NFC", icon: "nfc" as const, href: "/nfc" },
   { label: "Powiadomienia", icon: "bell" as const, href: "/notifications" },
   { label: "Ustawienia", icon: "settings" as const, href: "/settings" },
-];
-
-const setupSteps = [
-  "Otwórz aplikację do zapisu NFC.",
-  "Wybierz zapis pojedynczego rekordu URL.",
-  "Wklej link NuvoRate.",
-  "Zapisz go na plakietce.",
-  "Zbliż telefon i sprawdź, czy otwiera Google Reviews.",
 ];
 
 export default async function NfcPage() {
@@ -232,43 +222,51 @@ export default async function NfcPage() {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const [
-    { data: nfcTag, error: nfcTagError },
-    { count: scansTotal, error: scansTotalError },
-    { count: scansLast30Days, error: scansLast30DaysError },
-    { data: lastScan, error: lastScanError },
+    { data: nfcTags, error: nfcTagsError },
+    { data: nfcScanRows, error: nfcScansError },
   ] = await Promise.all([
     supabase
       .from("nfc_tags")
       .select("id, name, public_token, destination_url, is_active")
       .eq("business_id", business.id)
-      .maybeSingle(),
+      .order("created_at", { ascending: false }),
     supabase
       .from("nfc_scans")
-      .select("id", { count: "exact", head: true })
-      .eq("business_id", business.id),
-    supabase
-      .from("nfc_scans")
-      .select("id", { count: "exact", head: true })
+      .select("tag_id, scanned_at")
       .eq("business_id", business.id)
-      .gte("scanned_at", thirtyDaysAgo.toISOString()),
-    supabase
-      .from("nfc_scans")
-      .select("scanned_at")
-      .eq("business_id", business.id)
-      .order("scanned_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+      .order("scanned_at", { ascending: false }),
   ]);
 
-  if (nfcTagError || scansTotalError || scansLast30DaysError || lastScanError) {
-    throw new Error("Nie udało się odczytać danych NFC. Uruchom migrację 016_nfc_tags_and_scans.sql w Supabase.");
+  if (nfcTagsError || nfcScansError) {
+    throw new Error("Nie udało się odczytać danych NFC. Uruchom migracje 016_nfc_tags_and_scans.sql oraz 017_multiple_nfc_tags.sql w Supabase.");
   }
 
   const nfcBaseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
-  const publicNfcUrl = nfcTag ? `${nfcBaseUrl}/r/${nfcTag.public_token}` : "";
-  const lastScanLabel = lastScan?.scanned_at
-    ? new Intl.DateTimeFormat("pl-PL", { dateStyle: "medium", timeStyle: "short" }).format(new Date(lastScan.scanned_at))
-    : "Brak skanów";
+  const scans = nfcScanRows ?? [];
+  const formatScan = (scannedAt?: string) => {
+    if (!scannedAt) return "Brak skanów";
+    const date = new Date(scannedAt);
+    const now = new Date();
+    const time = new Intl.DateTimeFormat("pl-PL", { hour: "2-digit", minute: "2-digit" }).format(date);
+    const dayDifference = Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()) / 86_400_000);
+    if (dayDifference === 0) return `Dzisiaj, ${time}`;
+    if (dayDifference === 1) return `Wczoraj, ${time}`;
+    return new Intl.DateTimeFormat("pl-PL", { dateStyle: "medium", timeStyle: "short" }).format(date);
+  };
+  const scansTotal = scans.length;
+  const scansLast30Days = scans.filter((scan) => new Date(scan.scanned_at) >= thirtyDaysAgo).length;
+  const lastScanLabel = formatScan(scans[0]?.scanned_at);
+  const tags = (nfcTags ?? []).map((tag) => {
+    const tagScans = scans.filter((scan) => scan.tag_id === tag.id);
+    return {
+      id: tag.id, name: tag.name, destinationUrl: tag.destination_url,
+      publicUrl: `${nfcBaseUrl}/r/${tag.public_token}`, isActive: tag.is_active,
+      scansTotal: tagScans.length,
+      scansLast30Days: tagScans.filter((scan) => new Date(scan.scanned_at) >= thirtyDaysAgo).length,
+      lastScanLabel: formatScan(tagScans[0]?.scanned_at),
+    };
+  });
+  const activeTags = tags.filter((tag) => tag.isActive).length;
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#F7F7FA] text-ink">
@@ -432,79 +430,50 @@ export default async function NfcPage() {
               </p>
             </div>
 
-            <section className="mt-8 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-              <article className="min-w-0 overflow-hidden rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
-                <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
-                  Twój link do opinii
-                </p>
-                <h2 className="mt-1 text-xl font-semibold tracking-tight">
-                  Link dla klientów {businessName}
-                </h2>
-                <p className="mt-3 text-sm leading-6 text-black/45">
-                  Zapisz ten link na plakietce. NuvoRate policzy skan i od razu otworzy Google Reviews.
-                </p>
-                <NfcTagManager
-                  tag={nfcTag ? {
-                    id: nfcTag.id,
-                    name: nfcTag.name,
-                    destinationUrl: nfcTag.destination_url,
-                    isActive: nfcTag.is_active,
-                    publicUrl: publicNfcUrl,
-                  } : null}
-                />
-              </article>
-
-              <article className="rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
-                <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
-                  Statystyki
-                </p>
-                <h2 className="mt-1 text-xl font-semibold tracking-tight">
-                  Skany NFC
-                </h2>
-                <div className="mt-5 grid gap-3">
-                  <div className="rounded-2xl bg-[#FAFAFC] p-4">
-                    <p className="text-xs text-black/40">
-                      Skany w ostatnich 30 dniach
-                    </p>
-                    <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-                      {scansLast30Days}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-[#FAFAFC] p-4">
-                    <p className="text-xs text-black/40">Skany łącznie</p>
-                    <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-                      {scansTotal}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-[#FAFAFC] p-4">
-                    <p className="text-xs text-black/40">Ostatni skan</p>
-                    <p className="mt-2 text-sm font-semibold leading-6 text-black/75">
-                      {lastScanLabel}
-                    </p>
-                  </div>
-                </div>
-              </article>
+            <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Statystyki NFC">
+              {[
+                ["Skany w ostatnich 30 dniach", scansLast30Days, "ze wszystkich aktywnych plakietek"],
+                ["Skany łącznie", scansTotal, "od uruchomienia NFC"],
+                ["Aktywne plakietki", activeTags, "gotowe do zbierania opinii"],
+                ["Ostatni skan", lastScanLabel, "ostatnia aktywność klienta"],
+              ].map(([label, value, detail]) => (
+                <article key={label as string} className="min-h-[172px] rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-soft text-brand">
+                    <Icon name="nfc" className="h-5 w-5" />
+                  </span>
+                  <p className="mt-5 text-xs font-medium text-black/40">{label as string}</p>
+                  <p className={`mt-2 font-semibold tracking-[-0.04em] ${label === "Ostatni skan" ? "text-xl leading-7" : "text-3xl"}`}>{value as string | number}</p>
+                  <p className="mt-2 text-xs leading-5 text-black/40">{detail as string}</p>
+                </article>
+              ))}
             </section>
-
-            <section className="mt-4 rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
-                Instrukcja
-              </p>
-              <h2 className="mt-1 text-xl font-semibold tracking-tight">
-                Jak skonfigurować NFC
+            <NfcTagManager tags={tags} />
+            <section className="mt-4 rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6" aria-labelledby="nfc-setup-title">
+              <h2 id="nfc-setup-title" className="text-lg font-semibold tracking-tight">
+                Jak uruchomić nową plakietkę?
               </h2>
-              <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-                {setupSteps.map((step, index) => (
-                  <div key={step} className="rounded-2xl bg-[#FAFAFC] p-4">
-                    <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-soft text-sm font-bold text-brand">
+              <p className="mt-2 text-sm leading-6 text-black/45">
+                Wykonaj te kroki tylko raz po dodaniu każdej nowej plakietki.
+              </p>
+              <ol className="mt-6 grid gap-5 md:grid-cols-5">
+                {[
+                  ["Dodaj plakietkę", "Kliknij „Dodaj plakietkę” i nadaj jej nazwę, np. „Przy kasie”."],
+                  ["Dodaj link do opinii Google", "Wklej bezpośredni link, pod którym klienci mogą wystawić opinię Twojej firmie w Google."],
+                  ["Skopiuj link NuvoRate", "Po zapisaniu skopiuj wygenerowany link NuvoRate przypisany do tej plakietki."],
+                  ["Zapisz link na plakietce", "W aplikacji do zapisu NFC wybierz pojedynczy rekord URL i wklej link NuvoRate."],
+                  ["Przetestuj skan", "Zbliż telefon do plakietki. Klient powinien trafić do Google Reviews, a NuvoRate zapisze skan."],
+                ].map(([title, description], index) => (
+                  <li key={title} className="flex gap-3 md:block">
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-soft text-xs font-semibold text-brand">
                       {index + 1}
                     </span>
-                  <p className="mt-4 text-sm font-semibold leading-6">
-                    {step}
-                    </p>
-                  </div>
+                    <div className="md:mt-3">
+                      <p className="text-sm font-medium">{title}</p>
+                      <p className="mt-1.5 text-xs leading-5 text-black/45">{description}</p>
+                    </div>
+                  </li>
                 ))}
-              </div>
+              </ol>
             </section>
           </div>
         </div>
