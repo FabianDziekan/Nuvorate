@@ -4,11 +4,15 @@ import { redirect } from "next/navigation";
 import { CheckoutActivationStatus } from "@/components/billing/checkout-activation-status";
 import { BusinessFeatureLock } from "@/components/billing/business-feature-lock";
 import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
+import { AiUsageCard } from "@/components/billing/ai-usage-card";
 import { PlanPicker } from "@/components/billing/plan-picker";
 import { BrandLogo } from "@/components/brand/logo";
 import { AnalysisPreviewCard } from "@/components/dashboard/analysis-preview-card";
 import { AnalysisContextAlert } from "@/components/dashboard/analysis-context-alert";
 import { GoogleSyncButton } from "@/components/dashboard/google-sync-button";
+import { MobileMetricCards } from "@/components/dashboard/mobile-metric-cards";
+import { MobileBusinessInsightsCarousel } from "@/components/dashboard/mobile-business-insights-carousel";
+import { MobileTrendChart } from "@/components/dashboard/mobile-trend-chart";
 import { MonthlyGoalCard } from "@/components/dashboard/monthly-goal-card";
 import { ReviewResponseForm } from "@/components/dashboard/review-response-form";
 import {
@@ -23,7 +27,6 @@ import {
   getPlanLabel,
   hasPlanCapability,
   normalizePlan,
-  type AppPlan,
 } from "@/lib/plans";
 import { hasPriceIdForPlan } from "@/lib/stripe";
 import {
@@ -715,109 +718,6 @@ function buildBusinessInsights(
   };
 }
 
-function usagePercent(used: number, limit: number) {
-  if (!Number.isFinite(used) || !Number.isFinite(limit) || limit <= 0) {
-    return 0;
-  }
-
-  return Math.min(100, Math.round((used / limit) * 100));
-}
-
-function UsageProgress({
-  used,
-  limit,
-}: {
-  used: number;
-  limit: number;
-}) {
-  return (
-    <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/[0.06]">
-      <div
-        className="h-full rounded-full bg-brand"
-        style={{ width: `${usagePercent(used, limit)}%` }}
-      />
-    </div>
-  );
-}
-
-function AiUsageCard({
-  plan,
-  repliesUsed,
-  repliesLimit,
-  analysesUsed,
-  analysesLimit,
-}: {
-  plan: AppPlan;
-  repliesUsed: number;
-  repliesLimit: number;
-  analysesUsed: number;
-  analysesLimit: number;
-}) {
-  const isUnpaid = plan === "unpaid";
-  const remainingReplies = Math.max(repliesLimit - repliesUsed, 0);
-  const remainingAnalyses = Math.max(analysesLimit - analysesUsed, 0);
-
-  return (
-    <article className="w-full min-w-0 overflow-hidden rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
-            Limity planu
-          </p>
-          <h2 className="mt-1 text-xl font-semibold tracking-tight">
-            Miesięczne limity planu
-          </h2>
-          <p className="mt-2 text-xs leading-5 text-black/40">
-            Limity odnawiają się na początku każdego miesiąca.
-          </p>
-        </div>
-        <span className="self-start rounded-full bg-brand-soft px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-brand">
-          Plan {getPlanLabel(plan)}
-        </span>
-      </div>
-
-      {isUnpaid ? (
-        <div className="mt-5 rounded-2xl border border-brand/10 bg-brand-soft px-4 py-3 text-sm font-semibold text-brand">
-          Wybierz plan, aby korzystać z funkcji automatyzacji
-        </div>
-      ) : null}
-
-      <div className="mt-5 grid min-w-0 gap-4 sm:grid-cols-2">
-        <div className="min-w-0 rounded-2xl border border-black/[0.05] bg-[#FAFAFC] p-4 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold">Odpowiedzi na opinie</p>
-            <p className="text-sm font-semibold text-brand">
-              {remainingReplies} pozostało
-            </p>
-          </div>
-          <UsageProgress used={repliesUsed} limit={repliesLimit} />
-          <p className="mt-2 text-[11px] text-black/35">
-            {usagePercent(repliesUsed, repliesLimit)}% limitu
-          </p>
-          <p className="mt-1 text-[11px] text-black/35">
-            Wykorzystano {repliesUsed} z {repliesLimit}
-          </p>
-        </div>
-        <div className="min-w-0 rounded-2xl border border-black/[0.05] bg-[#FAFAFC] p-4 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold">Analizy reputacji</p>
-            <p className="text-sm font-semibold text-brand">
-              {remainingAnalyses} pozostało
-            </p>
-          </div>
-          <UsageProgress used={analysesUsed} limit={analysesLimit} />
-          <p className="mt-2 text-[11px] text-black/35">
-            {usagePercent(analysesUsed, analysesLimit)}% limitu
-          </p>
-          <p className="mt-1 text-[11px] text-black/35">
-            Wykorzystano {analysesUsed} z {analysesLimit}
-          </p>
-        </div>
-      </div>
-    </article>
-  );
-}
-
 function TrendChart({ points }: { points: ReviewActivityTrendPoint[] }) {
   const chartBottom = 190;
   const chartTop = 30;
@@ -825,7 +725,7 @@ function TrendChart({ points }: { points: ReviewActivityTrendPoint[] }) {
   const barWidth = Math.max(7, Math.min(15, Math.floor(420 / points.length)));
 
   return (
-    <div className="relative mt-5 h-[220px] w-full overflow-visible">
+    <div className="relative mt-5 h-[220px] w-full overflow-visible max-[768px]:mt-0 max-[768px]:h-[180px]">
       {points.length > 0 ? (
         <>
           <svg
@@ -1466,23 +1366,37 @@ export default async function DashboardPage({
           </nav>
         </header>
 
-        <div className="px-5 py-8 sm:px-8 lg:px-9 lg:py-10">
+        <div className="px-5 py-8 max-[768px]:px-4 max-[768px]:py-5 sm:px-8 lg:px-9 lg:py-10">
           <div className="mx-auto max-w-[1450px]">
-            <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+            <div className="flex flex-col justify-between gap-5 max-[768px]:gap-3 sm:flex-row sm:items-end">
               <div>
-                <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-                  Dzień dobry{firstName ? `, ${firstName}` : ""}
+                <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] max-[768px]:mt-0 max-[768px]:text-2xl sm:text-4xl">
+                  Dzień dobry
+                  {firstName ? (
+                    <span className="hidden min-[769px]:inline">{`, ${firstName}`}</span>
+                  ) : null}
                 </h1>
-                <p className="mt-2 text-sm leading-6 text-black/45">
+                <p className="mt-2 hidden text-sm leading-6 text-black/45 min-[769px]:block">
                   Podsumowanie reputacji firmy {businessName}.
+                </p>
+                <p className="mt-1 text-sm leading-5 text-black/45 min-[769px]:hidden">
+                  Podsumowanie reputacji firmy.
                 </p>
               </div>
               <GoogleSyncButton />
             </div>
 
-            <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Najważniejsze statystyki">
+            {dashboardMessage ? (
+              <div className="mt-5 flex flex-col gap-3 rounded-[22px] border border-brand/15 bg-brand-soft p-5 text-sm font-semibold text-brand shadow-card min-[769px]:hidden">
+                <span>{dashboardMessage}</span>
+              </div>
+            ) : null}
+
+            <MobileMetricCards metrics={metrics} />
+
+            <section className="mt-8 hidden grid-cols-2 gap-4 min-[769px]:grid sm:grid-cols-2 xl:grid-cols-4" aria-label="Najważniejsze statystyki">
               {dashboardMessage && (
-                <div className="flex flex-col gap-3 rounded-[22px] border border-brand/15 bg-brand-soft p-5 text-sm font-semibold text-brand shadow-card sm:col-span-2 sm:flex-row sm:items-center sm:justify-between xl:col-span-4">
+                <div className="flex flex-col gap-3 rounded-[22px] border border-brand/15 bg-brand-soft p-5 text-sm font-semibold text-brand shadow-card max-[768px]:col-span-4 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between xl:col-span-4">
                   <span>{dashboardMessage}</span>
                 </div>
               )}
@@ -1493,12 +1407,12 @@ export default async function DashboardPage({
                       <p className="text-xs font-medium text-black/40">{metric.label}</p>
                       <p className="mt-3 text-3xl font-semibold tracking-[-0.04em]">{metric.value}</p>
                     </div>
-                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
                       <Icon name={metric.icon} className="h-[18px] w-[18px]" />
                     </span>
                   </div>
                   <div className="mt-4 flex items-center justify-between gap-2">
-                    <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
+                    <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
                       {metric.change}
                     </span>
                     <span className="text-[11px] text-black/30">{metric.detail}</span>
@@ -1507,7 +1421,7 @@ export default async function DashboardPage({
               ))}
             </section>
 
-            <section className="mt-4" aria-label="Limity planu">
+            <section className="mt-4 hidden min-[769px]:block" aria-label="Limity planu">
               <AiUsageCard
                 plan={appPlan}
                 repliesUsed={aiRepliesUsed}
@@ -1517,8 +1431,9 @@ export default async function DashboardPage({
               />
             </section>
 
-            <section className="mt-4 grid items-start gap-4 xl:grid-cols-[1.55fr_0.75fr]">
-              <article className="h-fit self-start rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
+            <section className="mt-4 grid items-start gap-4 max-[768px]:gap-3 xl:grid-cols-[1.55fr_0.75fr]">
+              <article className="h-fit self-start rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card max-[768px]:contents sm:p-6">
+                <div className="hidden min-[769px]:block">
                 <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
@@ -1526,7 +1441,7 @@ export default async function DashboardPage({
                     </p>
                     <h2 className="mt-1 text-xl font-semibold tracking-tight">Nowe opinie w czasie</h2>
                   </div>
-                  <div className="flex gap-4 text-xs">
+                  <div className="hidden gap-4 text-xs min-[769px]:flex">
                     <span className="flex items-center gap-2 text-black/50">
                       <span className="h-2 w-2 rounded-full bg-brand" />
                       Bieżący okres
@@ -1538,19 +1453,47 @@ export default async function DashboardPage({
                   </div>
                 </div>
                 <TrendChart points={reviewActivityTrend.points} />
-                <div className="flex justify-between text-[10px] font-medium text-black/35">
+                <div className="flex h-7 items-center justify-between text-[10px] font-medium text-black/35">
                   {reviewActivityTrend.labels.map((label) => (
-                    <span key={label}>{label}</span>
+                    <span key={label}>
+                      {label}
+                    </span>
                   ))}
                 </div>
+                </div>
+                <article className="rounded-[24px] border border-black/[0.06] bg-white px-4 py-5 shadow-card min-[769px]:hidden">
+                  <div className="flex items-center justify-between gap-4">
+                    <h2 className="text-lg font-semibold tracking-tight">Nowe opinie w czasie</h2>
+                    <TrendRangeSelect
+                      variant="icon"
+                      from={selectedRange.from}
+                      isCustom={selectedRange.isCustom}
+                      label={selectedRange.displayLabel}
+                      to={selectedRange.to}
+                      value={trendRange}
+                    />
+                  </div>
+                  <div className="mt-3 flex items-center gap-3 text-[10px] font-medium">
+                    <span className="flex items-center gap-1.5 text-black/50">
+                      <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+                      Bieżący okres
+                    </span>
+                    <span className="flex items-center gap-1.5 text-black/30">
+                      <span className="h-1.5 w-1.5 rounded-full bg-black/15" />
+                      Poprzedni okres
+                    </span>
+                  </div>
+                  <MobileTrendChart points={reviewActivityTrend.points} />
+                </article>
                 {businessInsights && (
-                  <div className="mt-4 border-t border-black/[0.06] pt-4">
+                  <>
+                  <div className="mt-4 hidden border-t border-black/[0.06] pt-4 min-[769px]:block">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
                           Business Insights
                         </p>
-                        <p className="mt-1 text-sm text-black/45">
+                        <p className="mt-1 text-sm text-black/45 max-[768px]:text-xs max-[768px]:leading-4">
                           Krótkie sygnały z opinii dla planu Business.
                         </p>
                       </div>
@@ -1558,32 +1501,32 @@ export default async function DashboardPage({
                         Business
                       </span>
                     </div>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                      <article className="rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4">
+                    <div className="mt-4 grid gap-3 max-[768px]:mt-2 max-[768px]:gap-1.5 sm:grid-cols-3">
+                      <article className="rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4 max-[768px]:h-[126px] max-[768px]:overflow-hidden max-[768px]:p-2">
                         <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">
                           {businessInsights.bestDay.title}
                         </p>
-                        <p className="mt-3 text-lg font-semibold tracking-tight">
+                        <p className="mt-3 text-lg font-semibold tracking-tight max-[768px]:mt-1">
                           {businessInsights.bestDay.label}
                         </p>
                         {businessInsights.bestDay.value ? (
-                          <p className="mt-1 text-sm font-semibold text-brand">
+                          <p className="mt-1 text-sm font-semibold text-brand max-[768px]:mt-0">
                             {businessInsights.bestDay.value}
                           </p>
                         ) : null}
-                        <p className="mt-2 text-xs leading-5 text-black/45">
+                        <p className="mt-2 text-xs leading-5 text-black/45 max-[768px]:mt-1 max-[768px]:text-[10px] max-[768px]:leading-3">
                           {businessInsights.bestDay.detail}
                         </p>
                       </article>
 
-                      <article className="rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4">
+                      <article className="rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4 max-[768px]:h-[126px] max-[768px]:overflow-hidden max-[768px]:p-2">
                         <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">
                           Ten miesiąc
                         </p>
-                        <p className="mt-3 text-lg font-semibold tracking-tight">
+                        <p className="mt-3 text-lg font-semibold tracking-tight max-[768px]:mt-1">
                           {businessInsights.currentMonthComparison.value}
                         </p>
-                        <p className="mt-2 flex items-center gap-2 text-xs leading-5 text-black/45">
+                        <p className="mt-2 flex items-center gap-2 text-xs leading-5 text-black/45 max-[768px]:mt-1 max-[768px]:text-[10px] max-[768px]:leading-3">
                           <span
                             className={`h-2 w-2 rounded-full ${businessInsights.currentMonthComparison.marker}`}
                           />
@@ -1600,14 +1543,20 @@ export default async function DashboardPage({
                       />
                     </div>
                   </div>
+                  <MobileBusinessInsightsCarousel
+                    bestDay={businessInsights.bestDay}
+                    currentMonth={businessInsights.currentMonthComparison}
+                    monthlyGoal={businessInsights.monthlyGoal}
+                  />
+                  </>
                 )}
                 {!canUseBusinessInsights ? (
                   <BusinessFeatureLock
-                    className="mt-4 min-h-[300px] border-t"
+                    className="mt-4 min-h-[300px] border-t max-[768px]:mt-6 max-[768px]:min-h-[240px]"
                     title="Business Insights"
                     description="Odkryj najlepszy dzień, porównuj wyniki miesięczne i kontroluj realizację celu opinii."
                     preview={
-                      <div className="p-4 sm:p-5">
+                      <div className="p-4 max-[768px]:p-3 sm:p-5">
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
@@ -1621,7 +1570,7 @@ export default async function DashboardPage({
                             Przykład
                           </span>
                         </div>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                        <div className="mt-4 grid gap-3 max-[768px]:mt-3 max-[768px]:gap-2 sm:grid-cols-3">
                           {[
                             ["Najlepszy dzień", "Sobota", "8 nowych opinii"],
                             ["Ten miesiąc", "+24%", "Wzrost względem poprzedniego"],
@@ -1629,7 +1578,7 @@ export default async function DashboardPage({
                           ].map(([label, value, detail]) => (
                             <article
                               key={label}
-                              className="rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4"
+                              className="rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4 max-[768px]:p-3"
                             >
                               <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">
                                 {label}
@@ -1657,29 +1606,40 @@ export default async function DashboardPage({
               />
             </section>
 
-            <section className="mt-6 rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
+            <section className="mt-6 rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card max-[768px]:mt-4 max-[768px]:p-4 sm:p-6">
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
                     Ostatnie opinie
                   </p>
-                  <h2 className="mt-1 text-xl font-semibold tracking-tight">
+                  <h2 className="mt-1 hidden text-xl font-semibold tracking-tight min-[769px]:block">
                     Najnowsze opinie klientów
                   </h2>
+                  <Link
+                    href="/reviews"
+                    className="mt-1 flex items-center justify-between gap-3 text-xl font-semibold tracking-tight min-[769px]:hidden"
+                  >
+                    Najnowsze opinie klientów <span aria-hidden="true">→</span>
+                  </Link>
                 </div>
-                <div className="flex gap-2">
+                <div className="hidden gap-2 min-[769px]:flex">
                   <Link href="/reviews" className="rounded-xl bg-brand-soft px-3.5 py-2.5 text-xs font-semibold text-brand">
                     Zobacz wszystkie
                   </Link>
                 </div>
               </div>
               {latestReviews.length > 0 ? (
-                <div className="mt-5 grid gap-3 lg:grid-cols-3">
-                  {latestReviews.map((review) => (
-                    <article key={review.id} className="rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4">
+                <div className="mt-5 grid gap-3 max-[768px]:mt-4 max-[768px]:gap-2 lg:grid-cols-3">
+                  {latestReviews.map((review, index) => (
+                    <article
+                      key={review.id}
+                      className={`rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4 max-[768px]:p-3 ${
+                        index > 1 ? "max-[768px]:hidden" : ""
+                      }`}
+                    >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <span className="grid h-9 w-9 place-items-center rounded-xl bg-white text-xs font-bold text-brand shadow-sm">
+                          <span className="hidden h-9 w-9 place-items-center rounded-xl bg-white text-xs font-bold text-brand shadow-sm min-[769px]:grid">
                             {review.author_name.slice(0, 1)}
                           </span>
                           <div>
@@ -1693,7 +1653,7 @@ export default async function DashboardPage({
                           {formatRating(review.rating)} ★
                         </span>
                       </div>
-                      <p className="mt-4 min-h-12 text-sm leading-6 text-black/55">{review.content}</p>
+                      <p className="mt-4 min-h-12 text-sm leading-6 text-black/55 max-[768px]:mt-3 max-[768px]:min-h-0 max-[768px]:line-clamp-2 max-[768px]:leading-5">{review.content}</p>
                       <ReviewResponseForm
                         reviewId={review.id}
                         initialResponseText={responsesByReviewId.get(review.id)}

@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand/logo";
+import { AiUsageCard } from "@/components/billing/ai-usage-card";
 import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
 import { SettingsForm } from "@/components/settings/settings-form";
 import {
+  currentPeriodMonth,
+  getAiLimit,
   getPlanLabel,
   hasPlanCapability,
   normalizePlan,
@@ -153,6 +156,11 @@ function subscriptionStatusLabel(value: string | null | undefined) {
   return labels[value] ?? value;
 }
 
+type AiUsage = {
+  ai_replies_used: number | null;
+  ai_analyses_used: number | null;
+};
+
 export default async function SettingsPage() {
   const supabase = await createClient();
   const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
@@ -218,6 +226,22 @@ export default async function SettingsPage() {
     typeof responseSettings?.response_tone === "string"
       ? responseSettings.response_tone
       : "professional";
+  const { data: aiUsage, error: aiUsageError } = await supabase
+    .from("ai_usage")
+    .select("ai_replies_used, ai_analyses_used")
+    .eq("user_id", user.id)
+    .eq("period_month", currentPeriodMonth())
+    .maybeSingle();
+
+  if (aiUsageError) {
+    console.warn("AI usage lookup failed", aiUsageError);
+  }
+
+  const currentAiUsage = aiUsageError ? null : (aiUsage as AiUsage | null);
+  const aiRepliesUsed = Number(currentAiUsage?.ai_replies_used ?? 0) || 0;
+  const aiAnalysesUsed = Number(currentAiUsage?.ai_analyses_used ?? 0) || 0;
+  const aiRepliesLimit = getAiLimit(appPlan, "reply");
+  const aiAnalysesLimit = getAiLimit(appPlan, "analysis");
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#F7F7FA] text-ink">
@@ -436,6 +460,15 @@ export default async function SettingsPage() {
                     </button>
                   </form>
                 </div>
+              </div>
+              <div className="mt-6">
+                <AiUsageCard
+                  plan={appPlan}
+                  repliesUsed={aiRepliesUsed}
+                  repliesLimit={aiRepliesLimit}
+                  analysesUsed={aiAnalysesUsed}
+                  analysesLimit={aiAnalysesLimit}
+                />
               </div>
             </section>
           </div>

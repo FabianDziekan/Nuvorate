@@ -36,11 +36,16 @@ function SubmitButton({
           disabled={pending}
           className="text-xs font-semibold text-brand transition hover:text-[#4D4EE8] disabled:cursor-wait disabled:opacity-60"
         >
-          {pending
-            ? "Generowanie odpowiedzi..."
-            : hasResponse
-              ? "Wygeneruj ponownie"
-              : "Wygeneruj odpowiedź"}
+          <span className="min-[769px]:hidden">
+            {pending ? "Generowanie..." : "Odpowiedz →"}
+          </span>
+          <span className="hidden min-[769px]:inline">
+            {pending
+              ? "Generowanie odpowiedzi..."
+              : hasResponse
+                ? "Wygeneruj ponownie"
+                : "Wygeneruj odpowiedź"}
+          </span>
         </button>
         {hasResponse && (
           <button
@@ -125,7 +130,7 @@ export function ReviewResponseForm({
           Limit odpowiedzi wykorzystany
         </p>
       ) : (
-        <form action={formAction} className="mt-4">
+        <form action={formAction} className="mt-4 max-[768px]:mt-3">
           <input type="hidden" name="reviewId" value={reviewId} />
           <SubmitButton
             hasResponse={Boolean(responseText)}

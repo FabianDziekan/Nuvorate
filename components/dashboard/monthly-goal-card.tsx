@@ -82,7 +82,9 @@ export function MonthlyGoalCard({
           startEdit();
         }
       }}
-      className={`min-h-[188px] rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4 focus:outline-none focus:ring-4 focus:ring-brand/10 ${
+      className={`min-h-[188px] rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4 focus:outline-none focus:ring-4 focus:ring-brand/10 max-[768px]:min-h-0 max-[768px]:p-2 ${
+        isEditing ? "" : "max-[768px]:h-[126px] max-[768px]:overflow-hidden"
+      } ${
         isEditing ? "" : "cursor-pointer hover:border-brand/30"
       }`}
     >
@@ -146,7 +148,7 @@ export function MonthlyGoalCard({
           <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">
             Cel miesiąca
           </p>
-          <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="mt-3 flex items-center justify-between gap-3 max-[768px]:mt-1">
             <p className="text-lg font-semibold tracking-tight">
               {count} / {goal} opinii
             </p>
@@ -156,20 +158,20 @@ export function MonthlyGoalCard({
               </span>
             )}
           </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/[0.07]">
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/[0.07] max-[768px]:mt-1 max-[768px]:h-1">
             <div
               className="h-full rounded-full bg-brand"
               style={{ width: `${progress}%` }}
             />
           </div>
-          <p className="mt-2 text-xs leading-5 text-black/45">{helperText}</p>
+          <p className="mt-2 text-xs leading-5 text-black/45 max-[768px]:mt-1 max-[768px]:text-[10px] max-[768px]:leading-3">{helperText}</p>
           <button
             type="button"
             onClick={(event) => {
               event.stopPropagation();
               startEdit();
             }}
-            className="mt-2 text-xs font-semibold text-brand"
+            className="mt-2 text-xs font-semibold text-brand max-[768px]:mt-0.5 max-[768px]:text-[10px]"
           >
             Edytuj cel
           </button>

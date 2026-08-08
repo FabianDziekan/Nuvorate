@@ -11,6 +11,7 @@ type TrendRangeSelectProps = {
   label: string;
   to?: string;
   value: TrendRange;
+  variant?: "default" | "icon";
 };
 
 const trendRangeOptions: Array<{ label: string; value: TrendRange }> = [
@@ -250,6 +251,7 @@ export function TrendRangeSelect({
   label,
   to,
   value,
+  variant = "default",
 }: TrendRangeSelectProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -353,7 +355,14 @@ export function TrendRangeSelect({
   }
 
   return (
-    <div ref={wrapperRef} className="relative hidden sm:block">
+    <div
+      ref={wrapperRef}
+      className={
+        variant === "icon"
+          ? "relative min-[769px]:hidden"
+          : "relative hidden min-[769px]:block"
+      }
+    >
       <button
         ref={triggerRef}
         type="button"
@@ -370,9 +379,29 @@ export function TrendRangeSelect({
         }
         aria-expanded={isOpen}
         aria-haspopup="dialog"
-        className="rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-sm font-medium text-black/55 outline-none transition hover:border-brand/20 focus:border-brand/30 focus:ring-4 focus:ring-brand/10"
+        className={
+          variant === "icon"
+            ? "grid h-9 w-9 place-items-center rounded-xl border border-black/[0.08] bg-white text-black/50 outline-none transition hover:border-brand/20 hover:text-brand focus:border-brand/30 focus:ring-4 focus:ring-brand/10"
+            : "rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-sm font-medium text-black/55 outline-none transition hover:border-brand/20 focus:border-brand/30 focus:ring-4 focus:ring-brand/10"
+        }
       >
-        {label}
+        {variant === "icon" ? (
+          <svg
+            aria-hidden="true"
+            className="h-[17px] w-[17px]"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="3" y="5" width="18" height="16" rx="3" />
+            <path d="M8 3v4M16 3v4M3 10h18" />
+          </svg>
+        ) : (
+          label
+        )}
       </button>
 
       {isOpen ? (

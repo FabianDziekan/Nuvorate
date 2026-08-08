@@ -44,6 +44,23 @@ Mobile:
 - pozioma nawigacja,
 - sekcje układane pionowo.
 
+## Mobile dashboard — aktualizacja
+
+- Mobilny dashboard został przebudowany niezależnie od desktopu.
+- Desktop zachowuje dotychczasowy layout.
+- Cztery główne statystyki na mobile są prezentowane w jednym rzędzie jako kompaktowe kafelki.
+- Szczegóły statystyk mogą być prezentowane w osobnym widoku/modalu zamiast przeładowywania pulpitu.
+- Limity planu zostały usunięte z głównego mobilnego pulpitu, aby ograniczyć ilość treści.
+- Wykres „Nowe opinie w czasie” ma osobną wersję mobilną, zachowując te same dane i logikę co desktop.
+- Zakres dat na mobile jest dostępny z poziomu ikony kalendarza przy wykresie i używa tej samej logiki co desktop.
+- Business Insights na mobile zachowuje dokładnie te same dane i nazwy co desktop, ale jest prezentowany jako poziomo przewijany carousel.
+- Edycja własnego celu miesięcznego została zachowana/przywrócona.
+- Sekcja „Analiza ostatnich 30 dni” na mobile została skrócona do kompaktowej karty prowadzącej do pełnego raportu.
+- Grafika analizy zawiera trzy płynnie animowane linie. Linie morphują swoją geometrię w czasie i naturalnie się przecinają; nie są animowane przez prosty `translateX`.
+- Najgrubsza fioletowa linia jest głównym dynamicznym elementem animacji.
+- Sekcja „Najnowsze opinie klientów” na mobile została skompaktowana.
+- Wszystkie zmiany mobilne mają pozostać odseparowane od desktopowego layoutu.
+
 ## Sidebar
 
 Linki:
