@@ -469,7 +469,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                   </form>
                 </div>
               </div>
-              <div className="mt-6">
+              <div className="mt-6 lg:hidden">
                 <AiUsageCard
                   plan={appPlan}
                   repliesUsed={aiRepliesUsed}

@@ -31,7 +31,7 @@ export function MobileBusinessInsightsCarousel({
 }: MobileBusinessInsightsCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   return (
-    <section className="mt-6 -mx-1 w-[calc(100%+8px)] overflow-hidden rounded-[24px] border border-black/[0.06] bg-white py-3 shadow-card">
+    <section className="mt-6 -mx-1 w-[calc(100%+8px)] overflow-hidden rounded-[24px] border border-black/[0.06] bg-white py-3 shadow-card lg:hidden">
       <div className="flex items-start justify-between gap-3 px-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">

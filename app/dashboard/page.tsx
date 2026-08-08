@@ -1497,7 +1497,7 @@ export default async function DashboardPage({
                 </article>
                 {businessInsights && (
                   <>
-                  <div className="mt-4 hidden border-t border-black/[0.06] pt-4 min-[769px]:block">
+                  <div className="mt-4 hidden border-t border-black/[0.06] pt-4 lg:block">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
