@@ -76,11 +76,9 @@ function Icon({
     ),
     nfc: (
       <>
-        <path d="M8.5 8.5a5 5 0 0 1 0 7" />
-        <path d="M5.5 5.5a9 9 0 0 1 0 13" />
-        <path d="M15.5 8.5a5 5 0 0 0 0 7" />
-        <path d="M18.5 5.5a9 9 0 0 0 0 13" />
-        <circle cx="12" cy="12" r="1" fill="currentColor" />
+        <path d="M3.5 9a12 12 0 0 1 17 0" />
+        <path d="M6.75 12.5a7.5 7.5 0 0 1 10.5 0" />
+        <path d="M10 16a3 3 0 0 1 4 0" />
       </>
     ),
     responses: (

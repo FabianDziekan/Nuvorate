@@ -128,8 +128,8 @@ export function NotificationDropdown({
       </button>
 
       {isOpen ? (
-        <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-[min(360px,calc(100vw-32px))] overflow-hidden rounded-[22px] border border-black/[0.08] bg-white shadow-[0_24px_70px_rgba(15,15,16,0.16)]">
-          <div className="flex items-center justify-between gap-3 border-b border-black/[0.06] px-4 py-3.5">
+        <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-[min(360px,calc(100vw-32px))] overflow-hidden rounded-[22px] border border-black/[0.08] bg-white shadow-[0_24px_70px_rgba(15,15,16,0.16)] max-[768px]:fixed max-[768px]:left-4 max-[768px]:right-4 max-[768px]:top-[84px] max-[768px]:flex max-[768px]:h-[380px] max-[768px]:w-auto max-[768px]:max-w-none max-[768px]:flex-col">
+          <div className="flex items-center justify-between gap-3 border-b border-black/[0.06] px-4 py-3.5 max-[768px]:shrink-0">
             <div>
               <p className="text-sm font-semibold text-ink">Powiadomienia</p>
               <p className="mt-0.5 text-xs text-black/40">
@@ -148,9 +148,9 @@ export function NotificationDropdown({
             </button>
           </div>
 
-          <div className="max-h-[390px] overflow-y-auto">
+          <div className="max-h-[390px] overflow-y-auto max-[768px]:min-h-0 max-[768px]:max-h-none max-[768px]:flex-1">
             {notifications.length > 0 ? (
-              notifications.map((notification) => {
+              notifications.map((notification, index) => {
                 const view = getNotificationView(
                   notification.type,
                   notification.message,
@@ -163,8 +163,10 @@ export function NotificationDropdown({
                 return (
                   <NotificationLink
                     key={notification.id}
-                    className={`group relative flex w-full cursor-pointer gap-3 border-b border-black/[0.04] px-4 py-3.5 text-left transition hover:bg-black/[0.025] ${
+                    className={`group relative flex w-full cursor-pointer gap-3 border-b border-black/[0.04] px-4 py-3.5 text-left transition hover:bg-black/[0.025] max-[768px]:px-3 max-[768px]:py-3 ${
                       notification.is_read ? "bg-white" : "bg-brand/[0.035]"
+                    } ${
+                      index > 2 ? "max-[768px]:hidden" : ""
                     }`}
                     href={view.href}
                     isRead={notification.is_read}
@@ -184,7 +186,7 @@ export function NotificationDropdown({
                     />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-start justify-between gap-3">
-                        <span className="text-sm font-semibold text-ink">
+                        <span className="min-w-0 break-words text-sm font-semibold text-ink">
                           {notification.title}
                         </span>
                         <span className="shrink-0 text-[11px] text-black/35">
@@ -197,7 +199,7 @@ export function NotificationDropdown({
                         </span>
                       ) : null}
                       {content.text ? (
-                        <span className="mt-1 block text-xs leading-5 text-black/50">
+                        <span className="mt-1 block break-words text-xs leading-5 text-black/50 max-[768px]:line-clamp-2">
                           {content.text}
                         </span>
                       ) : null}
@@ -217,7 +219,7 @@ export function NotificationDropdown({
             )}
           </div>
 
-          <div className="border-t border-black/[0.06] p-3">
+          <div className="border-t border-black/[0.06] p-3 max-[768px]:shrink-0">
             <Link
               href="/notifications"
               className="block rounded-xl bg-brand-soft px-4 py-3 text-center text-sm font-semibold text-brand transition hover:bg-brand/10"

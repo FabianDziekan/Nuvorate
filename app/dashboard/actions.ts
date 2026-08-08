@@ -29,9 +29,8 @@ export async function signOut() {
 }
 
 export async function syncGoogleReviews(): Promise<{
-  lastSyncedAt: string;
   message: string;
-  newReviews: number;
+  connected: boolean;
   success: boolean;
 }> {
   const supabase = await createClient();
@@ -50,21 +49,16 @@ export async function syncGoogleReviews(): Promise<{
 
   if (businessError || !business) {
     return {
-      lastSyncedAt: new Date().toISOString(),
       message: "Nie udało się odczytać danych firmy.",
-      newReviews: 0,
+      connected: false,
       success: false,
     };
   }
 
-  // Future integration point: fetch Google Business Profile reviews here,
-  // upsert new reviews into public.reviews, then create notifications when newReviews > 0.
-  revalidatePath("/dashboard");
-
+  const { data: connection } = await supabase.from("google_business_connections").select("id").eq("business_id", business.id).maybeSingle();
   return {
-    lastSyncedAt: new Date().toISOString(),
-    message: "Brak nowych opinii",
-    newReviews: 0,
+    message: connection ? "Profil Google jest połączony. Synchronizacja opinii zostanie dodana w kolejnym etapie." : "Najpierw połącz profil Google Business w Ustawieniach.",
+    connected: Boolean(connection),
     success: true,
   };
 }

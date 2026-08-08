@@ -99,11 +99,9 @@ function Icon({
     ),
     nfc: (
       <>
-        <path d="M8.5 8.5a5 5 0 0 1 0 7" />
-        <path d="M5.5 5.5a9 9 0 0 1 0 13" />
-        <path d="M15.5 8.5a5 5 0 0 0 0 7" />
-        <path d="M18.5 5.5a9 9 0 0 0 0 13" />
-        <circle cx="12" cy="12" r="1" fill="currentColor" />
+        <path d="M3.5 9a12 12 0 0 1 17 0" />
+        <path d="M6.75 12.5a7.5 7.5 0 0 1 10.5 0" />
+        <path d="M10 16a3 3 0 0 1 4 0" />
       </>
     ),
     responses: (
@@ -370,7 +368,7 @@ function formatAverageRating(value: number | null) {
   return `Średnia ocena: ${value.toLocaleString("pl-PL", {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
-  })}★`;
+  })}`;
 }
 
 function normalizeTrendRange(range?: string): TrendRange {
@@ -896,6 +894,17 @@ export default async function DashboardPage({
     );
   }
 
+  const { data: googleConnection, error: googleConnectionError } =
+    await supabase
+      .from("google_business_connections")
+      .select("id")
+      .eq("business_id", business.id)
+      .maybeSingle();
+
+  if (googleConnectionError) {
+    console.warn("Google connection lookup failed", googleConnectionError);
+  }
+
   const appPlan = normalizePlan(profile.plan);
   const isPaid = hasPlanCapability(appPlan, "basicDashboard");
   const businessName = business.name ?? "Twoja firma";
@@ -908,6 +917,7 @@ export default async function DashboardPage({
   const hasActiveSubscription =
     Boolean(profile.stripe_customer_id) &&
     ["active", "trialing"].includes(profile.subscription_status ?? "");
+  const isGoogleConnected = Boolean(googleConnection);
   const periodMonth = currentPeriodMonth();
   const { data: aiUsage, error: aiUsageError } = await supabase
     .from("ai_usage")
@@ -1383,7 +1393,7 @@ export default async function DashboardPage({
                   Podsumowanie reputacji firmy.
                 </p>
               </div>
-              <GoogleSyncButton />
+              <GoogleSyncButton isGoogleConnected={isGoogleConnected} />
             </div>
 
             {dashboardMessage ? (

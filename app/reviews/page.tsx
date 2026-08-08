@@ -84,11 +84,9 @@ function Icon({
     ),
     nfc: (
       <>
-        <path d="M8.5 8.5a5 5 0 0 1 0 7" />
-        <path d="M5.5 5.5a9 9 0 0 1 0 13" />
-        <path d="M15.5 8.5a5 5 0 0 0 0 7" />
-        <path d="M18.5 5.5a9 9 0 0 0 0 13" />
-        <circle cx="12" cy="12" r="1" fill="currentColor" />
+        <path d="M3.5 9a12 12 0 0 1 17 0" />
+        <path d="M6.75 12.5a7.5 7.5 0 0 1 10.5 0" />
+        <path d="M10 16a3 3 0 0 1 4 0" />
       </>
     ),
     responses: (
@@ -434,12 +432,6 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
               <p className="mt-0.5 text-sm font-semibold">Opinie</p>
             </div>
             <div className="flex min-w-0 items-center gap-2.5">
-              <button
-                type="button"
-                className="hidden rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-sm font-medium text-black/55 sm:block"
-              >
-                Wszystkie opinie
-              </button>
               <NotificationBell businessId={business.id} />
               <div className="hidden items-center gap-3 rounded-xl border border-black/[0.08] bg-white py-1.5 pl-1.5 pr-3 sm:flex">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft text-xs font-bold uppercase text-brand">

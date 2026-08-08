@@ -114,11 +114,9 @@ function Icon({
     ),
     nfc: (
       <>
-        <path d="M8.5 8.5a5 5 0 0 1 0 7" />
-        <path d="M5.5 5.5a9 9 0 0 1 0 13" />
-        <path d="M15.5 8.5a5 5 0 0 0 0 7" />
-        <path d="M18.5 5.5a9 9 0 0 0 0 13" />
-        <circle cx="12" cy="12" r="1" fill="currentColor" />
+        <path d="M3.5 9a12 12 0 0 1 17 0" />
+        <path d="M6.75 12.5a7.5 7.5 0 0 1 10.5 0" />
+        <path d="M10 16a3 3 0 0 1 4 0" />
       </>
     ),
     responses: (
@@ -485,9 +483,6 @@ export default async function AnalysisPage({
               <p className="mt-0.5 text-sm font-semibold">Analiza reputacji</p>
             </div>
             <div className="flex items-center gap-2.5">
-              <span className="hidden rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-sm font-medium text-black/55 sm:block">
-                Ostatnie 30 dni
-              </span>
               <NotificationBell businessId={business.id} />
               <div className="hidden items-center gap-3 rounded-xl border border-black/[0.08] bg-white py-1.5 pl-1.5 pr-3 sm:flex">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft text-xs font-bold uppercase text-brand">
@@ -812,7 +807,7 @@ export default async function AnalysisPage({
                       iconClass: "bg-brand-soft text-brand",
                     },
                   ].map((section) => (
-                    <article key={section.title} className="rounded-[24px] border border-black/[0.06] bg-white p-6 shadow-card">
+                    <article key={section.title} className="flex flex-col rounded-[24px] border border-black/[0.06] bg-white p-6 shadow-card xl:h-[600px]">
                       <div className="flex items-start gap-3">
                         <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${section.iconClass}`}>
                           <Icon name={section.icon} className="h-[18px] w-[18px]" />
@@ -826,7 +821,7 @@ export default async function AnalysisPage({
                           </h2>
                         </div>
                       </div>
-                      <ul className="mt-6 space-y-3">
+                      <ul className="analysis-scroll-area mt-6 min-h-0 space-y-3 overflow-y-auto pb-2 pr-2 xl:flex-1">
                         {section.items.map((item) => (
                           <li key={item} className="flex gap-3 rounded-2xl border border-black/[0.04] bg-[#FAFAFC] p-4 text-sm leading-6 text-black/60 shadow-sm">
                             <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />

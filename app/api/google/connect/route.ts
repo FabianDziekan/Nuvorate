@@ -1,0 +1,4 @@
+import { NextResponse } from "next/server";
+import { googleAuthUrl, googleConfigured, oauthState, pkceVerifier } from "@/lib/google-business";
+import { createClient } from "@/lib/supabase/server";
+export async function GET(request: Request) { const fallback = new URL("/settings?google_error=config", request.url); if (!googleConfigured()) return NextResponse.redirect(fallback); const supabase = await createClient(); const { data: { user } } = await supabase.auth.getUser(); if (!user) return NextResponse.redirect(new URL("/login?next=/settings", request.url)); const state = oauthState(), verifier = pkceVerifier(), secure = process.env.NODE_ENV === "production"; const response = NextResponse.redirect(googleAuthUrl(state, verifier)); const opts = { httpOnly: true, sameSite: "lax" as const, secure, path: "/api/google", maxAge: 600 }; response.cookies.set("google_oauth_state", state, opts); response.cookies.set("google_oauth_verifier", verifier, opts); return response; }

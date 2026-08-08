@@ -369,9 +369,6 @@ export default async function NfcPage() {
               <p className="mt-0.5 text-sm font-semibold">NFC</p>
             </div>
             <div className="flex min-w-0 items-center gap-2.5">
-              <span className="hidden rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-sm font-medium text-black/55 sm:block">
-                Link do opinii
-              </span>
               <NotificationBell businessId={business.id} />
               <div className="hidden items-center gap-3 rounded-xl border border-black/[0.08] bg-white py-1.5 pl-1.5 pr-3 sm:flex">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft text-xs font-bold uppercase text-brand">

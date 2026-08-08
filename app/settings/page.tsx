@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { BrandLogo } from "@/components/brand/logo";
 import { AiUsageCard } from "@/components/billing/ai-usage-card";
 import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
 import { SettingsForm } from "@/components/settings/settings-form";
+import { GoogleConnectionCard } from "@/components/settings/google-connection-card";
+import { googleConfigured } from "@/lib/google-business";
 import {
   currentPeriodMonth,
   getAiLimit,
@@ -70,11 +73,9 @@ function Icon({
     ),
     nfc: (
       <>
-        <path d="M8.5 8.5a5 5 0 0 1 0 7" />
-        <path d="M5.5 5.5a9 9 0 0 1 0 13" />
-        <path d="M15.5 8.5a5 5 0 0 0 0 7" />
-        <path d="M18.5 5.5a9 9 0 0 0 0 13" />
-        <circle cx="12" cy="12" r="1" fill="currentColor" />
+        <path d="M3.5 9a12 12 0 0 1 17 0" />
+        <path d="M6.75 12.5a7.5 7.5 0 0 1 10.5 0" />
+        <path d="M10 16a3 3 0 0 1 4 0" />
       </>
     ),
     responses: (
@@ -161,7 +162,8 @@ type AiUsage = {
   ai_analyses_used: number | null;
 };
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ google?: string; google_error?: string }> }) {
+  const params = await searchParams;
   const supabase = await createClient();
   const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
 
@@ -242,6 +244,11 @@ export default async function SettingsPage() {
   const aiAnalysesUsed = Number(currentAiUsage?.ai_analyses_used ?? 0) || 0;
   const aiRepliesLimit = getAiLimit(appPlan, "reply");
   const aiAnalysesLimit = getAiLimit(appPlan, "analysis");
+  const { data: googleConnection } = await supabase.from("google_business_connections").select("google_location_title, google_email").eq("business_id", business.id).maybeSingle();
+  const pendingRaw = (await cookies()).get("google_pending_connection")?.value;
+  let pendingLocations: Array<{ locationName: string; locationTitle: string }> = [];
+  try { const pending = pendingRaw ? JSON.parse(Buffer.from(pendingRaw, "base64url").toString("utf8")) : null; if (pending?.businessId === business.id && Array.isArray(pending.locations)) pendingLocations = pending.locations.map((location: { locationName: string; locationTitle: string }) => ({ locationName: location.locationName, locationTitle: location.locationTitle })); } catch {}
+  const googleMessage = params.google === "connected" ? "Profil Google został połączony." : params.google_error === "no_locations" ? "Nie znaleźliśmy lokalizacji Google Business Profile na tym koncie." : params.google_error ? "Nie udało się dokończyć połączenia z Google. Spróbuj ponownie." : undefined;
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#F7F7FA] text-ink">
@@ -415,6 +422,7 @@ export default async function SettingsPage() {
                 firstName={firstName}
                 responseTone={responseTone}
               />
+              <GoogleConnectionCard configured={googleConfigured()} connection={googleConnection} message={googleMessage} locations={pendingLocations} />
             </div>
 
             <section className="mt-6 rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">

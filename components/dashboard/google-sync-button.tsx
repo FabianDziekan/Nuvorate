@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { syncGoogleReviews } from "@/app/dashboard/actions";
 
 function formatSyncTime(lastSyncedAt: string | null) {
@@ -36,9 +37,12 @@ function formatSyncTime(lastSyncedAt: string | null) {
   return `Ostatnia synchronizacja: ${diffInHours} godz. temu`;
 }
 
-export function GoogleSyncButton() {
+export function GoogleSyncButton({
+  isGoogleConnected = false,
+}: {
+  isGoogleConnected?: boolean;
+}) {
   const [isPending, startTransition] = useTransition();
-  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const isSyncing = isPending;
@@ -54,12 +58,7 @@ export function GoogleSyncButton() {
           new Promise((resolve) => window.setTimeout(resolve, 700)),
         ]);
 
-        setLastSyncedAt(result.lastSyncedAt);
-        setMessage(
-          result.success
-            ? `Synchronizacja zakończona. ${result.message}.`
-            : result.message,
-        );
+        setMessage(result.message);
       } catch {
         setError("Nie udało się uruchomić synchronizacji.");
       }
@@ -67,7 +66,8 @@ export function GoogleSyncButton() {
   }
 
   return (
-    <div className="flex flex-col items-start gap-2 sm:items-end">
+    <>
+      <div className="hidden flex-col items-start gap-2 min-[769px]:flex sm:items-end">
       <button
         type="button"
         onClick={handleSync}
@@ -77,9 +77,7 @@ export function GoogleSyncButton() {
         {isSyncing ? "Synchronizuję..." : "Synchronizuj z Google"}
       </button>
       <div className="w-full min-w-[220px] sm:text-right">
-        <p className="text-xs font-medium text-black/40">
-          {formatSyncTime(lastSyncedAt)}
-        </p>
+        <p className="text-xs font-medium text-black/40">Synchronizacja opinii: wkrótce</p>
         {isSyncing ? (
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-brand-soft">
             <div className="h-full w-2/3 animate-pulse rounded-full bg-brand" />
@@ -88,10 +86,20 @@ export function GoogleSyncButton() {
         {message ? (
           <p className="mt-1 text-xs font-semibold text-brand">{message}</p>
         ) : null}
+        {message.includes("Ustawienia") ? <Link href="/settings" className="mt-2 inline-block text-xs font-semibold text-brand underline">Przejdź do Ustawień</Link> : null}
         {error ? (
           <p className="mt-1 text-xs font-semibold text-red-600">{error}</p>
         ) : null}
       </div>
-    </div>
+      </div>
+      {!isGoogleConnected ? (
+        <Link
+          href="/settings"
+          className="rounded-xl border border-brand/15 bg-brand-soft px-3 py-2 text-xs font-semibold text-brand min-[769px]:hidden"
+        >
+          Połącz profil Google Business w Ustawieniach.
+        </Link>
+      ) : null}
+    </>
   );
 }
