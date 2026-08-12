@@ -47,14 +47,14 @@ export function MobileBusinessInsightsCarousel({
       </div>
 
       <div
-        className="mt-4 flex snap-x snap-mandatory gap-3.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="mt-4 flex items-stretch snap-x snap-mandatory gap-3.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         onScroll={(event) => {
           const cardStep = event.currentTarget.clientWidth - 28 + 14;
           const nextIndex = Math.round(event.currentTarget.scrollLeft / cardStep);
           setActiveIndex(Math.min(2, Math.max(0, nextIndex)));
         }}
       >
-        <article className="h-[148px] min-w-[calc(100%-28px)] snap-start rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm">
+        <article className="h-[148px] w-[calc(100%-28px)] min-w-[calc(100%-28px)] shrink-0 snap-start rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm">
           <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">
             {bestDay.title}
           </p>
@@ -65,7 +65,7 @@ export function MobileBusinessInsightsCarousel({
           <p className="mt-2 text-xs leading-5 text-black/45">{bestDay.detail}</p>
         </article>
 
-        <article className="h-[148px] min-w-[calc(100%-28px)] snap-start rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm">
+        <article className="h-[148px] w-[calc(100%-28px)] min-w-[calc(100%-28px)] shrink-0 snap-start rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm">
           <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">Ten miesiąc</p>
           <p className="mt-3 text-lg font-semibold tracking-tight">{currentMonth.value}</p>
           <p className="mt-2 flex items-center gap-2 text-xs leading-5 text-black/45">
@@ -74,8 +74,9 @@ export function MobileBusinessInsightsCarousel({
           </p>
         </article>
 
-        <div className="min-w-[calc(100%-28px)] snap-start">
+        <div className="h-[148px] w-[calc(100%-28px)] min-w-[calc(100%-28px)] shrink-0 snap-start">
           <MonthlyGoalCard
+            carousel
             count={monthlyGoal.count}
             goal={monthlyGoal.goal}
             helperText={monthlyGoal.helperText}

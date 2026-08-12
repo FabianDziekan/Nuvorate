@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { BusinessFeatureLock } from "@/components/billing/business-feature-lock";
 import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { BrandLogo } from "@/components/brand/logo";
+import { AnalysisSectionIcon } from "@/components/analysis/analysis-section-icon";
+import { MobileAnalysisSectionCards } from "@/components/analysis/mobile-analysis-section-cards";
 import { AnalysisActionForm } from "@/components/dashboard/analysis-action-form";
 import { AnalysisContextAlert } from "@/components/dashboard/analysis-context-alert";
 import { NotificationBell } from "@/components/notifications/notification-bell";
@@ -364,6 +366,32 @@ export default async function AnalysisPage({
   const strengths = stringList(fullAnalysis?.praised_elements);
   const problems = stringList(fullAnalysis?.reported_problems);
   const recommendations = stringList(fullAnalysis?.recommendations);
+  const fullReportSections = [
+    {
+      title: "Mocne strony",
+      eyebrow: "Strengths",
+      items: strengths,
+      icon: "check" as const,
+      iconClass: "bg-emerald-50 text-emerald-700",
+      tone: "strengths" as const,
+    },
+    {
+      title: "Problemy",
+      eyebrow: "Weaknesses",
+      items: problems,
+      icon: "warning" as const,
+      iconClass: "bg-red-50 text-red-600",
+      tone: "problems" as const,
+    },
+    {
+      title: "Rekomendacje",
+      eyebrow: "Action plan",
+      items: recommendations,
+      icon: "analysis" as const,
+      iconClass: "bg-brand-soft text-brand",
+      tone: "recommendations" as const,
+    },
+  ];
   const completeAnalysis =
     fullAnalysis !== null &&
     typeof fullAnalysis.score === "number" &&
@@ -783,34 +811,14 @@ export default async function AnalysisPage({
                   </p>
                 </section>
 
-                <section className="mt-4 grid gap-4 xl:grid-cols-3">
-                  {[
-                    {
-                      title: "Mocne strony",
-                      eyebrow: "Strengths",
-                      items: strengths,
-                      icon: "check" as const,
-                      iconClass: "bg-emerald-50 text-emerald-700",
-                    },
-                    {
-                      title: "Problemy",
-                      eyebrow: "Weaknesses",
-                      items: problems,
-                      icon: "warning" as const,
-                      iconClass: "bg-red-50 text-red-600",
-                    },
-                    {
-                      title: "Rekomendacje",
-                      eyebrow: "Action plan",
-                      items: recommendations,
-                      icon: "analysis" as const,
-                      iconClass: "bg-brand-soft text-brand",
-                    },
-                  ].map((section) => (
+                <MobileAnalysisSectionCards sections={fullReportSections} />
+
+                <section className="mt-4 hidden gap-4 min-[769px]:grid xl:grid-cols-3">
+                  {fullReportSections.map((section) => (
                     <article key={section.title} className="flex flex-col rounded-[24px] border border-black/[0.06] bg-white p-6 shadow-card xl:h-[600px]">
                       <div className="flex items-start gap-3">
                         <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${section.iconClass}`}>
-                          <Icon name={section.icon} className="h-[18px] w-[18px]" />
+                          <AnalysisSectionIcon name={section.icon} />
                         </span>
                         <div>
                           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black/30">

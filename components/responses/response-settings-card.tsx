@@ -44,6 +44,7 @@ export function ResponseSettingsCard({
     useState<AiGenerationProgressStatus>("idle");
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
+  const [isRatingsSheetOpen, setIsRatingsSheetOpen] = useState(false);
 
   useEffect(() => {
     if (!toast) {
@@ -53,6 +54,29 @@ export function ResponseSettingsCard({
     const timeout = window.setTimeout(() => setToast(""), 2000);
     return () => window.clearTimeout(timeout);
   }, [toast]);
+
+  useEffect(() => {
+    if (!isRatingsSheetOpen) {
+      return;
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsRatingsSheetOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isRatingsSheetOpen]);
+
+  function toggleRating(rating: number, checked: boolean) {
+    setEnabledRatings((currentRatings) =>
+      checked
+        ? [...currentRatings, rating].sort((a, b) => b - a)
+        : currentRatings.filter((value) => value !== rating),
+    );
+  }
 
   async function handleSave() {
     setError("");
@@ -150,7 +174,7 @@ export function ResponseSettingsCard({
 
   return (
     <section className="mt-8 rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(300px,0.8fr)] lg:items-start">
+      <div className="hidden gap-5 min-[769px]:grid lg:grid-cols-[minmax(0,0.95fr)_minmax(300px,0.8fr)] lg:items-start">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
             Automatyczne odpowiedzi
@@ -211,13 +235,7 @@ export function ResponseSettingsCard({
                   <input
                     type="checkbox"
                     checked={enabledRatings.includes(rating)}
-                    onChange={(event) => {
-                      setEnabledRatings((currentRatings) =>
-                        event.target.checked
-                          ? [...currentRatings, rating].sort((a, b) => b - a)
-                          : currentRatings.filter((value) => value !== rating),
-                      );
-                    }}
+                    onChange={(event) => toggleRating(rating, event.target.checked)}
                     className="sr-only"
                   />
                   <span
@@ -262,6 +280,173 @@ export function ResponseSettingsCard({
           )}
         </div>
       </div>
+
+      <div className="min-[769px]:hidden">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
+            Automatyczne odpowiedzi
+          </p>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight">
+            Ustawienia generowania
+          </h2>
+          <p className="mt-1 text-sm leading-5 text-black/45">
+            Ustal, dla których opinii przygotować odpowiedź.
+          </p>
+        </div>
+
+        <label className="mt-4 flex items-center justify-between gap-4 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] px-4 py-3">
+          <span>
+            <span className="block text-sm font-semibold text-ink">
+              Automatyczne generowanie
+            </span>
+            <span className="mt-0.5 block text-xs leading-5 text-black/40">
+              Dla nowych opinii zgodnych z wyborem.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={autoGenerate}
+            onChange={(event) => setAutoGenerate(event.target.checked)}
+            className="sr-only"
+          />
+          <span
+            className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+              autoGenerate ? "bg-brand" : "bg-black/10"
+            }`}
+          >
+            <span
+              className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                autoGenerate ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </span>
+        </label>
+
+        <button
+          type="button"
+          onClick={() => setIsRatingsSheetOpen(true)}
+          className="mt-3 flex w-full items-center justify-between rounded-2xl border border-black/[0.06] bg-[#FAFAFC] px-4 py-3 text-left transition hover:border-brand/20 focus:outline-none focus:ring-4 focus:ring-brand/10"
+        >
+          <span>
+            <span className="block text-sm font-semibold text-ink">Oceny</span>
+            <span className="mt-0.5 block text-xs text-black/40">
+              {enabledRatings.length > 0
+                ? `Wybrane: ${enabledRatings.map(ratingStars).join(" · ")}`
+                : "Nie wybrano ocen"}
+            </span>
+          </span>
+          <span className="text-xs font-semibold text-brand">Edytuj oceny</span>
+        </button>
+
+        <div className="sticky bottom-3 z-10 mt-4 rounded-2xl bg-white/90 pt-1 backdrop-blur">
+          <button
+            type="button"
+            disabled={isSaving}
+            onClick={handleSave}
+            className="w-full rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#4D4EE8] disabled:cursor-wait disabled:opacity-60"
+          >
+            {isSaving ? "Zapisywanie..." : "Zapisz ustawienia"}
+          </button>
+        </div>
+        <AiGenerationProgress
+          messages={responseProgressMessages}
+          status={progressStatus}
+          title="Generowanie odpowiedzi..."
+        />
+        {toast && (
+          <div className="mt-3 rounded-xl border border-brand/10 bg-brand-soft p-3 text-xs font-semibold leading-5 text-brand">
+            {toast}
+          </div>
+        )}
+        {error && (
+          <div className="mt-3 rounded-xl border border-red-100 bg-red-50 p-3 text-xs font-medium leading-5 text-red-600">
+            {error}
+          </div>
+        )}
+      </div>
+
+      {isRatingsSheetOpen ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-end bg-ink/35 p-3 backdrop-blur-sm min-[769px]:hidden"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.currentTarget === event.target) {
+              setIsRatingsSheetOpen(false);
+            }
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rating-sheet-title"
+            className="analysis-context-alert-enter max-h-[min(620px,calc(100vh-24px))] w-full overflow-y-auto rounded-[28px] border border-black/[0.06] bg-white p-5 shadow-[0_-16px_60px_rgba(15,15,16,0.2)]"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
+                  Automatyczne odpowiedzi
+                </p>
+                <h2 id="rating-sheet-title" className="mt-1 text-xl font-semibold tracking-tight">
+                  Wybierz oceny
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsRatingsSheetOpen(false)}
+                className="grid h-9 w-9 place-items-center rounded-xl text-lg text-black/45 transition hover:bg-black/[0.04] hover:text-ink focus:outline-none focus:ring-4 focus:ring-brand/10"
+                aria-label="Zamknij wybór ocen"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-2">
+              {[5, 4, 3, 2, 1].map((rating) => (
+                <label
+                  key={rating}
+                  className="flex items-center justify-between gap-5 rounded-xl border border-black/[0.06] bg-[#FAFAFC] px-3.5 py-3"
+                >
+                  <span className="text-sm font-semibold tracking-[0.04em] text-ink">
+                    {ratingStars(rating)}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black/30">
+                      {enabledRatings.includes(rating) ? "ON" : "OFF"}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={enabledRatings.includes(rating)}
+                      onChange={(event) => toggleRating(rating, event.target.checked)}
+                      className="sr-only"
+                    />
+                    <span
+                      className={`relative h-6 w-11 rounded-full transition ${
+                        enabledRatings.includes(rating) ? "bg-brand" : "bg-black/10"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                          enabledRatings.includes(rating)
+                            ? "translate-x-6"
+                            : "translate-x-1"
+                        }`}
+                      />
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsRatingsSheetOpen(false)}
+              className="mt-5 w-full rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#4D4EE8] focus:outline-none focus:ring-4 focus:ring-brand/20"
+            >
+              Gotowe
+            </button>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

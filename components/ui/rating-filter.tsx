@@ -12,7 +12,10 @@ export function RatingFilter({
   selectedRating: string;
 }) {
   return (
-    <div className="flex flex-wrap gap-2" aria-label="Filtr ocen">
+    <div
+      className="flex flex-wrap gap-2 max-[768px]:w-full max-[768px]:flex-nowrap max-[768px]:overflow-x-auto max-[768px]:pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      aria-label="Filtr ocen"
+    >
       {ratingFilterValues.map((rating) => {
         const active = selectedRating === rating;
 
@@ -20,7 +23,7 @@ export function RatingFilter({
           <Link
             key={rating}
             href={buildHref(rating)}
-            className={`rounded-xl px-3.5 py-2.5 text-xs font-semibold transition ${
+            className={`shrink-0 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition max-[768px]:px-3 max-[768px]:py-2 ${
               active
                 ? "bg-brand text-white shadow-sm"
                 : "border border-black/[0.08] bg-white text-black/50 hover:border-brand/30 hover:text-brand"

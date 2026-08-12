@@ -7,6 +7,7 @@ import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
 import { ResponseCard } from "@/components/responses/response-card";
+import { MobileResponseFilters } from "@/components/responses/mobile-response-filters";
 import { ResponseSettingsCard } from "@/components/responses/response-settings-card";
 import { Pagination } from "@/components/ui/pagination";
 import {
@@ -494,15 +495,16 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
           </nav>
         </header>
 
-        <div className="min-w-0 px-5 py-8 sm:px-8 lg:px-9 lg:py-10">
+        <div className="min-w-0 px-5 py-8 max-[768px]:px-4 max-[768px]:py-5 sm:px-8 lg:px-9 lg:py-10">
           <div className="mx-auto min-w-0 max-w-[1450px]">
             <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
               <div>
-                <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+                <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] max-[768px]:mt-0 max-[768px]:text-2xl sm:text-4xl">
                   Odpowiedzi
                 </h1>
-                <p className="mt-2 text-sm leading-6 text-black/45">
-                  Zarządzaj odpowiedziami na opinie klientów.
+                <p className="mt-2 text-sm leading-6 text-black/45 max-[768px]:mt-1 max-[768px]:leading-5">
+                  <span className="min-[769px]:inline">Zarządzaj odpowiedziami na opinie klientów.</span>
+                  <span className="min-[769px]:hidden">Odpowiadaj na opinie klientów.</span>
                 </p>
               </div>
             </div>
@@ -583,8 +585,8 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
               />
             )}
 
-            <section className="mt-6 rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
-              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <section className="mt-6 rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card max-[768px]:mt-4 max-[768px]:p-4 sm:p-6">
+              <div className="flex flex-col justify-between gap-4 max-[768px]:flex-row max-[768px]:items-start max-[768px]:gap-3 sm:flex-row sm:items-center">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
                     Lista odpowiedzi
@@ -594,7 +596,8 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
                     {filteredReviews.length === 1 ? "opinia" : "opinii"}
                   </h2>
                 </div>
-                <div className="flex flex-wrap gap-2" aria-label="Filtry odpowiedzi">
+                <MobileResponseFilters filters={filters} selectedFilter={selectedFilter} />
+                <div className="hidden flex-wrap gap-2 min-[769px]:flex" aria-label="Filtry odpowiedzi">
                   {filters.map((filter) => {
                     const active = selectedFilter === filter.value;
                     const href =
@@ -606,7 +609,7 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
                       <Link
                         key={filter.value}
                         href={href}
-                        className={`rounded-xl px-3.5 py-2.5 text-xs font-semibold transition ${
+                        className={`shrink-0 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition max-[768px]:px-3 max-[768px]:py-2 ${
                           active
                             ? "bg-brand text-white shadow-sm"
                             : "border border-black/[0.08] bg-white text-black/50 hover:border-brand/30 hover:text-brand"
@@ -620,7 +623,7 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
               </div>
 
               {filteredReviews.length > 0 ? (
-                <div className="mt-6 space-y-3">
+                <div className="mt-6 space-y-3 max-[768px]:mt-4 max-[768px]:space-y-2">
                   {paginatedReviews.map((review) => (
                     <ResponseCard
                       key={review.id}

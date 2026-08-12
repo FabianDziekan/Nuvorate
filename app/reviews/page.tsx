@@ -5,6 +5,7 @@ import { BrandLogo } from "@/components/brand/logo";
 import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
+import { MobileReviewList } from "@/components/reviews/mobile-review-list";
 import { Pagination } from "@/components/ui/pagination";
 import {
   RatingFilter,
@@ -482,29 +483,51 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
           </nav>
         </header>
 
-        <div className="min-w-0 px-5 py-8 sm:px-8 lg:px-9 lg:py-10">
+        <div className="min-w-0 px-5 py-8 max-[768px]:px-4 max-[768px]:py-5 sm:px-8 lg:px-9 lg:py-10">
           <div className="mx-auto min-w-0 max-w-[1450px]">
             <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
               <div>
-                <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+                <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] max-[768px]:mt-0 max-[768px]:text-2xl sm:text-4xl">
                   Opinie klientów
                 </h1>
-                <p className="mt-2 text-sm leading-6 text-black/45">
+                <p className="mt-2 text-sm leading-6 text-black/45 max-[768px]:mt-1 max-[768px]:leading-5">
                   Wszystkie opinie firmy {business.name} w jednym miejscu.
                 </p>
               </div>
             </div>
 
-            <section className="mt-8 min-w-0 overflow-hidden rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
-              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <section className="mt-8 min-w-0 overflow-hidden rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card max-[768px]:mt-5 max-[768px]:p-4 sm:p-6">
+              <div className="flex flex-col justify-between gap-4 max-[768px]:gap-3 sm:flex-row sm:items-center">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
                     Lista opinii
                   </p>
-                  <h2 className="mt-1 text-xl font-semibold tracking-tight">
-                    {filteredReviews.length}{" "}
-                    {filteredReviews.length === 1 ? "opinia" : "opinii"}
-                  </h2>
+                  <div className="mt-1 flex items-center gap-2">
+                    <h2 className="text-xl font-semibold tracking-tight">
+                      {filteredReviews.length}{" "}
+                      {filteredReviews.length === 1 ? "opinia" : "opinii"}
+                    </h2>
+                    <span
+                      className="grid h-7 w-7 place-items-center rounded-lg border border-black/[0.06] bg-[#FAFAFC] text-black/35 min-[769px]:hidden"
+                      aria-label="Dostępne filtry opinii"
+                      title="Dostępne filtry opinii"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        viewBox="0 0 24 24"
+                        className="h-3.5 w-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                      >
+                        <path d="M4 7h16M4 12h16M4 17h16" />
+                        <circle cx="9" cy="7" r="1.5" fill="currentColor" stroke="none" />
+                        <circle cx="15" cy="12" r="1.5" fill="currentColor" stroke="none" />
+                        <circle cx="11" cy="17" r="1.5" fill="currentColor" stroke="none" />
+                      </svg>
+                    </span>
+                  </div>
                 </div>
                 <RatingFilter
                   selectedRating={selectedRating}
@@ -515,20 +538,31 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
               </div>
 
               {filteredReviews.length > 0 ? (
-                <div className="mt-6 space-y-3">
+                <>
+                <MobileReviewList
+                  reviews={paginatedReviews.map((review) => ({
+                    id: review.id,
+                    authorName: review.author_name,
+                    content: review.content,
+                    createdAtLabel: formatReviewDate(review.created_at),
+                    rating: review.rating,
+                    sourceLabel: formatSource(review.source),
+                  }))}
+                />
+                <div className="mt-6 hidden space-y-3 min-[769px]:block">
                   {paginatedReviews.map((review) => (
                     <article
                       key={review.id}
                       id={`review-${review.id}`}
-                      className={`min-w-0 scroll-mt-28 overflow-hidden rounded-2xl border bg-[#FAFAFC] p-5 transition ${
+                      className={`min-w-0 scroll-mt-28 overflow-hidden rounded-2xl border bg-[#FAFAFC] p-5 transition max-[768px]:p-3 ${
                         highlightedReviewId === review.id
                           ? "review-highlight border-brand/45 bg-brand/[0.04]"
                           : "border-black/[0.06]"
                       }`}
                     >
-                      <div className="flex min-w-0 flex-col justify-between gap-4 sm:flex-row sm:items-start">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-sm font-bold text-brand shadow-sm">
+                      <div className="flex min-w-0 flex-col justify-between gap-4 max-[768px]:flex-row max-[768px]:items-start max-[768px]:gap-2 sm:flex-row sm:items-start">
+                        <div className="flex min-w-0 items-center gap-3 max-[768px]:gap-2">
+                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-sm font-bold text-brand shadow-sm max-[768px]:h-8 max-[768px]:w-8 max-[768px]:rounded-lg max-[768px]:text-xs">
                             {review.author_name.slice(0, 1).toUpperCase()}
                           </span>
                           <div className="min-w-0">
@@ -540,22 +574,22 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                             </p>
                           </div>
                         </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <span className="rounded-full border border-black/[0.06] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-black/40">
+                        <div className="flex shrink-0 items-center gap-2 max-[768px]:gap-1.5">
+                          <span className="rounded-full border border-black/[0.06] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-black/40 max-[768px]:px-2">
                             {formatSource(review.source)}
                           </span>
                           <span
                             className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                               review.rating <= 2
                                 ? "bg-red-50 text-red-600"
-                                : "bg-brand-soft text-brand"
+                              : "bg-brand-soft text-brand"
                             }`}
                           >
                             {formatRating(review.rating)} ★
                           </span>
                         </div>
                       </div>
-                      <p className="mt-5 break-words text-sm leading-6 text-black/60">
+                      <p className="mt-5 break-words text-sm leading-6 text-black/60 max-[768px]:mt-3 max-[768px]:leading-5">
                         {review.content}
                       </p>
                     </article>
@@ -567,6 +601,15 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                     totalItems={filteredReviews.length}
                   />
                 </div>
+                <div className="mt-4 min-[769px]:hidden">
+                  <Pagination
+                    buildHref={(page) => buildReviewsHref(selectedRating, page)}
+                    currentPage={currentPage}
+                    pageSize={reviewsPerPage}
+                    totalItems={filteredReviews.length}
+                  />
+                </div>
+                </>
               ) : (
                 <div className="mt-6 rounded-2xl border border-dashed border-black/[0.08] bg-[#FAFAFC] px-5 py-14 text-center">
                   <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft text-brand">

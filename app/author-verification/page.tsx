@@ -5,6 +5,7 @@ import {
   AuthorVerificationList,
   type AuthorVerificationReview,
 } from "@/components/author-verification/author-verification-list";
+import { MobileAuthorVerificationFilters } from "@/components/author-verification/mobile-author-verification-filters";
 import { BrandLogo } from "@/components/brand/logo";
 import { BusinessFeatureLock } from "@/components/billing/business-feature-lock";
 import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
@@ -586,10 +587,18 @@ export default async function AuthorVerificationPage({
                   <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
                     Lista opinii
                   </p>
-                  <h2 className="mt-1 text-xl font-semibold tracking-tight">
-                    {filteredReviews.length}{" "}
-                    {filteredReviews.length === 1 ? "autor" : "autorów"}
-                  </h2>
+                  <div className="mt-1 flex items-center gap-3">
+                    <h2 className="text-xl font-semibold tracking-tight">
+                      {filteredReviews.length}{" "}
+                      {filteredReviews.length === 1 ? "autor" : "autorów"}
+                    </h2>
+                    <MobileAuthorVerificationFilters
+                      searchQuery={searchQuery}
+                      selectedRating={selectedRating}
+                      selectedSort={selectedSort}
+                      selectedStatus={selectedStatus}
+                    />
+                  </div>
                 </div>
                 <p className="max-w-md text-sm leading-6 text-black/45">
                   Kliknij opinię albo przycisk „Sprawdź autora”, aby otworzyć
@@ -597,7 +606,7 @@ export default async function AuthorVerificationPage({
                 </p>
               </div>
 
-              <div className="mt-6 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4">
+              <div className="mt-6 hidden rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4 min-[769px]:block">
                 <div className="grid gap-4 xl:grid-cols-[1fr_260px]">
                   <form action="/author-verification" className="min-w-0">
                     <input type="hidden" name="rating" value={selectedRating} />

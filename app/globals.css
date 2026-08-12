@@ -187,6 +187,42 @@ html.dark body {
   }
 }
 
+@keyframes mobile-bottom-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mobile-process-stage-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mobile-journey-stage-in {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 @keyframes analysis-alert-in {
   from {
     opacity: 0;
@@ -219,13 +255,412 @@ html.dark body {
   }
 }
 
+@keyframes hero-flow-scan {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(91, 92, 246, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 0 5px rgba(91, 92, 246, 0.15);
+  }
+}
+
+@keyframes hero-flow-timeline-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(91, 92, 246, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 0 4px rgba(91, 92, 246, 0.14);
+  }
+}
+
+@keyframes hero-flow-data {
+  to {
+    background-position: 24px 0;
+  }
+}
+
+@keyframes cta-orbit-drift {
+  0%,
+  100% {
+    opacity: 0.22;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+
+  50% {
+    opacity: 0.34;
+    transform: translate3d(10px, -8px, 0) rotate(5deg);
+  }
+}
+
+@keyframes cta-orbit-drift-reverse {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+
+  50% {
+    opacity: 0.3;
+    transform: translate3d(-9px, 8px, 0) rotate(-4deg);
+  }
+}
+
+@keyframes cta-orbit-drift-wide {
+  0%,
+  100% {
+    opacity: 0.22;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+
+  35% {
+    opacity: 0.31;
+    transform: translate3d(12px, 5px, 0) rotate(4deg);
+  }
+
+  70% {
+    opacity: 0.25;
+    transform: translate3d(-7px, -9px, 0) rotate(-3deg);
+  }
+}
+
+@keyframes cta-orbit-dot-pulse {
+  0%,
+  100% {
+    opacity: 0.68;
+    transform: translateX(-50%) scale(0.9);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.08);
+  }
+}
+
+@keyframes cta-orbit-drift-east {
+  0%,
+  100% {
+    opacity: 0.22;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+
+  50% {
+    opacity: 0.34;
+    transform: translate3d(18px, -10px, 0) rotate(7deg);
+  }
+}
+
+@keyframes cta-orbit-drift-west {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+
+  50% {
+    opacity: 0.31;
+    transform: translate3d(-16px, 12px, 0) rotate(-6deg);
+  }
+}
+
+@keyframes cta-orbit-drift-vertical {
+  0%,
+  100% {
+    opacity: 0.21;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+
+  50% {
+    opacity: 0.32;
+    transform: translate3d(7px, 16px, 0) rotate(5deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .analysis-context-alert-enter,
   .analysis-context-alert-leave,
-  .analysis-context-alert-cta {
+  .analysis-context-alert-cta,
+  .hero-flow-scan,
+  .hero-flow-timeline-pulse,
+  .hero-flow-connector-current {
     animation: none;
   }
 }
+
+.mobile-bottom-sheet-enter {
+  animation: mobile-bottom-sheet-in 220ms ease-out both;
+}
+
+.mobile-process-stage {
+  animation: mobile-process-stage-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+
+.mobile-journey-stage {
+  position: relative;
+  z-index: 1;
+  animation: mobile-journey-stage-in 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+
+.hero-flow-scan {
+  animation: hero-flow-scan 1.5s ease-in-out infinite;
+}
+
+.hero-flow-timeline-pulse {
+  animation: hero-flow-timeline-pulse 1.8s ease-in-out infinite;
+}
+
+.hero-flow-connector-current {
+  background-color: rgba(91, 92, 246, 0.35);
+  background-image: linear-gradient(90deg, rgba(91, 92, 246, 0.22), #5b5cf6, rgba(91, 92, 246, 0.22));
+  background-size: 24px 100%;
+  animation: hero-flow-data 900ms linear infinite;
+}
+
+.cta-orbit {
+  pointer-events: none;
+  border-color: rgba(237, 236, 255, 0.92);
+  border-width: 1.5px;
+  will-change: transform, opacity;
+}
+
+.cta-orbit-one,
+.cta-orbit-five,
+.cta-orbit-eight {
+  border-width: 2px;
+  box-shadow: 0 0 18px rgba(230, 229, 255, 0.18);
+}
+
+.cta-orbit-one,
+.cta-orbit-four,
+.cta-orbit-five,
+.cta-orbit-seven,
+.cta-orbit-nine,
+.cta-orbit-eleven {
+  animation: cta-orbit-drift 30s ease-in-out infinite;
+}
+
+.cta-orbit-two,
+.cta-orbit-three,
+.cta-orbit-six,
+.cta-orbit-eight,
+.cta-orbit-ten {
+  animation: cta-orbit-drift-reverse 36s ease-in-out infinite;
+}
+
+.cta-orbit-three {
+  animation-delay: -7s;
+}
+
+.cta-orbit-one,
+.cta-orbit-five,
+.cta-orbit-eight {
+  animation-name: cta-orbit-drift-wide;
+  animation-duration: 38s;
+}
+
+.cta-orbit-four {
+  animation-delay: -11s;
+}
+
+.cta-orbit-five {
+  animation-delay: -4s;
+}
+
+.cta-orbit-six {
+  animation-delay: -15s;
+}
+
+.cta-orbit-seven {
+  animation-delay: -18s;
+}
+
+.cta-orbit-eight {
+  animation-delay: -25s;
+}
+
+.cta-orbit-nine {
+  animation-delay: -8s;
+}
+
+.cta-orbit-ten {
+  animation-delay: -21s;
+}
+
+.cta-orbit-eleven {
+  animation-delay: -13s;
+}
+
+.cta-orbit-dot-track {
+  pointer-events: none;
+  opacity: 0.7;
+  will-change: transform;
+}
+
+.cta-orbit-dot-track-one {
+  animation: cta-orbit-rotate 32s linear infinite;
+}
+
+.cta-orbit-dot-track-two {
+  animation: cta-orbit-rotate-reverse 40s linear infinite;
+}
+
+.cta-orbit-dot-track-three {
+  animation: cta-orbit-rotate 28s linear infinite;
+}
+
+.cta-orbit-dot {
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.36);
+  transform: translateX(-50%);
+  will-change: transform, opacity;
+}
+
+.cta-orbit-dot-track-one .cta-orbit-dot,
+.cta-orbit-dot-track-three .cta-orbit-dot {
+  animation: cta-orbit-dot-pulse 7s ease-in-out infinite;
+}
+
+.cta-orbit-dot-track-three .cta-orbit-dot {
+  animation-delay: -3.5s;
+}
+
+/* Each CTA ring follows an independent, low-amplitude orbit. */
+.cta-orbit-one,
+.cta-orbit-eight {
+  animation: cta-orbit-drift-east 24s ease-in-out infinite;
+}
+
+.cta-orbit-two,
+.cta-orbit-six,
+.cta-orbit-ten {
+  animation: cta-orbit-drift-west 31s ease-in-out infinite;
+}
+
+.cta-orbit-three,
+.cta-orbit-five,
+.cta-orbit-nine {
+  animation: cta-orbit-drift-vertical 27s ease-in-out infinite;
+}
+
+.cta-orbit-four,
+.cta-orbit-seven,
+.cta-orbit-eleven {
+  animation: cta-orbit-drift-wide 36s ease-in-out infinite;
+}
+
+.cta-orbit-one,
+.cta-orbit-two {
+  animation-delay: -8s;
+}
+
+.cta-orbit-five,
+.cta-orbit-six {
+  animation-delay: -15s;
+}
+
+.cta-orbit-eight,
+.cta-orbit-nine {
+  animation-delay: -20s;
+}
+
+@media (max-width: 1023px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  /* The CTA keeps a quieter, purpose-built orbit layout on small screens. */
+  .cta-orbit-five,
+  .cta-orbit-six,
+  .cta-orbit-seven,
+  .cta-orbit-eight,
+  .cta-orbit-nine,
+  .cta-orbit-ten,
+  .cta-orbit-eleven,
+  .cta-orbit-dot-track-three {
+    display: none;
+  }
+
+  .cta-orbit-one {
+    top: -6.5rem;
+    left: -7rem;
+    width: 18rem;
+    height: 18rem;
+    animation: cta-orbit-drift-east 21s ease-in-out infinite;
+    animation-delay: -6s;
+  }
+
+  .cta-orbit-two {
+    right: -8rem;
+    bottom: -7.5rem;
+    width: 19rem;
+    height: 19rem;
+    animation: cta-orbit-drift-west 26s ease-in-out infinite;
+    animation-delay: -14s;
+  }
+
+  .cta-orbit-three {
+    top: 1.5rem;
+    right: -3.5rem;
+    width: 10rem;
+    height: 10rem;
+    animation: cta-orbit-drift-vertical 18s ease-in-out infinite;
+    animation-delay: -8s;
+  }
+
+  .cta-orbit-four {
+    bottom: 1.25rem;
+    left: 8%;
+    width: 6.5rem;
+    height: 6.5rem;
+    animation: cta-orbit-drift-wide 24s ease-in-out infinite;
+    animation-delay: -17s;
+  }
+
+  .cta-orbit-dot-track-one {
+    top: -6.5rem;
+    left: -7rem;
+    width: 18rem;
+    height: 18rem;
+    animation-duration: 27s;
+  }
+
+  .cta-orbit-dot-track-two {
+    right: -8rem;
+    bottom: -7.5rem;
+    width: 19rem;
+    height: 19rem;
+    animation-duration: 30s;
+  }
+
+  .cta-orbit-dot-track {
+    opacity: 0.58;
+  }
+}
+
+@keyframes cta-orbit-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes cta-orbit-rotate-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
 
 @layer utilities {
   :where(section, article, div)[class*="rounded"][class*="border"][class*="bg-white"]:not(.pricing-card),
@@ -475,7 +910,7 @@ html.dark body {
   }
 
   html.dark .analysis-scroll-area:hover {
-    scrollbar-color: #8f90ff rgba(255, 255, 255, 0.08);
+    scrollbar-color: #8f90ff transparent;
   }
 
   html.dark .analysis-scroll-area:hover::-webkit-scrollbar-thumb {
@@ -484,6 +919,32 @@ html.dark body {
 
   html.dark .dashboard-analysis-scroll-area:hover {
     scrollbar-color: #8f90ff transparent;
+  }
+
+  /* Scroll containers inside the app keep a transparent track in dark mode. */
+  html.dark main :is(.overflow-auto, .overflow-scroll, .overflow-y-auto, .overflow-y-scroll) {
+    scrollbar-color: rgba(143, 144, 255, 0.58) transparent;
+    scrollbar-width: thin;
+  }
+
+  html.dark main :is(.overflow-auto, .overflow-scroll, .overflow-y-auto, .overflow-y-scroll)::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  html.dark main :is(.overflow-auto, .overflow-scroll, .overflow-y-auto, .overflow-y-scroll)::-webkit-scrollbar-track {
+    background: transparent;
+    border: 0;
+  }
+
+  html.dark main :is(.overflow-auto, .overflow-scroll, .overflow-y-auto, .overflow-y-scroll)::-webkit-scrollbar-thumb {
+    background: rgba(143, 144, 255, 0.58);
+    border: 0;
+    border-radius: 999px;
+  }
+
+  html.dark main :is(.overflow-auto, .overflow-scroll, .overflow-y-auto, .overflow-y-scroll):hover::-webkit-scrollbar-thumb {
+    background: rgba(143, 144, 255, 0.78);
   }
 
   html.dark .sidebar-nav-item:has(.notification-sidebar-badge) {

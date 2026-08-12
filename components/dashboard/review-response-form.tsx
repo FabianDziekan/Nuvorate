@@ -10,11 +10,13 @@ import type { GenerateReviewResponseState } from "./review-response-state";
 
 function SubmitButton({
   hasResponse,
+  mobileLabel,
   pending,
   responseText,
   setToast,
 }: {
   hasResponse: boolean;
+  mobileLabel: string;
   pending: boolean;
   responseText: string;
   setToast: (toast: string) => void;
@@ -37,7 +39,7 @@ function SubmitButton({
           className="text-xs font-semibold text-brand transition hover:text-[#4D4EE8] disabled:cursor-wait disabled:opacity-60"
         >
           <span className="min-[769px]:hidden">
-            {pending ? "Generowanie..." : "Odpowiedz →"}
+            {pending ? "Generowanie..." : mobileLabel}
           </span>
           <span className="hidden min-[769px]:inline">
             {pending
@@ -72,10 +74,12 @@ export function ReviewResponseForm({
   reviewId,
   initialResponseText,
   isReplyLimitReached = false,
+  mobileLabel = "Odpowiedz →",
 }: {
   reviewId: string;
   initialResponseText?: string | null;
   isReplyLimitReached?: boolean;
+  mobileLabel?: string;
 }) {
   const trimmedInitialResponse =
     typeof initialResponseText === "string"
@@ -134,6 +138,7 @@ export function ReviewResponseForm({
           <input type="hidden" name="reviewId" value={reviewId} />
           <SubmitButton
             hasResponse={Boolean(responseText)}
+            mobileLabel={mobileLabel}
             pending={isPending}
             responseText={responseText}
             setToast={setToast}

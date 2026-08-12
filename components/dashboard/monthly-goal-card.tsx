@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { updateMonthlyReviewGoal } from "@/app/dashboard/actions";
 
 type MonthlyGoalCardProps = {
+  carousel?: boolean;
   count: number;
   goal: number;
   helperText: string;
@@ -13,6 +14,7 @@ type MonthlyGoalCardProps = {
 };
 
 export function MonthlyGoalCard({
+  carousel = false,
   count,
   goal,
   helperText,
@@ -25,6 +27,7 @@ export function MonthlyGoalCard({
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
   const [isPending, startTransition] = useTransition();
+  const useCarouselLayout = carousel && !isEditing;
 
   function cancelEdit() {
     if (isPending) {
@@ -82,7 +85,11 @@ export function MonthlyGoalCard({
           startEdit();
         }
       }}
-      className={`min-h-[188px] rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4 focus:outline-none focus:ring-4 focus:ring-brand/10 max-[768px]:min-h-0 max-[768px]:p-2 ${
+      className={`${
+        useCarouselLayout
+          ? "!h-[148px] !min-h-[148px] overflow-hidden !p-4"
+          : "min-h-[188px] p-4 max-[768px]:min-h-0 max-[768px]:p-2"
+      } rounded-2xl border border-black/[0.06] bg-[#FAFAFC] focus:outline-none focus:ring-4 focus:ring-brand/10 ${
         isEditing ? "" : "max-[768px]:h-[126px] max-[768px]:overflow-hidden"
       } ${
         isEditing ? "" : "cursor-pointer hover:border-brand/30"
@@ -148,7 +155,7 @@ export function MonthlyGoalCard({
           <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">
             Cel miesiąca
           </p>
-          <div className="mt-3 flex items-center justify-between gap-3 max-[768px]:mt-1">
+          <div className={`mt-3 flex items-center justify-between gap-3 ${carousel ? "" : "max-[768px]:mt-1"}`}>
             <p className="text-lg font-semibold tracking-tight">
               {count} / {goal} opinii
             </p>
@@ -158,20 +165,20 @@ export function MonthlyGoalCard({
               </span>
             )}
           </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/[0.07] max-[768px]:mt-1 max-[768px]:h-1">
+          <div className={`mt-3 h-2 overflow-hidden rounded-full bg-black/[0.07] ${carousel ? "" : "max-[768px]:mt-1 max-[768px]:h-1"}`}>
             <div
               className="h-full rounded-full bg-brand"
               style={{ width: `${progress}%` }}
             />
           </div>
-          <p className="mt-2 text-xs leading-5 text-black/45 max-[768px]:mt-1 max-[768px]:text-[10px] max-[768px]:leading-3">{helperText}</p>
+          <p className={`mt-2 text-xs leading-5 text-black/45 ${carousel ? "" : "max-[768px]:mt-1 max-[768px]:text-[10px] max-[768px]:leading-3"}`}>{helperText}</p>
           <button
             type="button"
             onClick={(event) => {
               event.stopPropagation();
               startEdit();
             }}
-            className="mt-2 text-xs font-semibold text-brand max-[768px]:mt-0.5 max-[768px]:text-[10px]"
+            className={`mt-2 text-xs font-semibold text-brand ${carousel ? "" : "max-[768px]:mt-0.5 max-[768px]:text-[10px]"}`}
           >
             Edytuj cel
           </button>
