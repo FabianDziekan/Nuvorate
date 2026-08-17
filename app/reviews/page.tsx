@@ -6,6 +6,8 @@ import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
 import { MobileReviewList } from "@/components/reviews/mobile-review-list";
+import { MobileBottomNavigation } from "@/components/navigation/mobile-bottom-navigation";
+import { AppNavigationIcon } from "@/components/navigation/app-navigation-icon";
 import { Pagination } from "@/components/ui/pagination";
 import {
   RatingFilter,
@@ -363,7 +365,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
             if (item.href) {
               return (
                 <Link key={item.label} href={item.href} className={className}>
-                  <Icon name={item.icon} className="h-[18px] w-[18px]" />
+                  <AppNavigationIcon name={item.icon} className="h-[18px] w-[18px]" />
                   <span className="min-w-0 flex-1">{item.label}</span>
                   <BusinessNavBadge
                     show={
@@ -380,7 +382,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
 
             return (
               <button key={item.label} type="button" className={className}>
-                <Icon name={item.icon} className="h-[18px] w-[18px]" />
+                <AppNavigationIcon name={item.icon} className="h-[18px] w-[18px]" />
                 <span className="min-w-0 flex-1">{item.label}</span>
                 <BusinessNavBadge
                   show={
@@ -454,34 +456,9 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
               </form>
             </div>
           </div>
-          <nav
-            className="flex gap-1 overflow-x-auto border-t border-black/[0.05] px-4 py-2 lg:hidden"
-            aria-label="Mobilna nawigacja dashboardu"
-          >
-            {navigation.slice(0, 5).map((item) => {
-              const active = item.label === "Opinie";
-              const className = `flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium ${
-                active ? "bg-brand-soft text-brand" : "text-black/40"
-              }`;
-
-              if (item.href) {
-                return (
-                  <Link key={item.label} href={item.href} className={className}>
-                    <Icon name={item.icon} className="h-4 w-4" />
-                    {item.label}
-                  </Link>
-                );
-              }
-
-              return (
-                <button key={item.label} type="button" className={className}>
-                  <Icon name={item.icon} className="h-4 w-4" />
-                  {item.label}
-                </button>
-              );
-            })}
-          </nav>
         </header>
+
+        <MobileBottomNavigation businessId={business.id} />
 
         <div className="min-w-0 px-5 py-8 max-[768px]:px-4 max-[768px]:py-5 sm:px-8 lg:px-9 lg:py-10">
           <div className="mx-auto min-w-0 max-w-[1450px]">

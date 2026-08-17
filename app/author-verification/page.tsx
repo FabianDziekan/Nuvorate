@@ -6,6 +6,8 @@ import {
   type AuthorVerificationReview,
 } from "@/components/author-verification/author-verification-list";
 import { MobileAuthorVerificationFilters } from "@/components/author-verification/mobile-author-verification-filters";
+import { MobileBottomNavigation } from "@/components/navigation/mobile-bottom-navigation";
+import { AppNavigationIcon } from "@/components/navigation/app-navigation-icon";
 import { BrandLogo } from "@/components/brand/logo";
 import { BusinessFeatureLock } from "@/components/billing/business-feature-lock";
 import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
@@ -395,7 +397,7 @@ export default async function AuthorVerificationPage({
 
             return (
               <Link key={item.label} href={item.href} className={className}>
-                <Icon name={item.icon} className="h-[18px] w-[18px]" />
+                <AppNavigationIcon name={item.icon} className="h-[18px] w-[18px]" />
                 <span className="min-w-0 flex-1">{item.label}</span>
                 <BusinessNavBadge
                   show={
@@ -471,29 +473,11 @@ export default async function AuthorVerificationPage({
               </form>
             </div>
           </div>
-          <nav
-            className="flex gap-1 overflow-x-auto border-t border-black/[0.05] px-4 py-2 lg:hidden"
-            aria-label="Mobilna nawigacja dashboardu"
-          >
-            {navigation.slice(0, 5).map((item) => {
-              const active = item.label === "Weryfikacja autora";
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium ${
-                    active ? "bg-brand-soft text-brand" : "text-black/40"
-                  }`}
-                >
-                  <Icon name={item.icon} className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
         </header>
 
-        <div className="min-w-0 px-5 py-8 sm:px-8 lg:px-9 lg:py-10">
+        <MobileBottomNavigation businessId={business.id} />
+
+        <div className="min-w-0 px-4 py-5 min-[769px]:px-5 min-[769px]:py-8 sm:px-8 lg:px-9 lg:py-10">
           <div className="mx-auto min-w-0 max-w-[1450px]">
             <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
               <div>
@@ -505,9 +489,9 @@ export default async function AuthorVerificationPage({
                 <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
                   Weryfikacja autora
                 </h1>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-black/45">
-                  Sprawdzaj autorów opinii i przygotuj się na przyszłą
-                  integrację z publicznym profilem Google autora.
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-black/45 min-[769px]:mt-2">
+                  <span className="min-[769px]:hidden">Sprawdzaj autorów opinii i oceniaj wiarygodność profilu.</span>
+                  <span className="max-[768px]:hidden">Sprawdzaj autorów opinii i przygotuj się na przyszłą integrację z publicznym profilem Google autora.</span>
                 </p>
               </div>
             </div>
@@ -581,8 +565,8 @@ export default async function AuthorVerificationPage({
                 }
               />
             ) : (
-            <section className="mt-8 min-w-0 overflow-hidden rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
-              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <section className="mt-5 min-w-0 overflow-hidden rounded-[24px] border border-black/[0.06] bg-white p-4 shadow-card min-[769px]:mt-8 min-[769px]:p-5 sm:p-6">
+              <div className="flex flex-col justify-between gap-3 min-[769px]:gap-4 sm:flex-row sm:items-center">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
                     Lista opinii
@@ -600,7 +584,7 @@ export default async function AuthorVerificationPage({
                     />
                   </div>
                 </div>
-                <p className="max-w-md text-sm leading-6 text-black/45">
+                <p className="hidden max-w-md text-sm leading-6 text-black/45 min-[769px]:block">
                   Kliknij opinię albo przycisk „Sprawdź autora”, aby otworzyć
                   panel weryfikacji.
                 </p>
@@ -717,11 +701,11 @@ export default async function AuthorVerificationPage({
                 </div>
               </div>
 
-              <div className="mt-6">
+              <div className="mt-4 min-[769px]:mt-6">
                 <AuthorVerificationList reviews={paginatedReviews} />
               </div>
 
-              <div className="mt-6">
+              <div className="mt-6 hidden min-[769px]:block">
                 <Pagination
                   buildHref={buildHref}
                   currentPage={currentPage}
@@ -729,6 +713,10 @@ export default async function AuthorVerificationPage({
                   pageSize={authorVerificationPerPage}
                   totalItems={filteredReviews.length}
                 />
+              </div>
+              <div className="mt-5 text-center min-[769px]:hidden">
+                {currentPage < totalPages ? <Link href={buildHref(currentPage + 1)} className="inline-flex rounded-xl border border-black/[0.08] px-4 py-2.5 text-xs font-semibold text-brand">Załaduj więcej</Link> : null}
+                <p className="mt-2 text-[11px] text-black/40">Wyświetlono {Math.min(currentPage * authorVerificationPerPage, filteredReviews.length)} z {filteredReviews.length} autorów</p>
               </div>
             </section>
             )}

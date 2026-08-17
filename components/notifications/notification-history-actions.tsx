@@ -64,7 +64,7 @@ export function NotificationHistoryActions({
 
   return (
     <>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="hidden flex-col gap-2 min-[769px]:flex sm:flex-row sm:items-center">
         <button
           type="button"
           disabled={!hasUnread || isMarkingRead}
@@ -82,6 +82,13 @@ export function NotificationHistoryActions({
           <TrashIcon />
           Wyczyść historię
         </button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 min-[769px]:hidden">
+        <button type="button" disabled={!hasUnread || isMarkingRead} onClick={handleMarkAllAsRead} className="text-xs font-semibold text-brand disabled:cursor-not-allowed disabled:text-black/30">
+          {hasUnread ? "Oznacz wszystkie jako przeczytane" : "Wszystkie przeczytane"}
+        </button>
+        <button type="button" disabled={totalCount === 0} onClick={() => setConfirmOpen(true)} className="text-xs font-semibold text-red-600 disabled:cursor-not-allowed disabled:opacity-35">Wyczyść historię</button>
       </div>
 
       {confirmOpen && (

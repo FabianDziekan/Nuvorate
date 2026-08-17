@@ -2,21 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import {
-  businessAnalysisSchema,
-  businessAnalysisSystemPrompt,
-} from "@/lib/ai-config";
 import type { GenerateReviewResponseState } from "@/components/dashboard/review-response-state";
 import { generateReviewResponseForReview } from "@/app/dashboard/review-response-service";
+import { generateBusinessAnalysisSnapshot } from "@/lib/business-analysis-service";
 import {
-  completeAiUsageReservation,
-  releaseAiUsageReservation,
-  reserveAiUsage,
-} from "@/lib/ai-usage";
-import {
-  generateStructuredOutput,
-  openAIModel,
-} from "@/lib/openai";
+  getNextAutomaticAnalysisDate,
+  normalizeAutomaticAnalysisFrequency,
+} from "@/lib/analysis-snapshot";
 import { hasPlanCapability, normalizePlan } from "@/lib/plans";
 import type { AnalysisErrorCode } from "@/lib/analysis-feedback";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -123,16 +115,6 @@ function aiErrorRedirect(path: string, code: AnalysisErrorCode): never {
   redirect(`${path}${separator}ai_error=${code}`);
 }
 
-class AnalysisGenerationError extends Error {
-  readonly code: AnalysisErrorCode;
-
-  constructor(code: AnalysisErrorCode) {
-    super(code);
-    this.name = "AnalysisGenerationError";
-    this.code = code;
-  }
-}
-
 export async function generateReviewResponse(
   _previousState: GenerateReviewResponseState,
   formData: FormData,
@@ -181,106 +163,93 @@ export async function generateBusinessAnalysis(formData?: FormData) {
     aiErrorRedirect(redirectPath, "technical");
   }
 
-  const reservation = await reserveAiUsage({
+  const result = await generateBusinessAnalysisSnapshot({
+    business,
+    executionType: "manual",
     plan,
-    usageKind: "analysis",
     userId: user.id,
   });
 
-  if (!reservation.ok) {
+  if (!result.ok) {
     aiErrorRedirect(
       redirectPath,
-      reservation.reason === "limit" ? "limit" : "technical",
+      result.reason === "limit"
+        ? "limit"
+        : result.reason === "no_reviews"
+          ? "no_reviews"
+          : "technical",
     );
   }
 
-  try {
-    const periodEnd = new Date();
-    const periodStart = new Date(periodEnd);
-    periodStart.setUTCDate(periodStart.getUTCDate() - 30);
+  revalidatePath("/dashboard");
+  revalidatePath("/analysis");
+}
 
-    const { data: reviews, error: reviewsError } = await supabase
-      .from("reviews")
-      .select("author_name, rating, content, created_at")
-      .eq("business_id", business.id)
-      .gte("created_at", periodStart.toISOString())
-      .lte("created_at", periodEnd.toISOString())
-      .order("created_at", { ascending: false });
+export async function updateAutomaticAnalysisSettings(input: {
+  enabled: boolean;
+  frequencyDays: number;
+}): Promise<{ error?: string; success: boolean }> {
+  const supabase = await createClient();
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
 
-    if (reviewsError) {
-      throw new AnalysisGenerationError("technical");
-    }
+  if (!user) {
+    redirect("/login?next=/analysis");
+  }
 
-    if (!reviews.length) {
-      throw new AnalysisGenerationError("no_reviews");
-    }
+  const [{ data: business }, { data: profile }] = await Promise.all([
+    supabase
+      .from("businesses")
+      .select("id")
+      .eq("owner_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("profiles")
+      .select("plan")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ]);
 
-    const result = await generateStructuredOutput<{
-      score: number;
-      trend: "up" | "down" | "stable";
-      summary: string;
-      praised_elements: string[];
-      reported_problems: string[];
-      recommendations: string[];
-    }>({
-      schemaName: "business_review_analysis",
-      schema: businessAnalysisSchema,
-      system: businessAnalysisSystemPrompt,
-      user: JSON.stringify({
-        business: {
-          name: business.name,
-          industry: business.industry,
-          city: business.city,
-        },
-        period: {
-          start: periodStart.toISOString(),
-          end: periodEnd.toISOString(),
-        },
-        reviews: reviews.map((review) => ({
-          rating: Number(review.rating),
-          content: review.content,
-          created_at: review.created_at,
-        })),
-      }),
-    });
+  if (!business || !hasPlanCapability(normalizePlan(profile?.plan), "automaticAnalysis")) {
+    return {
+      error: "Automatyczna analiza jest dostępna w planie Business.",
+      success: false,
+    };
+  }
 
-    if (
-      !Number.isInteger(result.score) ||
-      result.score < 0 ||
-      result.score > 100 ||
-      !["up", "down", "stable"].includes(result.trend)
-    ) {
-      throw new Error("OpenAI zwróciło nieprawidłowy wynik analizy.");
-    }
-
-    const { error: saveError } = await createAdminClient()
-      .from("ai_business_analyses")
-      .insert({
+  const frequencyDays = normalizeAutomaticAnalysisFrequency(input.frequencyDays);
+  const now = new Date();
+  const { error } = await createAdminClient()
+    .from("business_analysis_automation")
+    .upsert(
+      {
         business_id: business.id,
-        period_start: periodStart.toISOString(),
-        period_end: periodEnd.toISOString(),
-        review_count: reviews.length,
-        score: result.score,
-        trend: result.trend,
-        summary: result.summary.trim(),
-        praised_elements: result.praised_elements,
-        reported_problems: result.reported_problems,
-        recommendations: result.recommendations,
-        model: openAIModel,
-      });
+        frequency_days: frequencyDays,
+        is_enabled: Boolean(input.enabled),
+        last_skip_reason: null,
+        next_run_at: input.enabled
+          ? getNextAutomaticAnalysisDate(frequencyDays, now).toISOString()
+          : null,
+      },
+      { onConflict: "business_id" },
+    );
 
-    if (saveError) {
-      throw new Error("Nie udało się zapisać analizy opinii.");
+  if (error) {
+    console.error("Automatic analysis settings update failed", error);
+    if (error.code === "PGRST205" || error.code === "42P01") {
+      return {
+        error:
+          "Brakuje migracji 019_automatic_business_analysis.sql w Supabase. Ustawienia automatycznej analizy nie zostały jeszcze utworzone.",
+        success: false,
+      };
     }
 
-    await completeAiUsageReservation(reservation.id, user.id);
-    revalidatePath("/dashboard");
-    revalidatePath("/analysis");
-  } catch (error) {
-    await releaseAiUsageReservation(reservation.id, user.id);
-    aiErrorRedirect(
-      redirectPath,
-      error instanceof AnalysisGenerationError ? error.code : "technical",
-    );
+    return {
+      error: `Nie udało się zapisać ustawień automatycznej analizy (${error.code ?? "nieznany błąd"}).`,
+      success: false,
+    };
   }
+
+  revalidatePath("/analysis");
+  return { success: true };
 }

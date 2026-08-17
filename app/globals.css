@@ -390,6 +390,12 @@ html.dark body {
   }
 }
 
+@media (max-width: 1023px) {
+  body.mobile-bottom-navigation-active {
+    padding-bottom: calc(64px + max(8px, env(safe-area-inset-bottom)));
+  }
+}
+
 .mobile-bottom-sheet-enter {
   animation: mobile-bottom-sheet-in 220ms ease-out both;
 }

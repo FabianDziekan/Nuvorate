@@ -6,6 +6,9 @@ import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { BrandLogo } from "@/components/brand/logo";
 import { AnalysisSectionIcon } from "@/components/analysis/analysis-section-icon";
 import { MobileAnalysisSectionCards } from "@/components/analysis/mobile-analysis-section-cards";
+import { AutomaticAnalysisSettings } from "@/components/analysis/automatic-analysis-settings";
+import { MobileBottomNavigation } from "@/components/navigation/mobile-bottom-navigation";
+import { AppNavigationIcon } from "@/components/navigation/app-navigation-icon";
 import { AnalysisActionForm } from "@/components/dashboard/analysis-action-form";
 import { AnalysisContextAlert } from "@/components/dashboard/analysis-context-alert";
 import { NotificationBell } from "@/components/notifications/notification-bell";
@@ -29,6 +32,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/dashboard/actions";
+import { compareAnalysisSnapshots } from "@/lib/analysis-snapshot";
 
 export const metadata: Metadata = {
   title: "Analiza reputacji | NuvoRate",
@@ -53,6 +57,13 @@ type AnalysisIcon =
 type BusinessAnalysis = StoredBusinessAnalysis;
 
 type LegacyBusinessAnalysis = Omit<BusinessAnalysis, "score" | "trend">;
+
+type AutomaticAnalysisSchedule = {
+  frequency_days: number;
+  is_enabled: boolean;
+  last_skip_reason: string | null;
+  next_run_at: string | null;
+};
 
 function Icon({
   name,
@@ -212,27 +223,6 @@ function isMissingScoreTrendColumnError(error: { message?: string; code?: string
   );
 }
 
-const trendDetails = {
-  up: {
-    label: "Trend wzrostowy",
-    description: "Reputacja poprawia się w porównaniu z początkiem okresu.",
-    icon: "arrowUp" as const,
-    className: "bg-emerald-50 text-emerald-700",
-  },
-  down: {
-    label: "Trend spadkowy",
-    description: "Najnowsze opinie sygnalizują pogorszenie reputacji.",
-    icon: "arrowDown" as const,
-    className: "bg-red-50 text-red-600",
-  },
-  stable: {
-    label: "Trend stabilny",
-    description: "Reputacja pozostaje na zbliżonym poziomie.",
-    icon: "arrowRight" as const,
-    className: "bg-amber-50 text-amber-700",
-  },
-};
-
 export default async function AnalysisPage({
   searchParams,
 }: {
@@ -283,6 +273,7 @@ export default async function AnalysisPage({
 
   const appPlan = normalizePlan(profile.plan);
   const isBusiness = hasPlanCapability(appPlan, "fullAnalysis");
+  const canUseAutomaticAnalysis = hasPlanCapability(appPlan, "automaticAnalysis");
   const isPaid = hasPlanCapability(appPlan, "basicAnalysis");
   const analysesLimit = getAiLimit(appPlan, "analysis");
   const { data: aiUsage, error: aiUsageError } = await supabase
@@ -306,22 +297,23 @@ export default async function AnalysisPage({
     plan: appPlan,
   });
   let analysis: BusinessAnalysis | null = null;
+  let previousAnalysis: BusinessAnalysis | null = null;
+  let automaticAnalysisSchedule: AutomaticAnalysisSchedule | null = null;
 
   if (isPaid) {
     const analysisClient = createAdminClient();
-    const selectLatestAnalysis = (columns: string) =>
+    const selectRecentAnalyses = (columns: string) =>
       analysisClient
         .from("ai_business_analyses")
         .select(columns)
         .eq("business_id", business.id)
         .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(2);
 
-    const result = await selectLatestAnalysis(
+    const result = await selectRecentAnalyses(
       "created_at, period_start, period_end, review_count, score, trend, summary, praised_elements, reported_problems, recommendations",
     );
-    let data: BusinessAnalysis | null = result.data as BusinessAnalysis | null;
+    let data = (result.data ?? []) as unknown as BusinessAnalysis[];
     let error = result.error;
 
     if (error && isMissingScoreTrendColumnError(error)) {
@@ -330,18 +322,16 @@ export default async function AnalysisPage({
         error,
       );
 
-      const legacyResult = await selectLatestAnalysis(
+      const legacyResult = await selectRecentAnalyses(
         "created_at, period_start, period_end, review_count, summary, praised_elements, reported_problems, recommendations",
       );
-      const legacyData = legacyResult.data as LegacyBusinessAnalysis | null;
+      const legacyData = (legacyResult.data ?? []) as unknown as LegacyBusinessAnalysis[];
 
-      data = legacyData
-        ? {
-            ...legacyData,
+      data = legacyData.map((item) => ({
+            ...item,
             score: null,
             trend: null,
-          }
-        : null;
+          }));
       error = legacyResult.error;
     }
 
@@ -351,7 +341,22 @@ export default async function AnalysisPage({
       );
     }
 
-    analysis = data as BusinessAnalysis | null;
+    analysis = data[0] ?? null;
+    previousAnalysis = data[1] ?? null;
+
+    if (canUseAutomaticAnalysis) {
+      const { data: schedule, error: scheduleError } = await analysisClient
+        .from("business_analysis_automation")
+        .select("is_enabled, frequency_days, next_run_at, last_skip_reason")
+        .eq("business_id", business.id)
+        .maybeSingle();
+
+      if (scheduleError) {
+        console.warn("Automatic analysis settings lookup failed", scheduleError);
+      } else {
+        automaticAnalysisSchedule = schedule as AutomaticAnalysisSchedule | null;
+      }
+    }
   }
 
   const plan = getPlanLabel(appPlan);
@@ -405,9 +410,37 @@ export default async function AnalysisPage({
     ? getAnalysisFeedback(analysisErrorCode, appPlan)
     : null;
   const score = completeAnalysis?.score ?? 0;
-  const trend = completeAnalysis?.trend
-    ? trendDetails[completeAnalysis.trend]
-    : trendDetails.stable;
+  const snapshotComparison = compareAnalysisSnapshots(
+    analysis,
+    previousAnalysis,
+  );
+  const tendencyDetails = {
+    rising: {
+      className: "bg-emerald-50 text-emerald-700",
+      icon: "arrowUp" as const,
+      label: "Tendencja rosnąca",
+    },
+    stable: {
+      className: "bg-black/[0.045] text-black/55",
+      icon: "arrowRight" as const,
+      label: "Tendencja stabilna",
+    },
+    slight_down: {
+      className: "bg-orange-50 text-orange-700",
+      icon: "arrowDown" as const,
+      label: "Tendencja lekko spadkowa",
+    },
+    falling: {
+      className: "bg-red-50 text-red-600",
+      icon: "arrowDown" as const,
+      label: "Tendencja spadkowa",
+    },
+    no_data: {
+      className: "bg-black/[0.045] text-black/50",
+      icon: "arrowRight" as const,
+      label: "Brak danych do porównania",
+    },
+  }[snapshotComparison.status];
 
   return (
     <main className="min-h-screen bg-[#F7F7FA] text-ink">
@@ -441,7 +474,7 @@ export default async function AnalysisPage({
             if (item.href) {
               return (
                 <Link key={item.label} href={item.href} className={className}>
-                  <Icon name={item.icon} className="h-[18px] w-[18px]" />
+                  <AppNavigationIcon name={item.icon} className="h-[18px] w-[18px]" />
                   <span className="min-w-0 flex-1">{item.label}</span>
                   <BusinessNavBadge
                     show={
@@ -458,7 +491,7 @@ export default async function AnalysisPage({
 
             return (
               <button key={item.label} type="button" className={className}>
-                <Icon name={item.icon} className="h-[18px] w-[18px]" />
+                <AppNavigationIcon name={item.icon} className="h-[18px] w-[18px]" />
                 <span className="min-w-0 flex-1">{item.label}</span>
                 <BusinessNavBadge
                   show={
@@ -532,31 +565,9 @@ export default async function AnalysisPage({
               </form>
             </div>
           </div>
-          <nav className="flex gap-1 overflow-x-auto border-t border-black/[0.05] px-4 py-2 lg:hidden" aria-label="Mobilna nawigacja dashboardu">
-            {navigation.slice(0, 5).map((item) => {
-              const active = item.label === "Analiza";
-              const className = `flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium ${
-                active ? "bg-brand-soft text-brand" : "text-black/40"
-              }`;
-
-              if (item.href) {
-                return (
-                  <Link key={item.label} href={item.href} className={className}>
-                    <Icon name={item.icon} className="h-4 w-4" />
-                    {item.label}
-                  </Link>
-                );
-              }
-
-              return (
-                <button key={item.label} type="button" className={className}>
-                  <Icon name={item.icon} className="h-4 w-4" />
-                  {item.label}
-                </button>
-              );
-            })}
-          </nav>
         </header>
+
+        <MobileBottomNavigation businessId={business.id} />
 
         <div className="px-5 py-8 sm:px-8 lg:px-9 lg:py-10">
           <div className="mx-auto max-w-[1450px]">
@@ -582,6 +593,31 @@ export default async function AnalysisPage({
                 />
               )}
             </div>
+
+            {canUseAutomaticAnalysis ? (
+              <div className="mt-5 max-w-2xl">
+                <AutomaticAnalysisSettings
+                  enabled={automaticAnalysisSchedule?.is_enabled ?? false}
+                  frequencyDays={automaticAnalysisSchedule?.frequency_days ?? 14}
+                  lastSkipReason={automaticAnalysisSchedule?.last_skip_reason ?? null}
+                  nextRunAt={automaticAnalysisSchedule?.next_run_at ?? null}
+                />
+              </div>
+            ) : isPaid ? (
+              <div className="mt-5 flex max-w-2xl items-center justify-between gap-4 rounded-[22px] border border-black/[0.06] bg-white px-5 py-4 shadow-card">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-black/35">
+                    Automatyczna analiza
+                  </p>
+                  <p className="mt-1 text-sm text-black/45">
+                    Dostępna w planie Business.
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-full bg-brand-soft px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-brand">
+                  Business
+                </span>
+              </div>
+            ) : null}
 
             {!isPaid ? (
               <section className="mt-8 overflow-hidden rounded-[28px] bg-ink p-7 text-white shadow-card sm:p-10">
@@ -773,14 +809,16 @@ export default async function AnalysisPage({
                     <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-start">
                       <div>
                         <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
-                          Trend
+                          Tendencja
                         </p>
-                        <div className={`mt-4 inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold ${trend.className}`}>
-                          <Icon name={trend.icon} className="h-4 w-4" />
-                          {trend.label}
+                        <div className={`mt-4 inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold ${tendencyDetails.className}`}>
+                          <Icon name={tendencyDetails.icon} className="h-4 w-4" />
+                          {tendencyDetails.label}
                         </div>
                         <p className="mt-4 max-w-md text-sm leading-6 text-black/50">
-                          {trend.description}
+                          {snapshotComparison.status === "no_data"
+                            ? "Wygeneruj kolejną analizę, aby zobaczyć zmianę Reputation Score."
+                            : `Od poprzedniej analizy Reputation Score ${snapshotComparison.currentScore! - snapshotComparison.previousScore! >= 0 ? "wzrósł" : "spadł"} z ${snapshotComparison.previousScore} do ${snapshotComparison.currentScore}.`}
                         </p>
                       </div>
                       <div className="rounded-2xl border border-black/[0.05] bg-[#FAFAFC] px-4 py-3 text-right shadow-sm">

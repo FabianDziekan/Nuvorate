@@ -22,12 +22,21 @@ export function MobileResponseFilters({
   useEffect(() => {
     if (!isOpen) return;
 
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscrollBehavior = document.body.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") setIsOpen(false);
     }
 
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscrollBehavior;
+    };
   }, [isOpen]);
 
   return (
@@ -52,7 +61,7 @@ export function MobileResponseFilters({
       {isOpen && typeof document !== "undefined"
         ? createPortal(
         <div
-          className="fixed inset-0 z-[100] bg-ink/20 min-[769px]:hidden"
+          className="fixed inset-0 z-[110] bg-ink/20 min-[769px]:hidden"
           role="presentation"
           onMouseDown={(event) => {
             if (event.currentTarget === event.target) setIsOpen(false);
@@ -62,7 +71,7 @@ export function MobileResponseFilters({
             role="dialog"
             aria-modal="true"
             aria-labelledby="response-filters-title"
-            className="mobile-bottom-sheet-enter fixed inset-x-0 bottom-0 z-[101] max-h-[70vh] overflow-y-auto rounded-t-[28px] border border-black/[0.06] bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_-16px_60px_rgba(15,15,16,0.2)]"
+            className="mobile-bottom-sheet-enter fixed inset-x-0 bottom-0 z-[111] max-h-[88dvh] overflow-y-auto overscroll-contain rounded-t-[28px] border border-black/[0.06] bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_-16px_60px_rgba(15,15,16,0.2)]"
           >
             <div className="flex items-start justify-between gap-4">
               <div>

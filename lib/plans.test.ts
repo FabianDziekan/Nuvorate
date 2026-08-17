@@ -16,6 +16,7 @@ test("Starter exposes only the agreed foundational capabilities", () => {
   assert.equal(hasPlanCapability("starter", "fullAnalysis"), false);
   assert.equal(hasPlanCapability("starter", "authorVerification"), false);
   assert.equal(hasPlanCapability("starter", "automaticReviewResponses"), false);
+  assert.equal(hasPlanCapability("starter", "automaticAnalysis"), false);
   assert.equal(hasPlanCapability("starter", "nfcAdvancedStats"), false);
 });
 
@@ -26,6 +27,7 @@ test("Business inherits Starter and exposes Business capabilities", () => {
   assert.equal(hasPlanCapability("business", "fullAnalysis"), true);
   assert.equal(hasPlanCapability("business", "authorVerification"), true);
   assert.equal(hasPlanCapability("business", "automaticReviewResponses"), true);
+  assert.equal(hasPlanCapability("business", "automaticAnalysis"), true);
   assert.equal(hasPlanCapability("business", "nfcAdvancedStats"), true);
 });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MonthlyGoalCard } from "@/components/dashboard/monthly-goal-card";
 
 type MobileBusinessInsightsCarouselProps = {
@@ -30,6 +30,52 @@ export function MobileBusinessInsightsCarousel({
   monthlyGoal,
 }: MobileBusinessInsightsCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<Array<HTMLElement | null>>([]);
+
+  const updateActiveIndex = useCallback((carousel: HTMLDivElement) => {
+    const carouselCenter =
+      carousel.getBoundingClientRect().left + carousel.clientWidth / 2;
+    let closestIndex = 0;
+    let closestDistance = Number.POSITIVE_INFINITY;
+
+    cardRefs.current.forEach((card, index) => {
+      if (!card) return;
+
+      const rect = card.getBoundingClientRect();
+      const distance = Math.abs(rect.left + rect.width / 2 - carouselCenter);
+
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = index;
+      }
+    });
+
+    setActiveIndex(closestIndex);
+  }, []);
+
+  useEffect(() => {
+    const carousel = carouselRef.current;
+    if (!carousel) return;
+
+    const refreshActiveCard = () => updateActiveIndex(carousel);
+    refreshActiveCard();
+    window.addEventListener("resize", refreshActiveCard);
+
+    return () => window.removeEventListener("resize", refreshActiveCard);
+  }, [updateActiveIndex]);
+
+  const cardStyle = {
+    minWidth: "min(360px, calc(100vw - 32px))",
+    width: "min(360px, calc(100vw - 32px))",
+  };
+  const carouselStyle = {
+    paddingInline:
+      "max(4px, calc((100% - min(360px, calc(100vw - 32px))) / 2))",
+    scrollPaddingInline:
+      "max(4px, calc((100% - min(360px, calc(100vw - 32px))) / 2))",
+  };
+
   return (
     <section className="mt-6 -mx-1 w-[calc(100%+8px)] overflow-hidden rounded-[24px] border border-black/[0.06] bg-white py-3 shadow-card lg:hidden">
       <div className="flex items-start justify-between gap-3 px-3">
@@ -47,14 +93,18 @@ export function MobileBusinessInsightsCarousel({
       </div>
 
       <div
+        ref={carouselRef}
         className="mt-4 flex items-stretch snap-x snap-mandatory gap-3.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        onScroll={(event) => {
-          const cardStep = event.currentTarget.clientWidth - 28 + 14;
-          const nextIndex = Math.round(event.currentTarget.scrollLeft / cardStep);
-          setActiveIndex(Math.min(2, Math.max(0, nextIndex)));
-        }}
+        style={carouselStyle}
+        onScroll={(event) => updateActiveIndex(event.currentTarget)}
       >
-        <article className="h-[148px] w-[calc(100%-28px)] min-w-[calc(100%-28px)] shrink-0 snap-start rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm">
+        <article
+          ref={(element) => {
+            cardRefs.current[0] = element;
+          }}
+          style={cardStyle}
+          className="h-[148px] shrink-0 snap-center rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm"
+        >
           <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">
             {bestDay.title}
           </p>
@@ -65,7 +115,13 @@ export function MobileBusinessInsightsCarousel({
           <p className="mt-2 text-xs leading-5 text-black/45">{bestDay.detail}</p>
         </article>
 
-        <article className="h-[148px] w-[calc(100%-28px)] min-w-[calc(100%-28px)] shrink-0 snap-start rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm">
+        <article
+          ref={(element) => {
+            cardRefs.current[1] = element;
+          }}
+          style={cardStyle}
+          className="h-[148px] shrink-0 snap-center rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm"
+        >
           <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">Ten miesiąc</p>
           <p className="mt-3 text-lg font-semibold tracking-tight">{currentMonth.value}</p>
           <p className="mt-2 flex items-center gap-2 text-xs leading-5 text-black/45">
@@ -74,7 +130,13 @@ export function MobileBusinessInsightsCarousel({
           </p>
         </article>
 
-        <div className="h-[148px] w-[calc(100%-28px)] min-w-[calc(100%-28px)] shrink-0 snap-start">
+        <div
+          ref={(element) => {
+            cardRefs.current[2] = element;
+          }}
+          style={cardStyle}
+          className="h-[148px] shrink-0 snap-center"
+        >
           <MonthlyGoalCard
             carousel
             count={monthlyGoal.count}

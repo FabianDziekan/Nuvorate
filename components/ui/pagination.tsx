@@ -4,6 +4,7 @@ type PaginationProps = {
   buildHref: (page: number) => string;
   currentPage: number;
   itemLabel?: string;
+  mobileLoadMore?: boolean;
   pageSize: number;
   totalItems: number;
 };
@@ -24,6 +25,7 @@ export function Pagination({
   buildHref,
   currentPage,
   itemLabel = "opinii",
+  mobileLoadMore = false,
   pageSize,
   totalItems,
 }: PaginationProps) {
@@ -38,8 +40,23 @@ export function Pagination({
   const visibleEnd = Math.min(pageEnd, totalItems);
   const pages = paginationPages(currentPage, totalPages);
 
+  const hasMore = currentPage < totalPages;
+
   return (
-    <div className="border-t border-black/[0.06] pt-5">
+    <>
+      {mobileLoadMore ? (
+        <div className="border-t border-black/[0.06] pt-4 text-center min-[769px]:hidden">
+          {hasMore ? (
+            <Link href={buildHref(currentPage + 1)} className="inline-flex rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-xs font-semibold text-black/55 transition hover:border-brand/30 hover:text-brand">
+              Załaduj więcej
+            </Link>
+          ) : null}
+          <p className="mt-3 text-xs font-medium text-black/35">
+            Wyświetlono {visibleEnd} z {totalItems} {itemLabel}
+          </p>
+        </div>
+      ) : null}
+    <div className={`border-t border-black/[0.06] pt-5 ${mobileLoadMore ? "max-[768px]:hidden" : ""}`}>
       <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
         <p className="text-xs font-medium text-black/35">
           Wyświetlanie {visibleStart}–{visibleEnd} z {totalItems} {itemLabel}
@@ -96,5 +113,6 @@ export function Pagination({
         </div>
       </div>
     </div>
+    </>
   );
 }

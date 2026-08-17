@@ -5,6 +5,8 @@ import { BrandLogo } from "@/components/brand/logo";
 import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationHistoryActions } from "@/components/notifications/notification-history-actions";
+import { MobileBottomNavigation } from "@/components/navigation/mobile-bottom-navigation";
+import { AppNavigationIcon } from "@/components/navigation/app-navigation-icon";
 import { NotificationLink } from "@/components/notifications/notification-link";
 import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
 import { Pagination } from "@/components/ui/pagination";
@@ -287,7 +289,7 @@ export default async function NotificationsPage({
 
             return (
               <Link key={item.label} href={item.href} className={className}>
-                <Icon name={item.icon} className="h-[18px] w-[18px]" />
+                <AppNavigationIcon name={item.icon} className="h-[18px] w-[18px]" />
                 <span className="min-w-0 flex-1">{item.label}</span>
                 <BusinessNavBadge
                   show={
@@ -347,38 +349,21 @@ export default async function NotificationsPage({
               </form>
             </div>
           </div>
-          <nav
-            className="flex gap-1 overflow-x-auto border-t border-black/[0.05] px-4 py-2 lg:hidden"
-            aria-label="Mobilna nawigacja dashboardu"
-          >
-            {navigation.map((item) => {
-              const active = item.label === "Powiadomienia";
-              const className = `flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium ${
-                active ? "bg-brand-soft text-brand" : "text-black/40"
-              }`;
-
-              return (
-                <Link key={item.label} href={item.href} className={className}>
-                  <Icon name={item.icon} className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
         </header>
 
-        <section className="px-5 py-7 sm:px-8 lg:px-9">
-          <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+        <MobileBottomNavigation businessId={business.id} />
+
+        <section className="px-4 py-5 min-[769px]:px-5 min-[769px]:py-7 sm:px-8 lg:px-9">
+          <div className="mb-5 flex flex-col justify-between gap-3 min-[769px]:mb-6 min-[769px]:gap-4 md:flex-row md:items-end">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand">
                 Centrum zdarzeń
               </p>
-              <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-ink md:text-4xl">
+              <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-ink min-[769px]:mt-3 md:text-4xl">
                 Powiadomienia
               </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-black/55">
-                Najważniejsze zdarzenia z opinii, odpowiedzi i analiz reputacji
-                w jednym miejscu.
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-black/55 min-[769px]:mt-3">
+                Najważniejsze zdarzenia z opinii, odpowiedzi i analiz reputacji w jednym miejscu.
               </p>
             </div>
             <NotificationHistoryActions
@@ -387,10 +372,10 @@ export default async function NotificationsPage({
             />
           </div>
 
-          <div className="mb-5 flex flex-wrap gap-2">
+          <div className="mb-4 flex flex-wrap gap-2 min-[769px]:mb-5">
             <Link
               href="/notifications"
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition min-[769px]:px-4 min-[769px]:py-2 min-[769px]:text-sm ${
                 filter === "all"
                   ? "bg-brand text-white"
                   : "border border-black/[0.08] bg-white text-black/55 hover:text-brand"
@@ -400,7 +385,7 @@ export default async function NotificationsPage({
             </Link>
             <Link
               href="/notifications?filter=unread"
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition min-[769px]:px-4 min-[769px]:py-2 min-[769px]:text-sm ${
                 filter === "unread"
                   ? "bg-brand text-white"
                   : "border border-black/[0.08] bg-white text-black/55 hover:text-brand"
@@ -410,7 +395,7 @@ export default async function NotificationsPage({
             </Link>
           </div>
 
-          <div className="overflow-hidden rounded-[28px] border border-black/[0.06] bg-white shadow-[0_18px_50px_rgba(15,15,16,0.04)]">
+          <div className="overflow-hidden rounded-[28px] border border-black/[0.06] bg-white shadow-[0_18px_50px_rgba(15,15,16,0.04)] max-[768px]:rounded-2xl">
             {notificationItems.length > 0 ? (
               paginatedNotifications.map((notification) => {
                 const view = getNotificationView(
@@ -425,49 +410,39 @@ export default async function NotificationsPage({
                 return (
                   <NotificationLink
                     key={notification.id}
-                    className={`relative flex cursor-pointer gap-4 border-b border-black/[0.05] px-5 py-5 transition last:border-b-0 hover:bg-black/[0.025] ${
+                    className={`relative flex cursor-pointer gap-3 border-b border-black/[0.05] px-4 py-4 transition last:border-b-0 hover:bg-black/[0.025] min-[769px]:gap-4 min-[769px]:px-5 min-[769px]:py-5 ${
                       notification.is_read ? "bg-white" : "bg-brand/[0.035]"
                     }`}
                     href={view.href}
                     isRead={notification.is_read}
                     notificationId={notification.id}
                   >
-                    {!notification.is_read ? (
-                      <span className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-brand" />
-                    ) : null}
-                    <span
-                      className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${
-                        notification.is_read ? "bg-black/10" : "bg-brand"
-                      }`}
-                    />
+                    {!notification.is_read ? <span className="absolute inset-y-3 left-0 w-0.5 rounded-r-full bg-brand min-[769px]:inset-y-4 min-[769px]:w-1" /> : null}
+                    <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full min-[769px]:mt-2 min-[769px]:h-2.5 min-[769px]:w-2.5 ${notification.is_read ? "bg-black/10" : "bg-brand"}`} />
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between max-[768px]:flex-row max-[768px]:items-start max-[768px]:justify-between max-[768px]:gap-3">
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <h2 className="text-base font-semibold text-ink">
+                            <h2 className="text-sm font-semibold text-ink min-[769px]:text-base">
                               {notification.title}
                             </h2>
-                            <span className="rounded-full bg-brand-soft px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-brand">
+                            <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-brand min-[769px]:px-2.5 min-[769px]:py-1 min-[769px]:text-[10px]">
                               {notificationTypeLabel(notification.type)}
                             </span>
-                            {!notification.is_read ? (
-                              <span className="rounded-full bg-ink px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
-                                Nowe
-                              </span>
-                            ) : null}
+                            {!notification.is_read ? <span className="rounded-full bg-ink px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-white min-[769px]:px-2.5 min-[769px]:py-1 min-[769px]:text-[10px]">Nowe</span> : null}
                           </div>
                           {content.meta ? (
-                            <p className="mt-2 text-sm font-semibold text-black/65">
+                            <p className="mt-1 text-xs font-medium text-black/60 min-[769px]:mt-2 min-[769px]:text-sm min-[769px]:font-semibold">
                               {content.meta}
                             </p>
                           ) : null}
                           {content.text ? (
-                            <p className="mt-1 text-sm leading-6 text-black/55">
+                            <p className="mt-1 line-clamp-2 text-xs leading-5 text-black/55 min-[769px]:text-sm min-[769px]:leading-6">
                               {content.text}
                             </p>
                           ) : null}
                         </div>
-                        <p className="shrink-0 text-xs text-black/40">
+                        <p className="shrink-0 whitespace-nowrap text-[11px] text-black/40 min-[769px]:text-xs">
                           {formatRelativeNotificationTime(notification.created_at)}
                         </p>
                       </div>
@@ -476,28 +451,34 @@ export default async function NotificationsPage({
                 );
               })
             ) : (
-              <div className="px-6 py-16 text-center">
+              <div className="px-6 py-10 text-center min-[769px]:py-16">
                 <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft text-brand">
                   <Icon name="bell" className="h-5 w-5" />
                 </div>
                 <h2 className="mt-5 text-lg font-semibold text-ink">
-                  Brak powiadomień
+                  Brak nowych powiadomień
                 </h2>
                 <p className="mt-2 text-sm text-black/45">
-                  Nowe opinie będą pojawiać się tutaj automatycznie.
+                  Gdy pojawi się coś ważnego, zobaczysz to tutaj.
                 </p>
               </div>
             )}
             {notificationItems.length > 0 ? (
-              <div className="px-5 py-5">
-                <Pagination
-                  buildHref={buildNotificationsHref}
-                  currentPage={currentPage}
-                  itemLabel="powiadomień"
-                  pageSize={notificationsPerPage}
-                  totalItems={notificationItems.length}
-                />
-              </div>
+              <>
+                <div className="hidden px-5 py-5 min-[769px]:block">
+                  <Pagination
+                    buildHref={buildNotificationsHref}
+                    currentPage={currentPage}
+                    itemLabel="powiadomień"
+                    pageSize={notificationsPerPage}
+                    totalItems={notificationItems.length}
+                  />
+                </div>
+                <div className="px-4 py-4 text-center min-[769px]:hidden">
+                  {currentPage < totalPages ? <Link href={buildNotificationsHref(currentPage + 1)} className="inline-flex rounded-xl border border-black/[0.08] px-4 py-2.5 text-xs font-semibold text-brand">Załaduj więcej</Link> : null}
+                  <p className="mt-2 text-[11px] text-black/40">Wyświetlono {Math.min(pageEnd, notificationItems.length)} z {notificationItems.length} powiadomień</p>
+                </div>
+              </>
             ) : null}
           </div>
         </section>

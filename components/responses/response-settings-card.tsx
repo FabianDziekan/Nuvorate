@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 import {
   AiGenerationProgress,
@@ -45,6 +46,13 @@ export function ResponseSettingsCard({
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
   const [isRatingsSheetOpen, setIsRatingsSheetOpen] = useState(false);
+  const [savedAutoGenerate, setSavedAutoGenerate] =
+    useState(initialAutoGenerate);
+  const [savedEnabledRatings, setSavedEnabledRatings] =
+    useState(initialEnabledRatings);
+  const isDirty =
+    autoGenerate !== savedAutoGenerate ||
+    enabledRatings.join(",") !== savedEnabledRatings.join(",");
 
   useEffect(() => {
     if (!toast) {
@@ -60,6 +68,11 @@ export function ResponseSettingsCard({
       return;
     }
 
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscrollBehavior = document.body.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setIsRatingsSheetOpen(false);
@@ -67,7 +80,11 @@ export function ResponseSettingsCard({
     }
 
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscrollBehavior;
+    };
   }, [isRatingsSheetOpen]);
 
   function toggleRating(rating: number, checked: boolean) {
@@ -103,11 +120,13 @@ export function ResponseSettingsCard({
 
       const data = await response.json();
       setAutoGenerate(Boolean(data?.autoGenerate));
-      setEnabledRatings(
+      const savedRatings =
         Array.isArray(data?.enabledRatings)
           ? data.enabledRatings.map((value: unknown) => Number(value))
-          : enabledRatings,
-      );
+          : enabledRatings;
+      setEnabledRatings(savedRatings);
+      setSavedAutoGenerate(Boolean(data?.autoGenerate));
+      setSavedEnabledRatings(savedRatings);
 
       if (data?.autoGenerate && enabledRatings.length > 0) {
         setProgressStatus("running");
@@ -286,23 +305,10 @@ export function ResponseSettingsCard({
           <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
             Automatyczne odpowiedzi
           </p>
-          <h2 className="mt-1 text-xl font-semibold tracking-tight">
-            Ustawienia generowania
-          </h2>
-          <p className="mt-1 text-sm leading-5 text-black/45">
-            Ustal, dla których opinii przygotować odpowiedź.
-          </p>
         </div>
 
-        <label className="mt-4 flex items-center justify-between gap-4 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] px-4 py-3">
-          <span>
-            <span className="block text-sm font-semibold text-ink">
-              Automatyczne generowanie
-            </span>
-            <span className="mt-0.5 block text-xs leading-5 text-black/40">
-              Dla nowych opinii zgodnych z wyborem.
-            </span>
-          </span>
+        <label className="mt-3 flex items-center justify-between gap-4 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] px-4 py-3">
+          <span className="text-sm font-semibold text-ink">Automatyczne generowanie</span>
           <input
             type="checkbox"
             checked={autoGenerate}
@@ -325,7 +331,7 @@ export function ResponseSettingsCard({
         <button
           type="button"
           onClick={() => setIsRatingsSheetOpen(true)}
-          className="mt-3 flex w-full items-center justify-between rounded-2xl border border-black/[0.06] bg-[#FAFAFC] px-4 py-3 text-left transition hover:border-brand/20 focus:outline-none focus:ring-4 focus:ring-brand/10"
+          className="mt-2 flex w-full items-center justify-between rounded-2xl border border-black/[0.06] bg-[#FAFAFC] px-4 py-3 text-left transition hover:border-brand/20 focus:outline-none focus:ring-4 focus:ring-brand/10"
         >
           <span>
             <span className="block text-sm font-semibold text-ink">Oceny</span>
@@ -335,19 +341,19 @@ export function ResponseSettingsCard({
                 : "Nie wybrano ocen"}
             </span>
           </span>
-          <span className="text-xs font-semibold text-brand">Edytuj oceny</span>
+          <span className="text-lg leading-none text-black/35" aria-hidden="true">›</span>
         </button>
 
-        <div className="sticky bottom-3 z-10 mt-4 rounded-2xl bg-white/90 pt-1 backdrop-blur">
+        {isDirty ? (
           <button
             type="button"
             disabled={isSaving}
             onClick={handleSave}
-            className="w-full rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#4D4EE8] disabled:cursor-wait disabled:opacity-60"
+            className="mt-3 w-full rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#4D4EE8] disabled:cursor-wait disabled:opacity-60"
           >
             {isSaving ? "Zapisywanie..." : "Zapisz ustawienia"}
           </button>
-        </div>
+        ) : null}
         <AiGenerationProgress
           messages={responseProgressMessages}
           status={progressStatus}
@@ -365,9 +371,10 @@ export function ResponseSettingsCard({
         )}
       </div>
 
-      {isRatingsSheetOpen ? (
+      {isRatingsSheetOpen && typeof document !== "undefined"
+        ? createPortal(
         <div
-          className="fixed inset-0 z-[80] flex items-end bg-ink/35 p-3 backdrop-blur-sm min-[769px]:hidden"
+          className="fixed inset-0 z-[110] bg-ink/20 min-[769px]:hidden"
           role="presentation"
           onMouseDown={(event) => {
             if (event.currentTarget === event.target) {
@@ -379,36 +386,35 @@ export function ResponseSettingsCard({
             role="dialog"
             aria-modal="true"
             aria-labelledby="rating-sheet-title"
-            className="analysis-context-alert-enter max-h-[min(620px,calc(100vh-24px))] w-full overflow-y-auto rounded-[28px] border border-black/[0.06] bg-white p-5 shadow-[0_-16px_60px_rgba(15,15,16,0.2)]"
+            className="mobile-bottom-sheet-enter fixed inset-x-0 bottom-0 z-[111] flex max-h-[88dvh] flex-col overflow-hidden rounded-t-[28px] border border-black/[0.06] bg-white shadow-[0_-16px_60px_rgba(15,15,16,0.2)]"
           >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
-                  Automatyczne odpowiedzi
-                </p>
-                <h2 id="rating-sheet-title" className="mt-1 text-xl font-semibold tracking-tight">
-                  Wybierz oceny
-                </h2>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
+                    Automatyczne odpowiedzi
+                  </p>
+                  <h2 id="rating-sheet-title" className="mt-1 text-xl font-semibold tracking-tight">
+                    Wybierz oceny
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsRatingsSheetOpen(false)}
+                  className="grid h-9 w-9 place-items-center rounded-xl text-lg text-black/45 transition hover:bg-black/[0.04] hover:text-ink focus:outline-none focus:ring-4 focus:ring-brand/10"
+                  aria-label="Zamknij wybór ocen"
+                >
+                  ×
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsRatingsSheetOpen(false)}
-                className="grid h-9 w-9 place-items-center rounded-xl text-lg text-black/45 transition hover:bg-black/[0.04] hover:text-ink focus:outline-none focus:ring-4 focus:ring-brand/10"
-                aria-label="Zamknij wybór ocen"
-              >
-                ×
-              </button>
-            </div>
 
-            <div className="mt-5 grid gap-2">
+            <div className="mt-5 divide-y divide-black/[0.06]">
               {[5, 4, 3, 2, 1].map((rating) => (
                 <label
                   key={rating}
-                  className="flex items-center justify-between gap-5 rounded-xl border border-black/[0.06] bg-[#FAFAFC] px-3.5 py-3"
+                  className="flex items-center justify-between gap-5 py-3.5"
                 >
-                  <span className="text-sm font-semibold tracking-[0.04em] text-ink">
-                    {ratingStars(rating)}
-                  </span>
+                  <span className="text-sm font-semibold text-ink">{rating}★</span>
                   <span className="flex items-center gap-2">
                     <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black/30">
                       {enabledRatings.includes(rating) ? "ON" : "OFF"}
@@ -436,17 +442,22 @@ export function ResponseSettingsCard({
                 </label>
               ))}
             </div>
+            </div>
 
-            <button
-              type="button"
-              onClick={() => setIsRatingsSheetOpen(false)}
-              className="mt-5 w-full rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#4D4EE8] focus:outline-none focus:ring-4 focus:ring-brand/20"
-            >
-              Gotowe
-            </button>
+            <div className="border-t border-black/[0.06] bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
+              <button
+                type="button"
+                onClick={() => setIsRatingsSheetOpen(false)}
+                className="w-full rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#4D4EE8] focus:outline-none focus:ring-4 focus:ring-brand/20"
+              >
+                Gotowe
+              </button>
+            </div>
           </section>
-        </div>
-      ) : null}
+        </div>,
+        document.body,
+      )
+        : null}
     </section>
   );
 }

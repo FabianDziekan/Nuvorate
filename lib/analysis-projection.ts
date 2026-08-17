@@ -1,10 +1,14 @@
 import { hasPlanCapability, type AppPlan } from "./plans.ts";
 
 export type StoredBusinessAnalysis = {
+  analysis_type?: "automatic" | "manual";
+  average_rating?: number | null;
   created_at: string;
+  negative_review_share?: number | null;
   period_start: string;
   period_end: string;
   review_count: number;
+  positive_review_share?: number | null;
   score: number | null;
   trend: "up" | "down" | "stable" | null;
   summary: string;

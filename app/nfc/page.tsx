@@ -4,6 +4,10 @@ import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand/logo";
 import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { NfcTagManager } from "@/components/nfc/nfc-tag-manager";
+import { NfcAddTagButton } from "@/components/nfc/nfc-add-tag-button";
+import { NfcSetupInstructions } from "@/components/nfc/nfc-setup-instructions";
+import { MobileBottomNavigation } from "@/components/navigation/mobile-bottom-navigation";
+import { AppNavigationIcon } from "@/components/navigation/app-navigation-icon";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
 import {
@@ -299,7 +303,7 @@ export default async function NfcPage() {
             if (item.href) {
               return (
                 <Link key={item.label} href={item.href} className={className}>
-                  <Icon name={item.icon} className="h-[18px] w-[18px]" />
+                  <AppNavigationIcon name={item.icon} className="h-[18px] w-[18px]" />
                   <span className="min-w-0 flex-1">{item.label}</span>
                   <BusinessNavBadge
                     show={
@@ -316,7 +320,7 @@ export default async function NfcPage() {
 
             return (
               <button key={item.label} type="button" className={className}>
-                <Icon name={item.icon} className="h-[18px] w-[18px]" />
+                <AppNavigationIcon name={item.icon} className="h-[18px] w-[18px]" />
                 <span className="min-w-0 flex-1">{item.label}</span>
                 <BusinessNavBadge
                   show={
@@ -390,44 +394,40 @@ export default async function NfcPage() {
               </form>
             </div>
           </div>
-          <nav className="flex gap-1 overflow-x-auto border-t border-black/[0.05] px-4 py-2 lg:hidden" aria-label="Mobilna nawigacja dashboardu">
-            {navigation.slice(0, 5).map((item) => {
-              const active = item.label === "NFC";
-              const className = `flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium ${
-                active ? "bg-brand-soft text-brand" : "text-black/40"
-              }`;
-
-              if (item.href) {
-                return (
-                  <Link key={item.label} href={item.href} className={className}>
-                    <Icon name={item.icon} className="h-4 w-4" />
-                    {item.label}
-                  </Link>
-                );
-              }
-
-              return (
-                <button key={item.label} type="button" className={className}>
-                  <Icon name={item.icon} className="h-4 w-4" />
-                  {item.label}
-                </button>
-              );
-            })}
-          </nav>
         </header>
 
-        <div className="min-w-0 px-5 py-8 sm:px-8 lg:px-9 lg:py-10">
+        <MobileBottomNavigation businessId={business.id} />
+
+        <div className="min-w-0 px-4 py-5 min-[769px]:px-5 min-[769px]:py-8 sm:px-8 lg:px-9 lg:py-10">
           <div className="mx-auto min-w-0 max-w-[1450px]">
-            <div>
+            <div className="max-[768px]:flex max-[768px]:flex-wrap max-[768px]:items-end max-[768px]:justify-between max-[768px]:gap-3">
+              <div>
               <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
                 NFC
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-black/45">
-                Zarządzaj linkiem do opinii i śledź skany z plakietek NFC.
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-black/45 min-[769px]:mt-2">
+                <span className="min-[769px]:hidden">Zarządzaj plakietkami i śledź ich skuteczność.</span>
+                <span className="max-[768px]:hidden">Zarządzaj linkiem do opinii i śledź skany z plakietek NFC.</span>
               </p>
+              </div>
+              <NfcAddTagButton className="button-primary shrink-0 px-3 py-2 text-xs min-[769px]:hidden" />
             </div>
 
-            <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Statystyki NFC">
+            <section className="mt-5 grid grid-cols-2 gap-3 min-[769px]:hidden" aria-label="Statystyki NFC">
+              {[
+                ["Skany · 30 dni", scansLast30Days],
+                ["Skany łącznie", scansTotal],
+                ["Aktywne plakietki", activeTags],
+                ["Ostatni skan", lastScanLabel],
+              ].map(([label, value]) => (
+                <article key={label as string} className="min-h-[102px] rounded-2xl border border-black/[0.06] bg-white p-4 shadow-card">
+                  <p className="text-[11px] font-medium leading-4 text-black/45">{label as string}</p>
+                  <p className={`mt-2 font-semibold tracking-[-0.04em] ${label === "Ostatni skan" ? "text-base leading-6" : "text-2xl"}`}>{value as string | number}</p>
+                </article>
+              ))}
+            </section>
+
+            <section className="mt-8 hidden gap-4 min-[769px]:grid sm:grid-cols-2 xl:grid-cols-4" aria-label="Statystyki NFC">
               {[
                 ["Skany w ostatnich 30 dniach", scansLast30Days, "ze wszystkich aktywnych plakietek"],
                 ["Skany łącznie", scansTotal, "od uruchomienia NFC"],
@@ -445,33 +445,7 @@ export default async function NfcPage() {
               ))}
             </section>
             <NfcTagManager tags={tags} />
-            <section className="mt-4 rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6" aria-labelledby="nfc-setup-title">
-              <h2 id="nfc-setup-title" className="text-lg font-semibold tracking-tight">
-                Jak uruchomić nową plakietkę?
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-black/45">
-                Wykonaj te kroki tylko raz po dodaniu każdej nowej plakietki.
-              </p>
-              <ol className="mt-6 grid gap-5 md:grid-cols-5">
-                {[
-                  ["Dodaj plakietkę", "Kliknij „Dodaj plakietkę” i nadaj jej nazwę, np. „Przy kasie”."],
-                  ["Dodaj link do opinii Google", "Wklej bezpośredni link, pod którym klienci mogą wystawić opinię Twojej firmie w Google."],
-                  ["Skopiuj link NuvoRate", "Po zapisaniu skopiuj wygenerowany link NuvoRate przypisany do tej plakietki."],
-                  ["Zapisz link na plakietce", "W aplikacji do zapisu NFC wybierz pojedynczy rekord URL i wklej link NuvoRate."],
-                  ["Przetestuj skan", "Zbliż telefon do plakietki. Klient powinien trafić do Google Reviews, a NuvoRate zapisze skan."],
-                ].map(([title, description], index) => (
-                  <li key={title} className="flex gap-3 md:block">
-                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-soft text-xs font-semibold text-brand">
-                      {index + 1}
-                    </span>
-                    <div className="md:mt-3">
-                      <p className="text-sm font-medium">{title}</p>
-                      <p className="mt-1.5 text-xs leading-5 text-black/45">{description}</p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </section>
+            <NfcSetupInstructions />
           </div>
         </div>
       </div>

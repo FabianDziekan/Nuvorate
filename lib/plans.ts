@@ -12,6 +12,7 @@ export type PlanCapability =
   | "businessInsights"
   | "fullAnalysis"
   | "authorVerification"
+  | "automaticAnalysis"
   | "automaticReviewResponses"
   | "nfcAdvancedStats";
 
@@ -28,6 +29,7 @@ const unpaidCapabilities = {
   businessInsights: false,
   fullAnalysis: false,
   authorVerification: false,
+  automaticAnalysis: false,
   automaticReviewResponses: false,
   nfcAdvancedStats: false,
 } as const satisfies PlanCapabilities;
@@ -43,6 +45,7 @@ const starterCapabilities = {
   businessInsights: false,
   fullAnalysis: false,
   authorVerification: false,
+  automaticAnalysis: false,
   automaticReviewResponses: false,
   nfcAdvancedStats: false,
 } as const satisfies PlanCapabilities;
@@ -52,6 +55,7 @@ const businessCapabilities = {
   businessInsights: true,
   fullAnalysis: true,
   authorVerification: true,
+  automaticAnalysis: true,
   automaticReviewResponses: true,
   nfcAdvancedStats: true,
 } as const satisfies PlanCapabilities;

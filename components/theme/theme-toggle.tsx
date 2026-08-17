@@ -15,6 +15,7 @@ function applyTheme(theme: ThemeMode) {
 
 export function ThemeToggle() {
   const [theme, setTheme] = useState<ThemeMode>("light");
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     const storedTheme = window.localStorage.getItem(themeStorageKey);
@@ -30,8 +31,15 @@ export function ThemeToggle() {
   }
 
   return (
-    <section className="rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
-      <div className="flex flex-col gap-2">
+    <section className="overflow-hidden rounded-[24px] border border-black/[0.06] bg-white shadow-card min-[769px]:p-5 sm:p-6">
+      <button type="button" className="flex w-full items-center gap-3 px-4 py-4 text-left min-[769px]:hidden" onClick={() => setMobileOpen((value) => !value)} aria-expanded={mobileOpen}>
+        <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-soft text-sm font-semibold text-brand" aria-hidden="true">M</span>
+        <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-ink">Motyw interfejsu</span><span className="mt-0.5 block text-xs text-black/45">{theme === "dark" ? "Ciemny" : "Jasny"}</span></span>
+        <span className={`text-brand transition-transform duration-200 ${mobileOpen ? "rotate-90" : ""}`} aria-hidden="true">›</span>
+      </button>
+      <div className={`overflow-hidden min-[769px]:block ${mobileOpen ? "max-[768px]:block" : "max-[768px]:hidden"}`}>
+      <div className="border-t border-black/[0.06] p-4 min-[769px]:border-0 min-[769px]:p-0">
+      <div className="hidden flex-col gap-2 min-[769px]:flex">
         <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
           Wygląd aplikacji
         </p>
@@ -44,7 +52,7 @@ export function ThemeToggle() {
         </p>
       </div>
 
-      <div className="mt-5 inline-flex rounded-2xl border border-black/[0.08] bg-[#FAFAFC] p-1">
+      <div className="inline-flex rounded-2xl border border-black/[0.08] bg-[#FAFAFC] p-1 min-[769px]:mt-5">
         {[
           { label: "Jasny", value: "light" as const },
           { label: "Ciemny", value: "dark" as const },
@@ -66,6 +74,8 @@ export function ThemeToggle() {
             </button>
           );
         })}
+      </div>
+      </div>
       </div>
     </section>
   );

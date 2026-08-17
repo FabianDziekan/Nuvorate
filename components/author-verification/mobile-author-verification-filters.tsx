@@ -35,12 +35,21 @@ export function MobileAuthorVerificationFilters({
   useEffect(() => {
     if (!isOpen) return;
 
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscrollBehavior = document.body.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") setIsOpen(false);
     }
 
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscrollBehavior;
+    };
   }, [isOpen]);
 
   return (
@@ -62,7 +71,7 @@ export function MobileAuthorVerificationFilters({
       {isOpen && typeof document !== "undefined"
         ? createPortal(
             <div
-              className="fixed inset-0 z-[100] bg-ink/20 min-[769px]:hidden"
+              className="fixed inset-0 z-[110] bg-ink/20 min-[769px]:hidden"
               role="presentation"
               onMouseDown={(event) => {
                 if (event.currentTarget === event.target) setIsOpen(false);
@@ -70,56 +79,60 @@ export function MobileAuthorVerificationFilters({
             >
               <form
                 action="/author-verification"
-                className="mobile-bottom-sheet-enter fixed inset-x-0 bottom-0 z-[101] max-h-[70vh] overflow-y-auto rounded-t-[28px] border border-black/[0.06] bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_-16px_60px_rgba(15,15,16,0.2)]"
+                className="mobile-bottom-sheet-enter fixed inset-x-0 bottom-0 z-[111] flex max-h-[88dvh] flex-col overflow-hidden rounded-t-[28px] border border-black/[0.06] bg-white shadow-[0_-16px_60px_rgba(15,15,16,0.2)]"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">Weryfikacja autora</p>
-                    <h2 className="mt-1 text-xl font-semibold tracking-tight">Filtry</h2>
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">Weryfikacja autora</p>
+                      <h2 className="mt-1 text-xl font-semibold tracking-tight">Filtry</h2>
+                    </div>
+                    <button type="button" onClick={() => setIsOpen(false)} className="grid h-9 w-9 place-items-center rounded-xl text-lg text-black/45 transition hover:bg-black/[0.04] hover:text-ink focus:outline-none focus:ring-4 focus:ring-brand/10" aria-label="Zamknij filtry">×</button>
                   </div>
-                  <button type="button" onClick={() => setIsOpen(false)} className="grid h-9 w-9 place-items-center rounded-xl text-lg text-black/45 transition hover:bg-black/[0.04] hover:text-ink focus:outline-none focus:ring-4 focus:ring-brand/10" aria-label="Zamknij filtry">×</button>
+
+                  <input type="hidden" name="rating" value={rating} />
+                  <input type="hidden" name="status" value={status} />
+
+                  <label className="mt-5 block">
+                    <span className="text-xs font-semibold text-black/45">Wyszukiwarka</span>
+                    <input name="q" defaultValue={searchQuery} placeholder="Szukaj autora..." className="mt-2 w-full rounded-2xl border border-black/[0.08] bg-[#FAFAFC] px-4 py-3 text-sm outline-none transition focus:border-brand/30 focus:ring-4 focus:ring-brand/10" />
+                  </label>
+
+                  <label className="mt-5 block">
+                    <span className="text-xs font-semibold text-black/45">Sortowanie</span>
+                    <select name="sort" defaultValue={selectedSort} className="mt-2 w-full rounded-2xl border border-black/[0.08] bg-[#FAFAFC] px-4 py-3 text-sm outline-none transition focus:border-brand/30 focus:ring-4 focus:ring-brand/10">
+                      {sortOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                  </label>
+
+                  <fieldset className="mt-5">
+                    <legend className="text-xs font-semibold text-black/45">Ocena</legend>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {ratings.map((value) => (
+                        <button key={value} type="button" onClick={() => setRating(value)} className={`rounded-xl px-3.5 py-2.5 text-xs font-semibold transition ${rating === value ? "bg-brand text-white shadow-sm" : "border border-black/[0.08] bg-[#FAFAFC] text-black/50"}`}>
+                          {value === "all" ? "Wszystkie" : `${value} ★`}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+
+                  <fieldset className="mt-5 pb-5">
+                    <legend className="text-xs font-semibold text-black/45">Status</legend>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {statuses.map((option) => (
+                        <button key={option.value} type="button" onClick={() => setStatus(option.value)} className={`rounded-xl px-3.5 py-2.5 text-xs font-semibold transition ${status === option.value ? "bg-brand text-white shadow-sm" : "border border-black/[0.08] bg-[#FAFAFC] text-black/50"}`}>
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
                 </div>
 
-                <input type="hidden" name="rating" value={rating} />
-                <input type="hidden" name="status" value={status} />
-
-                <label className="mt-5 block">
-                  <span className="text-xs font-semibold text-black/45">Wyszukiwarka</span>
-                  <input name="q" defaultValue={searchQuery} placeholder="Szukaj autora..." className="mt-2 w-full rounded-2xl border border-black/[0.08] bg-[#FAFAFC] px-4 py-3 text-sm outline-none transition focus:border-brand/30 focus:ring-4 focus:ring-brand/10" />
-                </label>
-
-                <label className="mt-5 block">
-                  <span className="text-xs font-semibold text-black/45">Sortowanie</span>
-                  <select name="sort" defaultValue={selectedSort} className="mt-2 w-full rounded-2xl border border-black/[0.08] bg-[#FAFAFC] px-4 py-3 text-sm outline-none transition focus:border-brand/30 focus:ring-4 focus:ring-brand/10">
-                    {sortOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  </select>
-                </label>
-
-                <fieldset className="mt-5">
-                  <legend className="text-xs font-semibold text-black/45">Ocena</legend>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {ratings.map((value) => (
-                      <button key={value} type="button" onClick={() => setRating(value)} className={`rounded-xl px-3.5 py-2.5 text-xs font-semibold transition ${rating === value ? "bg-brand text-white shadow-sm" : "border border-black/[0.08] bg-[#FAFAFC] text-black/50"}`}>
-                        {value === "all" ? "Wszystkie" : `${value} ★`}
-                      </button>
-                    ))}
-                  </div>
-                </fieldset>
-
-                <fieldset className="mt-5">
-                  <legend className="text-xs font-semibold text-black/45">Status</legend>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {statuses.map((option) => (
-                      <button key={option.value} type="button" onClick={() => setStatus(option.value)} className={`rounded-xl px-3.5 py-2.5 text-xs font-semibold transition ${status === option.value ? "bg-brand text-white shadow-sm" : "border border-black/[0.08] bg-[#FAFAFC] text-black/50"}`}>
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </fieldset>
-
-                <button type="submit" className="mt-6 w-full rounded-2xl bg-brand px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-[#4D4EE8] focus:outline-none focus:ring-4 focus:ring-brand/20">
-                  Zastosuj
-                </button>
+                <div className="border-t border-black/[0.06] bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
+                  <button type="submit" className="w-full rounded-2xl bg-brand px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-[#4D4EE8] focus:outline-none focus:ring-4 focus:ring-brand/20">
+                    Zastosuj
+                  </button>
+                </div>
               </form>
             </div>,
             document.body,
