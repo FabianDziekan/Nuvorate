@@ -58,11 +58,11 @@ html.dark body {
   }
 
   .button-primary {
-    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white shadow-purple transition duration-300 hover:-translate-y-0.5 hover:bg-brand-dark focus:outline-none focus:ring-4 focus:ring-brand/20;
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white shadow-purple transition duration-300 hover:-translate-y-0.5 hover:bg-brand-dark active:scale-[0.99] active:duration-100 focus:outline-none focus:ring-4 focus:ring-brand/20;
   }
 
   .button-secondary {
-    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-black/10 bg-white px-6 py-3 text-sm font-semibold text-ink transition duration-300 hover:-translate-y-0.5 hover:border-brand/30 hover:text-brand focus:outline-none focus:ring-4 focus:ring-brand/10;
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-black/10 bg-white px-6 py-3 text-sm font-semibold text-ink transition duration-300 hover:-translate-y-0.5 hover:border-brand/30 hover:text-brand active:scale-[0.99] active:duration-100 focus:outline-none focus:ring-4 focus:ring-brand/10;
   }
 
   .section-title {
@@ -742,6 +742,21 @@ html.dark body {
     background-color: rgba(9, 10, 15, 0.78);
   }
 
+  /* The navigation is a translucent surface, so it needs the same dark
+     surface treatment as the app chrome rather than the light white utility. */
+  html.dark .mobile-bottom-navigation {
+    background-color: rgba(24, 25, 35, 0.95);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  html.dark .mobile-bottom-navigation-item-inactive {
+    color: rgba(247, 247, 250, 0.62);
+  }
+
+  html.dark .mobile-bottom-navigation-unread-dot {
+    --tw-ring-color: #181923;
+  }
+
   html.dark .dashboard-topbar {
     border-color: rgba(255, 255, 255, 0.08);
     box-shadow: none;
@@ -759,6 +774,34 @@ html.dark body {
 
   html.dark .bg-brand-soft {
     background-color: rgba(91, 92, 246, 0.16);
+  }
+
+  /* Shared treatment for locally controlled switches. OFF remains clearly
+     interactive in dark mode, while the brand state stays visually clean. */
+  html.dark .nuvorate-switch-track:not(.nuvorate-switch-track-on) {
+    background-color: #30323c;
+    border: 1px solid rgba(247, 247, 250, 0.2);
+  }
+
+  html.dark .nuvorate-switch-track:not(.nuvorate-switch-track-on) .nuvorate-switch-thumb {
+    background-color: #c9cad3;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+
+  html.dark .nuvorate-switch-track.nuvorate-switch-track-on {
+    border-color: transparent;
+  }
+
+  html.dark .nuvorate-switch-track:disabled,
+  html.dark button:disabled .nuvorate-switch-track {
+    opacity: 0.46;
+  }
+
+  @media (hover: hover) {
+    html.dark .nuvorate-switch-track:not(.nuvorate-switch-track-on):hover {
+      background-color: #383a45;
+      border-color: rgba(247, 247, 250, 0.28);
+    }
   }
 
   html.dark .bg-ink {

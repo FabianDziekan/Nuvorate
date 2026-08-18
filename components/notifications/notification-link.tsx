@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { MouseEvent, ReactNode } from "react";
 
 export function NotificationLink({
@@ -19,9 +18,7 @@ export function NotificationLink({
   notificationId: string;
   onRead?: (notificationId: string) => void;
 }) {
-  const router = useRouter();
-
-  async function handleClick(event: MouseEvent<HTMLAnchorElement>) {
+  function handleClick(event: MouseEvent<HTMLAnchorElement>) {
     if (
       event.defaultPrevented ||
       event.button !== 0 ||
@@ -33,26 +30,19 @@ export function NotificationLink({
       return;
     }
 
-    event.preventDefault();
-
     if (!isRead) {
       onRead?.(notificationId);
 
-      try {
-        await fetch(`/api/notifications/${notificationId}/read`, {
-          method: "PATCH",
-        });
-      } catch (error) {
-        console.error("Notification read update failed", error);
-      }
+      void fetch(`/api/notifications/${notificationId}/read`, {
+        method: "PATCH",
+      }).catch(() => {
+        // Stan odczytu jest optymistyczny — kolejna synchronizacja go odświeży.
+      });
     }
-
-    router.push(href);
-    router.refresh();
   }
 
   return (
-    <Link href={href} className={className} onClick={handleClick}>
+    <Link href={href} className={`${className} active:opacity-80`} onClick={handleClick}>
       {children}
     </Link>
   );

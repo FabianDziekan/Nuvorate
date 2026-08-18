@@ -484,26 +484,6 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                       {filteredReviews.length}{" "}
                       {filteredReviews.length === 1 ? "opinia" : "opinii"}
                     </h2>
-                    <span
-                      className="grid h-7 w-7 place-items-center rounded-lg border border-black/[0.06] bg-[#FAFAFC] text-black/35 min-[769px]:hidden"
-                      aria-label="Dostępne filtry opinii"
-                      title="Dostępne filtry opinii"
-                    >
-                      <svg
-                        aria-hidden="true"
-                        viewBox="0 0 24 24"
-                        className="h-3.5 w-3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                      >
-                        <path d="M4 7h16M4 12h16M4 17h16" />
-                        <circle cx="9" cy="7" r="1.5" fill="currentColor" stroke="none" />
-                        <circle cx="15" cy="12" r="1.5" fill="currentColor" stroke="none" />
-                        <circle cx="11" cy="17" r="1.5" fill="currentColor" stroke="none" />
-                      </svg>
-                    </span>
                   </div>
                 </div>
                 <RatingFilter
@@ -517,7 +497,8 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
               {filteredReviews.length > 0 ? (
                 <>
                 <MobileReviewList
-                  reviews={paginatedReviews.map((review) => ({
+                  key={selectedRating}
+                  reviews={filteredReviews.map((review) => ({
                     id: review.id,
                     authorName: review.author_name,
                     content: review.content,
@@ -571,14 +552,6 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                       </p>
                     </article>
                   ))}
-                  <Pagination
-                    buildHref={(page) => buildReviewsHref(selectedRating, page)}
-                    currentPage={currentPage}
-                    pageSize={reviewsPerPage}
-                    totalItems={filteredReviews.length}
-                  />
-                </div>
-                <div className="mt-4 min-[769px]:hidden">
                   <Pagination
                     buildHref={(page) => buildReviewsHref(selectedRating, page)}
                     currentPage={currentPage}

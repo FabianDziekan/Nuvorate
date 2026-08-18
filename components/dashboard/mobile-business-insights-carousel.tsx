@@ -30,8 +30,11 @@ export function MobileBusinessInsightsCarousel({
   monthlyGoal,
 }: MobileBusinessInsightsCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isEditingGoal, setIsEditingGoal] = useState(false);
+  const activeIndexRef = useRef(0);
   const carouselRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Array<HTMLElement | null>>([]);
+  const frameRef = useRef<number | null>(null);
 
   const updateActiveIndex = useCallback((carousel: HTMLDivElement) => {
     const carouselCenter =
@@ -51,6 +54,11 @@ export function MobileBusinessInsightsCarousel({
       }
     });
 
+    if (activeIndexRef.current === closestIndex) {
+      return;
+    }
+
+    activeIndexRef.current = closestIndex;
     setActiveIndex(closestIndex);
   }, []);
 
@@ -62,8 +70,23 @@ export function MobileBusinessInsightsCarousel({
     refreshActiveCard();
     window.addEventListener("resize", refreshActiveCard);
 
-    return () => window.removeEventListener("resize", refreshActiveCard);
+    return () => {
+      window.removeEventListener("resize", refreshActiveCard);
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+      }
+    };
   }, [updateActiveIndex]);
+
+  function handleScroll() {
+    const carousel = carouselRef.current;
+    if (!carousel || frameRef.current !== null) return;
+
+    frameRef.current = window.requestAnimationFrame(() => {
+      frameRef.current = null;
+      updateActiveIndex(carousel);
+    });
+  }
 
   const cardStyle = {
     minWidth: "min(360px, calc(100vw - 32px))",
@@ -94,16 +117,20 @@ export function MobileBusinessInsightsCarousel({
 
       <div
         ref={carouselRef}
-        className="mt-4 flex items-stretch snap-x snap-mandatory gap-3.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className={`mt-4 flex items-start gap-3.5 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+          isEditingGoal
+            ? "overflow-x-hidden touch-pan-y"
+            : "snap-x snap-mandatory overflow-x-auto"
+        }`}
         style={carouselStyle}
-        onScroll={(event) => updateActiveIndex(event.currentTarget)}
+        onScroll={handleScroll}
       >
         <article
           ref={(element) => {
             cardRefs.current[0] = element;
           }}
           style={cardStyle}
-          className="h-[148px] shrink-0 snap-center rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm"
+          className="h-[148px] shrink-0 snap-center snap-always rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm"
         >
           <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">
             {bestDay.title}
@@ -120,7 +147,7 @@ export function MobileBusinessInsightsCarousel({
             cardRefs.current[1] = element;
           }}
           style={cardStyle}
-          className="h-[148px] shrink-0 snap-center rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm"
+          className="h-[148px] shrink-0 snap-center snap-always rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm"
         >
           <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-black/35">Ten miesiąc</p>
           <p className="mt-3 text-lg font-semibold tracking-tight">{currentMonth.value}</p>
@@ -135,10 +162,11 @@ export function MobileBusinessInsightsCarousel({
             cardRefs.current[2] = element;
           }}
           style={cardStyle}
-          className="h-[148px] shrink-0 snap-center"
+          className={`${isEditingGoal ? "min-h-[224px]" : "h-[148px]"} shrink-0 snap-center snap-always`}
         >
           <MonthlyGoalCard
             carousel
+            onEditingChange={setIsEditingGoal}
             count={monthlyGoal.count}
             goal={monthlyGoal.goal}
             helperText={monthlyGoal.helperText}

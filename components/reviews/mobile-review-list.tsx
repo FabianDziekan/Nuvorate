@@ -12,8 +12,14 @@ type MobileReview = {
   sourceLabel: string;
 };
 
+const reviewsPerBatch = 10;
+
 export function MobileReviewList({ reviews }: { reviews: MobileReview[] }) {
   const [selectedReview, setSelectedReview] = useState<MobileReview | null>(null);
+  const [visibleCount, setVisibleCount] = useState(reviewsPerBatch);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const visibleReviews = reviews.slice(0, visibleCount);
+  const hasMoreReviews = visibleCount < reviews.length;
 
   useEffect(() => {
     if (!selectedReview) {
@@ -30,10 +36,20 @@ export function MobileReviewList({ reviews }: { reviews: MobileReview[] }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [selectedReview]);
 
+  function loadMoreReviews() {
+    if (isLoadingMore || !hasMoreReviews) return;
+
+    setIsLoadingMore(true);
+    window.requestAnimationFrame(() => {
+      setVisibleCount((current) => Math.min(current + reviewsPerBatch, reviews.length));
+      setIsLoadingMore(false);
+    });
+  }
+
   return (
     <>
       <div className="mt-4 space-y-2 min-[769px]:hidden">
-        {reviews.map((review) => (
+        {visibleReviews.map((review) => (
           <article
             key={review.id}
             role="button"
@@ -76,6 +92,21 @@ export function MobileReviewList({ reviews }: { reviews: MobileReview[] }) {
             </button>
           </article>
         ))}
+        <div className="border-t border-black/[0.06] pt-4 text-center">
+          {hasMoreReviews ? (
+            <button
+              type="button"
+              disabled={isLoadingMore}
+              onClick={loadMoreReviews}
+              className="inline-flex rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-xs font-semibold text-black/55 transition hover:border-brand/30 hover:text-brand disabled:cursor-wait disabled:opacity-60"
+            >
+              {isLoadingMore ? "Ładowanie..." : "Załaduj więcej"}
+            </button>
+          ) : null}
+          <p className="mt-3 text-xs font-medium text-black/35">
+            Wyświetlono {Math.min(visibleCount, reviews.length)} z {reviews.length} opinii
+          </p>
+        </div>
       </div>
 
       {selectedReview ? (

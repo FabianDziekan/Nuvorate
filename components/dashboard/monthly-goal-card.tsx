@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { updateMonthlyReviewGoal } from "@/app/dashboard/actions";
 
 type MonthlyGoalCardProps = {
   carousel?: boolean;
+  onEditingChange?: (isEditing: boolean) => void;
   count: number;
   goal: number;
   helperText: string;
@@ -15,6 +16,7 @@ type MonthlyGoalCardProps = {
 
 export function MonthlyGoalCard({
   carousel = false,
+  onEditingChange,
   count,
   goal,
   helperText,
@@ -29,18 +31,24 @@ export function MonthlyGoalCard({
   const [isPending, startTransition] = useTransition();
   const useCarouselLayout = carousel && !isEditing;
 
+  useEffect(() => {
+    onEditingChange?.(isEditing);
+  }, [isEditing, onEditingChange]);
+
   function cancelEdit() {
     if (isPending) {
       return;
     }
 
     setIsEditing(false);
+    onEditingChange?.(false);
     setError("");
     setInputValue(String(goal));
   }
 
   function startEdit() {
     setIsEditing(true);
+    onEditingChange?.(true);
     setError("");
     setInputValue(String(goal));
   }
@@ -64,6 +72,7 @@ export function MonthlyGoalCard({
       }
 
       setIsEditing(false);
+      onEditingChange?.(false);
       setToast("Cel zapisany");
       router.refresh();
       window.setTimeout(() => setToast(""), 2200);
@@ -87,10 +96,12 @@ export function MonthlyGoalCard({
       }}
       className={`${
         useCarouselLayout
-          ? "!h-[148px] !min-h-[148px] overflow-hidden !p-4"
+          ? "!h-[148px] !min-h-[148px] overflow-hidden bg-white !p-4"
+          : carousel
+            ? "min-h-[224px] bg-white p-4"
           : "min-h-[188px] p-4 max-[768px]:min-h-0 max-[768px]:p-2"
-      } rounded-2xl border border-black/[0.06] bg-[#FAFAFC] focus:outline-none focus:ring-4 focus:ring-brand/10 ${
-        isEditing ? "" : "max-[768px]:h-[126px] max-[768px]:overflow-hidden"
+      } rounded-2xl border border-black/[0.06] ${carousel ? "shadow-sm" : "bg-[#FAFAFC]"} transition-transform duration-150 active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-brand/10 ${
+        isEditing || carousel ? "" : "max-[768px]:h-[126px] max-[768px]:overflow-hidden"
       } ${
         isEditing ? "" : "cursor-pointer hover:border-brand/30"
       }`}
@@ -111,9 +122,10 @@ export function MonthlyGoalCard({
               type="number"
               min={1}
               max={1000}
+              inputMode="numeric"
               value={inputValue}
               onChange={(event) => setInputValue(event.target.value)}
-              className="h-10 w-full rounded-xl border border-black/[0.08] bg-white px-3 text-sm outline-none focus:border-brand/30 focus:ring-4 focus:ring-brand/10"
+              className={`h-10 w-full rounded-xl border border-black/[0.08] bg-white px-3 outline-none focus:border-brand/30 focus:ring-4 focus:ring-brand/10 ${carousel ? "text-base" : "text-sm"}`}
             />
           </label>
           {error ? (
@@ -125,7 +137,7 @@ export function MonthlyGoalCard({
               Podaj wartość od 1 do 1000.
             </p>
           )}
-          <div className="mt-3 flex justify-end gap-2">
+          <div className={`mt-3 gap-2 ${carousel ? "grid grid-cols-2" : "flex justify-end"}`}>
             <button
               type="button"
               onClick={(event) => {
@@ -133,7 +145,7 @@ export function MonthlyGoalCard({
                 cancelEdit();
               }}
               disabled={isPending}
-              className="rounded-xl border border-black/[0.08] bg-white px-3 py-2 text-xs font-semibold text-black/50 hover:border-brand/30 hover:text-brand disabled:cursor-wait disabled:opacity-60"
+              className={`rounded-xl border border-black/[0.08] bg-white px-3 py-2 text-xs font-semibold text-black/50 hover:border-brand/30 hover:text-brand disabled:cursor-wait disabled:opacity-60 ${carousel ? "min-h-10" : ""}`}
             >
               Anuluj
             </button>
@@ -144,7 +156,7 @@ export function MonthlyGoalCard({
                 saveGoal();
               }}
               disabled={isPending}
-              className="rounded-xl bg-brand px-3 py-2 text-xs font-semibold text-white hover:bg-[#4D4EE8] disabled:cursor-wait disabled:opacity-70"
+              className={`rounded-xl bg-brand px-3 py-2 text-xs font-semibold text-white hover:bg-[#4D4EE8] disabled:cursor-wait disabled:opacity-70 ${carousel ? "min-h-10" : ""}`}
             >
               {isPending ? "Zapisywanie..." : "Zapisz"}
             </button>

@@ -56,12 +56,12 @@ export function MobileBottomNavigationClient({ unreadCount }: { unreadCount: num
 
   return (
     <>
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-black/[0.08] bg-white/95 pb-[max(8px,env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden" aria-label="Główna nawigacja">
+      <nav className="mobile-bottom-navigation fixed inset-x-0 bottom-0 z-50 border-t border-black/[0.08] bg-white/95 pb-[max(8px,env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden" aria-label="Główna nawigacja">
         <div className="mx-auto flex h-16 max-w-md items-stretch">
           {primaryItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
-              <Link key={item.href} href={item.href} className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-xl text-[10.5px] leading-none transition-[color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 ${active ? "font-semibold text-brand" : "font-medium text-black/55 active:scale-[0.98]"}`} aria-current={active ? "page" : undefined}>
+              <Link key={item.href} href={item.href} className={`mobile-bottom-navigation-item flex min-w-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-xl text-[10.5px] leading-none transition-[color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 ${active ? "mobile-bottom-navigation-item-active font-semibold text-brand" : "mobile-bottom-navigation-item-inactive font-medium text-black/55 active:scale-[0.98]"}`} aria-current={active ? "page" : undefined}>
                 <span className={`grid h-7 w-7 place-items-center rounded-lg transition-[background-color,transform] duration-200 ${active ? "scale-[1.04] bg-brand-soft" : "bg-transparent"}`}>
                   <AppNavigationIcon name={item.icon} className="h-[19px] w-[19px]" />
                 </span>
@@ -69,10 +69,10 @@ export function MobileBottomNavigationClient({ unreadCount }: { unreadCount: num
               </Link>
             );
           })}
-          <button type="button" onClick={() => setMoreOpen(true)} className={`relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-xl text-[10.5px] leading-none transition-[color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 ${moreHighlighted ? "font-semibold text-brand" : "font-medium text-black/55 active:scale-[0.98]"}`} aria-haspopup="dialog" aria-expanded={moreOpen}>
+          <button type="button" onClick={() => setMoreOpen(true)} className={`mobile-bottom-navigation-item relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-xl text-[10.5px] leading-none transition-[color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 ${moreHighlighted ? "mobile-bottom-navigation-item-active font-semibold text-brand" : "mobile-bottom-navigation-item-inactive font-medium text-black/55 active:scale-[0.98]"}`} aria-haspopup="dialog" aria-expanded={moreOpen}>
             <span className={`relative grid h-7 w-7 place-items-center rounded-lg transition-[background-color,transform] duration-200 ${moreHighlighted ? "scale-[1.04] bg-brand-soft" : "bg-transparent"}`}>
               <MoreIcon className="h-[19px] w-[19px]" />
-              {unreadCount > 0 ? <span className="absolute -right-1.5 -top-1 h-1.5 w-1.5 rounded-full bg-brand ring-2 ring-white" aria-label={`${unreadCount} nieprzeczytanych powiadomień`} /> : null}
+              {unreadCount > 0 ? <span className="mobile-bottom-navigation-unread-dot absolute -right-1.5 -top-1 h-1.5 w-1.5 rounded-full bg-brand ring-2 ring-white" aria-label={`${unreadCount} nieprzeczytanych powiadomień`} /> : null}
             </span>
             <span>Więcej</span>
           </button>

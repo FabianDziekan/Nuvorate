@@ -518,10 +518,10 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
                         <button
                           type="button"
                           disabled
-                          className="relative h-6 w-11 shrink-0 rounded-full bg-brand"
+                          className="nuvorate-switch-track nuvorate-switch-track-on relative h-6 w-11 shrink-0 rounded-full bg-brand"
                           aria-label="Automatyczne generowanie włączone — przykład"
                         >
-                          <span className="absolute left-6 top-1 h-4 w-4 rounded-full bg-white" />
+                          <span className="nuvorate-switch-thumb absolute left-6 top-1 h-4 w-4 rounded-full bg-white" />
                         </button>
                       </div>
                     </div>
@@ -542,13 +542,13 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
                             <button
                               type="button"
                               disabled
-                              className={`relative h-6 w-11 rounded-full ${
-                                rating >= 4 ? "bg-brand" : "bg-black/10"
+                              className={`nuvorate-switch-track relative h-6 w-11 rounded-full ${
+                                rating >= 4 ? "nuvorate-switch-track-on bg-brand" : "bg-black/10"
                               }`}
                               aria-label={`Ocena ${rating} — przykład`}
                             >
                               <span
-                                className={`absolute top-1 h-4 w-4 rounded-full bg-white ${
+                                className={`nuvorate-switch-thumb absolute top-1 h-4 w-4 rounded-full bg-white ${
                                   rating >= 4 ? "left-6" : "left-1"
                                 }`}
                               />

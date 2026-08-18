@@ -97,9 +97,9 @@ export function AutomaticAnalysisSettings({
             aria-checked={enabled}
             disabled={isPending}
             onClick={() => save(!enabled, frequencyDays)}
-            className={`inline-flex h-8 w-14 items-center rounded-full p-1 transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/20 disabled:cursor-wait disabled:opacity-60 ${enabled ? "bg-brand" : "bg-black/10"}`}
+            className={`nuvorate-switch-track inline-flex h-8 w-14 items-center rounded-full p-1 transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/20 disabled:cursor-wait disabled:opacity-60 ${enabled ? "nuvorate-switch-track-on bg-brand" : "bg-black/10"}`}
           >
-            <span className={`h-6 w-6 rounded-full bg-white shadow-sm transition-transform ${enabled ? "translate-x-6" : "translate-x-0"}`} />
+            <span className={`nuvorate-switch-thumb h-6 w-6 rounded-full bg-white shadow-sm transition-transform ${enabled ? "translate-x-6" : "translate-x-0"}`} />
             <span className="sr-only">{enabled ? "Wyłącz" : "Włącz"} automatyczną analizę</span>
           </button>
         </div>

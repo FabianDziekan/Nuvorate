@@ -80,7 +80,7 @@ export function MobileMetricCards({ metrics }: { metrics: MobileMetric[] }) {
             <span className="grid h-6 w-6 place-items-center rounded-lg bg-brand-soft text-brand">
               <MetricIcon name={metric.icon} className="h-3.5 w-3.5" />
             </span>
-            <span className="mt-2 block text-[9px] font-medium leading-[9px] text-black/40">{metric.label}</span>
+            <span className="mt-2 flex min-h-[18px] items-start text-[9px] font-medium leading-[9px] text-black/40">{metric.label}</span>
             <span className="mt-1.5 block text-[26px] font-semibold leading-none tracking-[-0.04em] text-ink">{metric.value}</span>
           </button>
         ))}

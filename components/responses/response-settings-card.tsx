@@ -219,15 +219,15 @@ export function ResponseSettingsCard({
               type="checkbox"
               checked={autoGenerate}
               onChange={(event) => setAutoGenerate(event.target.checked)}
-              className="sr-only"
+              className="peer sr-only"
             />
             <span
-              className={`relative h-6 w-11 shrink-0 rounded-full transition ${
-                autoGenerate ? "bg-brand" : "bg-black/10"
+              className={`nuvorate-switch-track relative h-6 w-11 shrink-0 rounded-full transition peer-focus-visible:ring-4 peer-focus-visible:ring-brand/20 ${
+                autoGenerate ? "nuvorate-switch-track-on bg-brand" : "bg-black/10"
               }`}
             >
               <span
-                className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                className={`nuvorate-switch-thumb absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
                   autoGenerate ? "translate-x-6" : "translate-x-1"
                 }`}
               />
@@ -255,15 +255,15 @@ export function ResponseSettingsCard({
                     type="checkbox"
                     checked={enabledRatings.includes(rating)}
                     onChange={(event) => toggleRating(rating, event.target.checked)}
-                    className="sr-only"
+                    className="peer sr-only"
                   />
                   <span
-                    className={`relative h-6 w-11 rounded-full transition ${
-                      enabledRatings.includes(rating) ? "bg-brand" : "bg-black/10"
+                    className={`nuvorate-switch-track relative h-6 w-11 rounded-full transition peer-focus-visible:ring-4 peer-focus-visible:ring-brand/20 ${
+                      enabledRatings.includes(rating) ? "nuvorate-switch-track-on bg-brand" : "bg-black/10"
                     }`}
                   >
                     <span
-                      className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                      className={`nuvorate-switch-thumb absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
                         enabledRatings.includes(rating)
                           ? "translate-x-6"
                           : "translate-x-1"
@@ -313,15 +313,15 @@ export function ResponseSettingsCard({
             type="checkbox"
             checked={autoGenerate}
             onChange={(event) => setAutoGenerate(event.target.checked)}
-            className="sr-only"
+            className="peer sr-only"
           />
           <span
-            className={`relative h-6 w-11 shrink-0 rounded-full transition ${
-              autoGenerate ? "bg-brand" : "bg-black/10"
+            className={`nuvorate-switch-track relative h-6 w-11 shrink-0 rounded-full transition peer-focus-visible:ring-4 peer-focus-visible:ring-brand/20 ${
+              autoGenerate ? "nuvorate-switch-track-on bg-brand" : "bg-black/10"
             }`}
           >
             <span
-              className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+              className={`nuvorate-switch-thumb absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
                 autoGenerate ? "translate-x-6" : "translate-x-1"
               }`}
             />
@@ -423,15 +423,15 @@ export function ResponseSettingsCard({
                       type="checkbox"
                       checked={enabledRatings.includes(rating)}
                       onChange={(event) => toggleRating(rating, event.target.checked)}
-                      className="sr-only"
+                      className="peer sr-only"
                     />
                     <span
-                      className={`relative h-6 w-11 rounded-full transition ${
-                        enabledRatings.includes(rating) ? "bg-brand" : "bg-black/10"
+                      className={`nuvorate-switch-track relative h-6 w-11 rounded-full transition peer-focus-visible:ring-4 peer-focus-visible:ring-brand/20 ${
+                        enabledRatings.includes(rating) ? "nuvorate-switch-track-on bg-brand" : "bg-black/10"
                       }`}
                     >
                       <span
-                        className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                        className={`nuvorate-switch-thumb absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
                           enabledRatings.includes(rating)
                             ? "translate-x-6"
                             : "translate-x-1"

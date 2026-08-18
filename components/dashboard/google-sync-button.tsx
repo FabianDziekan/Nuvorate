@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { syncGoogleReviews } from "@/app/dashboard/actions";
 
@@ -42,27 +42,25 @@ export function GoogleSyncButton({
 }: {
   isGoogleConnected?: boolean;
 }) {
-  const [isPending, startTransition] = useTransition();
+  const [isSyncing, setIsSyncing] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const isSyncing = isPending;
+  async function handleSync() {
+    if (isSyncing) return;
 
-  function handleSync() {
     setMessage("");
     setError("");
+    setIsSyncing(true);
 
-    startTransition(async () => {
-      try {
-        const [result] = await Promise.all([
-          syncGoogleReviews(),
-          new Promise((resolve) => window.setTimeout(resolve, 700)),
-        ]);
+    try {
+      const result = await syncGoogleReviews();
 
-        setMessage(result.message);
-      } catch {
-        setError("Nie udało się uruchomić synchronizacji.");
-      }
-    });
+      setMessage(result.message);
+    } catch {
+      setError("Nie udało się uruchomić synchronizacji.");
+    } finally {
+      setIsSyncing(false);
+    }
   }
 
   return (
