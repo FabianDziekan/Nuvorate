@@ -13,6 +13,7 @@ import { hasPlanCapability, normalizePlan } from "@/lib/plans";
 import type { AnalysisErrorCode } from "@/lib/analysis-feedback";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveBusinessForUser, requireActiveBusinessForUser } from "@/lib/active-business";
 
 export async function signOut() {
   const supabase = await createClient();
@@ -33,13 +34,9 @@ export async function syncGoogleReviews(): Promise<{
     redirect("/login?next=/dashboard");
   }
 
-  const { data: business, error: businessError } = await supabase
-    .from("businesses")
-    .select("id, google_review_url")
-    .eq("owner_id", user.id)
-    .maybeSingle();
+  const business = (await getActiveBusinessForUser(supabase, user.id, "id, google_review_url"))?.business;
 
-  if (businessError || !business) {
+  if (!business) {
     return {
       message: "Nie udało się odczytać danych firmy.",
       connected: false,
@@ -76,14 +73,11 @@ export async function updateMonthlyReviewGoal(goal: number): Promise<{
     redirect("/login?next=/dashboard");
   }
 
-  const { data: business, error: businessLookupError } = await supabase
-    .from("businesses")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
+  let business;
+  try { business = (await requireActiveBusinessForUser(supabase, user.id, "id", "manage")).business; } catch { business = null; }
 
-  if (businessLookupError || !business) {
-    console.error("Monthly review goal business lookup failed", businessLookupError);
+  if (!business) {
+    console.error("Monthly review goal business lookup failed");
     return {
       error: "Nie udało się odczytać firmy.",
       success: false,
@@ -138,14 +132,15 @@ export async function generateBusinessAnalysis(formData?: FormData) {
   }
 
   const [
-    { data: business, error: businessError },
+    activeBusiness,
     { data: profile, error: profileError },
   ] = await Promise.all([
-    supabase
-      .from("businesses")
-      .select("id, name, industry, city")
-      .eq("owner_id", user.id)
-      .maybeSingle(),
+    requireActiveBusinessForUser(
+      supabase,
+      user.id,
+      "id, name, industry, city",
+      "manage",
+    ),
     supabase
       .from("profiles")
       .select("plan")
@@ -153,7 +148,8 @@ export async function generateBusinessAnalysis(formData?: FormData) {
       .maybeSingle(),
   ]);
 
-  if (businessError || profileError || !business || !profile) {
+  const business = activeBusiness?.business;
+  if (profileError || !business || !profile) {
     throw new Error("Nie udało się odczytać firmy lub planu.");
   }
 
@@ -164,7 +160,7 @@ export async function generateBusinessAnalysis(formData?: FormData) {
   }
 
   const result = await generateBusinessAnalysisSnapshot({
-    business,
+    business: business as { id: string; name: string; industry: string; city: string },
     executionType: "manual",
     plan,
     userId: user.id,
@@ -197,12 +193,8 @@ export async function updateAutomaticAnalysisSettings(input: {
     redirect("/login?next=/analysis");
   }
 
-  const [{ data: business }, { data: profile }] = await Promise.all([
-    supabase
-      .from("businesses")
-      .select("id")
-      .eq("owner_id", user.id)
-      .maybeSingle(),
+  const [activeBusiness, { data: profile }] = await Promise.all([
+    requireActiveBusinessForUser(supabase, user.id, "id", "manage"),
     supabase
       .from("profiles")
       .select("plan")
@@ -210,6 +202,7 @@ export async function updateAutomaticAnalysisSettings(input: {
       .maybeSingle(),
   ]);
 
+  const business = activeBusiness?.business;
   if (!business || !hasPlanCapability(normalizePlan(profile?.plan), "automaticAnalysis")) {
     return {
       error: "Automatyczna analiza jest dostępna w planie Business.",

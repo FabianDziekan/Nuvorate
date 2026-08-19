@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand/logo";
 import { BusinessForm } from "@/components/onboarding/business-form";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveBusinessForUser } from "@/lib/active-business";
 
 export const metadata: Metadata = {
   title: "Konfiguracja firmy | NuvoRate",
@@ -17,17 +18,8 @@ export default async function OnboardingPage() {
     redirect("/login?next=/onboarding");
   }
 
-  const { data: business, error: businessError } = await supabase
-    .from("businesses")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-
-  if (businessError) {
-    throw new Error(
-      "Nie udało się odczytać danych firmy. Sprawdź konfigurację Supabase.",
-    );
-  }
+  const activeBusiness = await getActiveBusinessForUser(supabase, user.id, "id");
+  const business = activeBusiness?.business;
 
   if (business) {
     redirect("/dashboard");

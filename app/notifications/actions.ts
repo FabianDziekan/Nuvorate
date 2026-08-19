@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { requireActiveBusinessForUser } from "@/lib/active-business";
 
 export async function markAllNotificationsAsRead() {
   const supabase = await createClient();
@@ -14,15 +15,8 @@ export async function markAllNotificationsAsRead() {
     redirect("/login?next=/notifications");
   }
 
-  const { data: business, error: businessError } = await supabase
-    .from("businesses")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
+  const business = (await requireActiveBusinessForUser(supabase, user.id, "id", "manage")).business;
 
-  if (businessError || !business) {
-    throw new Error("Nie udało się odczytać firmy.");
-  }
 
   const { error } = await supabase
     .from("notifications")
@@ -48,15 +42,8 @@ export async function clearNotificationHistory() {
     redirect("/login?next=/notifications");
   }
 
-  const { data: business, error: businessError } = await supabase
-    .from("businesses")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
+  const business = (await requireActiveBusinessForUser(supabase, user.id, "id", "manage")).business;
 
-  if (businessError || !business) {
-    throw new Error("Nie udało się odczytać firmy.");
-  }
 
   const supabaseAdmin = createAdminClient();
   const { error } = await supabaseAdmin

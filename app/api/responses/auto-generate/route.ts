@@ -3,6 +3,7 @@ import type { GenerateReviewResponseState } from "@/components/dashboard/review-
 import { createClient } from "@/lib/supabase/server";
 import { generateReviewResponseForReview } from "@/app/dashboard/review-response-service";
 import { hasPlanCapability, normalizePlan } from "@/lib/plans";
+import { requireRequestedActiveBusiness } from "@/lib/active-business";
 
 type GeneratedResponse = {
   responseText: string;
@@ -70,14 +71,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: business, error: businessError } = await supabase
-      .from("businesses")
-      .select("id")
-      .eq("id", businessId)
-      .eq("owner_id", user.id)
-      .maybeSingle();
-
-    if (businessError || !business) {
+    let business;
+    try {
+      business = (await requireRequestedActiveBusiness(supabase, user.id, businessId, "manage")).business;
+    } catch {
       return NextResponse.json(
         { error: "Nie znaleziono firmy." },
         { status: 404 },

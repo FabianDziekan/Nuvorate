@@ -21,6 +21,7 @@ import {
   reserveAiUsage,
 } from "@/lib/ai-usage";
 import { createClient } from "@/lib/supabase/server";
+import { requireActiveBusinessForUser } from "@/lib/active-business";
 
 const responseToneLabels: Record<string, string> = {
   friendly: "przyjazny",
@@ -87,15 +88,8 @@ export async function generateReviewResponseForReview(
   }
 
   try {
-    const { data: business, error: businessError } = await supabase
-      .from("businesses")
-      .select("id, name")
-      .eq("owner_id", user.id)
-      .maybeSingle();
+    const business = (await requireActiveBusinessForUser(supabase, user.id, "id, name", "manage")).business;
 
-    if (businessError || !business) {
-      throw new Error("Nie udało się odczytać firmy.");
-    }
 
     const { data: review, error: reviewError } = await supabase
       .from("reviews")

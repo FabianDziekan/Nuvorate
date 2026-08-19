@@ -6,6 +6,7 @@ import { hasPlanCapability, normalizePlan } from "@/lib/plans";
 import { validateNfcTagInput } from "@/lib/nfc";
 import type { NfcTagActionState } from "@/lib/nfc-types";
 import { createClient } from "@/lib/supabase/server";
+import { requireActiveBusinessForUser } from "@/lib/active-business";
 
 async function getOwnedNfcBusiness() {
   const supabase = await createClient();
@@ -16,13 +17,15 @@ async function getOwnedNfcBusiness() {
     return { error: "Sesja wygasła. Zaloguj się ponownie." } as const;
   }
 
-  const [{ data: business, error: businessError }, { data: profile, error: profileError }] =
+  const [activeBusiness, { data: profile, error: profileError }] =
     await Promise.all([
-      supabase.from("businesses").select("id").eq("owner_id", user.id).maybeSingle(),
+      requireActiveBusinessForUser(supabase, user.id, "id", "manage"),
       supabase.from("profiles").select("plan").eq("user_id", user.id).maybeSingle(),
     ]);
 
-  if (businessError || profileError || !business || !profile) {
+  const business = activeBusiness.business;
+
+  if (profileError || !business || !profile) {
     return { error: "Nie udało się odczytać danych firmy." } as const;
   }
 

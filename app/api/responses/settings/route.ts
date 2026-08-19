@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { hasPlanCapability, normalizePlan } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
+import { requireRequestedActiveBusiness } from "@/lib/active-business";
 
 export async function PATCH(request: Request) {
   try {
@@ -32,23 +33,23 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const [{ data: profile }, { data: business }] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("plan")
-        .eq("user_id", user.id)
-        .maybeSingle(),
-      supabase
-        .from("businesses")
-        .select("id")
-        .eq("id", businessId)
-        .eq("owner_id", user.id)
-        .maybeSingle(),
-    ]);
-
-    if (!business) {
-      return NextResponse.json({ error: "Nie znaleziono firmy." }, { status: 404 });
+    let activeBusiness;
+    try {
+      activeBusiness = await requireRequestedActiveBusiness(
+        supabase,
+        user.id,
+        businessId,
+        "manage",
+      );
+    } catch {
+      return NextResponse.json({ error: "Brak dostępu do firmy." }, { status: 403 });
     }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("plan")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
     if (
       !hasPlanCapability(

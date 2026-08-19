@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { OnboardingState } from "@/app/onboarding/state";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveBusinessForUser } from "@/lib/active-business";
 
 export async function createBusiness(
   _previousState: OnboardingState,
@@ -53,18 +54,7 @@ export async function createBusiness(
     redirect("/login?next=/onboarding");
   }
 
-  const { data: existingBusiness, error: existingBusinessError } = await supabase
-    .from("businesses")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-
-  if (existingBusinessError) {
-    return {
-      error:
-        "Nie udało się sprawdzić danych firmy. Upewnij się, że schemat bazy został uruchomiony.",
-    };
-  }
+  const existingBusiness = (await getActiveBusinessForUser(supabase, user.id, "id"))?.business;
 
   if (existingBusiness) {
     redirect("/dashboard");

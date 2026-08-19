@@ -31,6 +31,7 @@ import {
 } from "@/lib/analysis-feedback";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveBusinessForUser } from "@/lib/active-business";
 import { signOut } from "@/app/dashboard/actions";
 import { compareAnalysisSnapshots } from "@/lib/analysis-snapshot";
 
@@ -244,14 +245,10 @@ export default async function AnalysisPage({
   }
 
   const [
-    { data: business, error: businessError },
+    activeBusiness,
     { data: profile, error: profileError },
   ] = await Promise.all([
-    supabase
-      .from("businesses")
-      .select("id, name, industry, city")
-      .eq("owner_id", user.id)
-      .maybeSingle(),
+    getActiveBusinessForUser(supabase, user.id, "id, name, industry, city"),
     supabase
       .from("profiles")
       .select("first_name, plan")
@@ -259,7 +256,9 @@ export default async function AnalysisPage({
       .maybeSingle(),
   ]);
 
-  if (businessError || profileError) {
+  const business = activeBusiness?.business;
+
+  if (profileError) {
     throw new Error("Nie udało się odczytać danych firmy lub profilu.");
   }
 

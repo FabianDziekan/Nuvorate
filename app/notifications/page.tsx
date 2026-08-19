@@ -21,6 +21,7 @@ import {
   normalizePlan,
 } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveBusinessForUser } from "@/lib/active-business";
 import { signOut } from "@/app/dashboard/actions";
 
 export const metadata: Metadata = {
@@ -186,14 +187,10 @@ export default async function NotificationsPage({
   }
 
   const [
-    { data: business, error: businessError },
+    activeBusiness,
     { data: profile, error: profileError },
   ] = await Promise.all([
-    supabase
-      .from("businesses")
-      .select("id, name, industry, city")
-      .eq("owner_id", user.id)
-      .maybeSingle(),
+    getActiveBusinessForUser(supabase, user.id, "id, name, industry, city"),
     supabase
       .from("profiles")
       .select("first_name, plan")
@@ -201,7 +198,9 @@ export default async function NotificationsPage({
       .maybeSingle(),
   ]);
 
-  if (businessError || profileError) {
+  const business = activeBusiness?.business;
+
+  if (profileError) {
     throw new Error("Nie udało się odczytać powiadomień.");
   }
 

@@ -42,6 +42,7 @@ import {
 } from "@/lib/analysis-projection";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveBusinessForUser } from "@/lib/active-business";
 import { signOut } from "./actions";
 
 export const metadata: Metadata = {
@@ -865,14 +866,10 @@ export default async function DashboardPage({
   }
 
   const [
-    { data: business, error: businessError },
+    activeBusiness,
     { data: profile, error: profileError },
   ] = await Promise.all([
-    supabase
-      .from("businesses")
-      .select("id, name, industry, city, monthly_review_goal")
-      .eq("owner_id", user.id)
-      .maybeSingle(),
+    getActiveBusinessForUser(supabase, user.id, "id, name, industry, city, monthly_review_goal"),
     supabase
       .from("profiles")
       .select("first_name, plan, stripe_customer_id, subscription_status")
@@ -880,7 +877,9 @@ export default async function DashboardPage({
       .maybeSingle(),
   ]);
 
-  if (businessError || profileError) {
+  const business = activeBusiness?.business;
+
+  if (profileError) {
     throw new Error(
       "Nie udało się odczytać danych firmy lub profilu. Sprawdź konfigurację Supabase.",
     );
