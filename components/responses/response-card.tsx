@@ -429,12 +429,12 @@ export function ResponseCard({
                     </div>
                     <p className="mt-3 text-sm leading-6 text-black/60">{content}</p>
                   </div>
-                  <textarea name="responseText" value={responseText} onChange={(event) => setResponseText(event.target.value)} rows={5} className="mt-4 w-full resize-none rounded-2xl border border-black/[0.08] bg-white p-4 text-sm leading-6 text-ink outline-none transition placeholder:text-black/30 focus:border-brand/30 focus:ring-4 focus:ring-brand/10" placeholder="Wpisz odpowiedź dla klienta..." />
+                  <textarea name="responseText" value={responseText} onChange={(event) => setResponseText(event.target.value)} rows={5} className="mt-4 w-full resize-none scroll-mb-6 rounded-2xl border border-black/[0.08] bg-white p-4 text-base leading-6 text-ink outline-none transition placeholder:text-black/30 focus:border-brand/30 focus:ring-4 focus:ring-brand/10" placeholder="Wpisz odpowiedź dla klienta..." />
                   {error ? <div className="mt-3 rounded-xl border border-red-100 bg-red-50 p-3 text-xs font-medium leading-5 text-red-600">{error}</div> : null}
                 </div>
-                <div className="flex flex-wrap gap-2 border-t border-black/[0.06] bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
-                  <button type="button" disabled={isSaving} onClick={handleSave} className="flex-1 rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#4D4EE8] disabled:cursor-wait disabled:opacity-60">{isSaving ? "Zapisywanie..." : "Zapisz"}</button>
-                  <button type="button" disabled={isMarkingResponded} onClick={handleResponded} className="rounded-xl border border-black/[0.08] bg-white px-4 py-3 text-sm font-semibold text-black/55 transition hover:border-brand/30 hover:text-brand disabled:cursor-wait disabled:opacity-60">{isMarkingResponded ? "Oznaczanie..." : "Odpowiedziano"}</button>
+                <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-black/[0.06] bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
+                  <button type="button" disabled={isSaving} onClick={handleSave} className="min-w-0 rounded-xl bg-brand px-2 py-3 text-sm font-semibold text-white transition hover:bg-[#4D4EE8] disabled:cursor-wait disabled:opacity-60">{isSaving ? "Zapisywanie..." : "Zapisz"}</button>
+                  <button type="button" disabled={isMarkingResponded} onClick={handleResponded} className="min-w-0 rounded-xl border border-black/[0.08] bg-white px-2 py-3 text-sm font-semibold text-black/55 transition hover:border-brand/30 hover:text-brand disabled:cursor-wait disabled:opacity-60">{isMarkingResponded ? "Oznaczanie..." : "Odpowiedziano"}</button>
                 </div>
               </section>
             </div>,

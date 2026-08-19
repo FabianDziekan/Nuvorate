@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -155,9 +156,18 @@ function CalendarDateField({
           onFocus={() => onOpenChange(true)}
           onClick={() => onOpenChange(true)}
           placeholder="YYYY-MM-DD"
-          className="date-range-trigger w-full rounded-xl border border-black/[0.08] bg-[#FAFAFC] px-3 py-2 pr-9 text-left text-xs font-medium text-ink outline-none transition duration-150 hover:border-brand/25 focus:border-brand/40 focus:ring-4 focus:ring-brand/10"
+          className="date-range-trigger hidden w-full rounded-xl border border-black/[0.08] bg-[#FAFAFC] px-3 py-2 pr-9 text-left text-xs font-medium text-ink outline-none transition duration-150 hover:border-brand/25 focus:border-brand/40 focus:ring-4 focus:ring-brand/10 min-[769px]:block"
           aria-expanded={isCalendarOpen}
         />
+        <button
+          type="button"
+          onClick={() => onOpenChange(!isCalendarOpen)}
+          className="date-range-trigger block w-full rounded-xl border border-black/[0.08] bg-[#FAFAFC] px-3 py-2 pr-9 text-left text-xs font-medium text-ink outline-none transition duration-150 hover:border-brand/25 focus:border-brand/40 focus:ring-4 focus:ring-brand/10 min-[769px]:hidden"
+          aria-expanded={isCalendarOpen}
+          aria-label={`${label}: ${value || "wybierz datę"}`}
+        >
+          {value || "YYYY-MM-DD"}
+        </button>
         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-black/35">
           <svg
             aria-hidden="true"
@@ -179,7 +189,7 @@ function CalendarDateField({
 
       {isCalendarOpen ? (
         <div
-          className={`date-range-calendar absolute top-[calc(100%+8px)] z-[70] w-[286px] rounded-2xl border border-black/[0.08] bg-white p-4 shadow-[0_22px_70px_rgba(15,15,16,0.16)] ${
+          className={`date-range-calendar absolute top-[calc(100%+8px)] z-[70] w-[286px] rounded-2xl border border-black/[0.08] bg-white p-4 shadow-[0_22px_70px_rgba(15,15,16,0.16)] max-[768px]:fixed max-[768px]:left-1/2 max-[768px]:top-1/2 max-[768px]:z-[120] max-[768px]:w-[min(286px,calc(100vw-32px))] max-[768px]:-translate-x-1/2 max-[768px]:-translate-y-1/2 ${
             align === "right" ? "right-0" : "left-0"
           }`}
         >
@@ -257,8 +267,10 @@ export function TrendRangeSelect({
   const router = useRouter();
   const searchParams = useSearchParams();
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [openCalendar, setOpenCalendar] = useState<"from" | "to" | null>(null);
   const [customFrom, setCustomFrom] = useState(formatInputDate(from));
   const [customTo, setCustomTo] = useState(formatInputDate(to));
@@ -268,6 +280,16 @@ export function TrendRangeSelect({
     setCustomFrom(formatInputDate(from));
     setCustomTo(formatInputDate(to));
   }, [from, to]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 768px)");
+    const updateViewport = () => setIsMobileViewport(mediaQuery.matches);
+
+    updateViewport();
+    mediaQuery.addEventListener("change", updateViewport);
+
+    return () => mediaQuery.removeEventListener("change", updateViewport);
+  }, []);
 
   function closeDropdown({ restoreFocus = true } = {}) {
     setOpenCalendar(null);
@@ -290,7 +312,7 @@ export function TrendRangeSelect({
 
       if (
         target instanceof Node &&
-        wrapperRef.current?.contains(target)
+        (wrapperRef.current?.contains(target) || popoverRef.current?.contains(target))
       ) {
         return;
       }
@@ -354,6 +376,72 @@ export function TrendRangeSelect({
     pushParams(params);
   }
 
+  const rangePicker = (
+    <div
+      ref={popoverRef}
+      className={
+        isMobileViewport
+          ? "fixed inset-x-4 top-[84px] z-[100] w-auto rounded-[22px] border border-black/[0.08] bg-white p-3 shadow-[0_20px_70px_rgba(15,15,16,0.14)]"
+          : "absolute right-0 top-[calc(100%+10px)] z-50 w-[320px] rounded-[22px] border border-black/[0.08] bg-white p-3 shadow-[0_20px_70px_rgba(15,15,16,0.14)]"
+      }
+    >
+      <div className="space-y-1">
+        {trendRangeOptions.map((option) => {
+          const active = !isCustom && option.value === value;
+
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => selectPreset(option.value)}
+              className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold ${
+                active
+                  ? "bg-brand-soft text-brand"
+                  : "text-black/55 hover:bg-black/[0.035] hover:text-ink"
+              }`}
+            >
+              {option.label}
+              {active ? <span className="text-xs">Wybrane</span> : null}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-3 border-t border-black/[0.06] pt-3">
+        <p className="px-1 text-xs font-semibold uppercase tracking-[0.12em] text-black/35">
+          Zakres niestandardowy
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <CalendarDateField
+            isCalendarOpen={openCalendar === "from"}
+            label="Od"
+            value={customFrom}
+            onChange={setCustomFrom}
+            onOpenChange={(open) => setOpenCalendar(open ? "from" : null)}
+          />
+          <CalendarDateField
+            align="right"
+            isCalendarOpen={openCalendar === "to"}
+            label="Do"
+            value={customTo}
+            onChange={setCustomTo}
+            onOpenChange={(open) => setOpenCalendar(open ? "to" : null)}
+          />
+        </div>
+        {error ? (
+          <p className="mt-2 text-xs font-semibold text-red-600">{error}</p>
+        ) : null}
+        <button
+          type="button"
+          onClick={applyCustomRange}
+          className="mt-3 w-full rounded-xl bg-brand px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#4D4EE8]"
+        >
+          Zastosuj zakres
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div
       ref={wrapperRef}
@@ -404,66 +492,11 @@ export function TrendRangeSelect({
         )}
       </button>
 
-      {isOpen ? (
-        <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-[320px] rounded-[22px] border border-black/[0.08] bg-white p-3 shadow-[0_20px_70px_rgba(15,15,16,0.14)]">
-          <div className="space-y-1">
-            {trendRangeOptions.map((option) => {
-              const active = !isCustom && option.value === value;
-
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => selectPreset(option.value)}
-                  className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold ${
-                    active
-                      ? "bg-brand-soft text-brand"
-                      : "text-black/55 hover:bg-black/[0.035] hover:text-ink"
-                  }`}
-                >
-                  {option.label}
-                  {active ? <span className="text-xs">Wybrane</span> : null}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-3 border-t border-black/[0.06] pt-3">
-            <p className="px-1 text-xs font-semibold uppercase tracking-[0.12em] text-black/35">
-              Zakres niestandardowy
-            </p>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <CalendarDateField
-                isCalendarOpen={openCalendar === "from"}
-                label="Od"
-                value={customFrom}
-                onChange={setCustomFrom}
-                onOpenChange={(open) =>
-                  setOpenCalendar(open ? "from" : null)
-                }
-              />
-              <CalendarDateField
-                align="right"
-                isCalendarOpen={openCalendar === "to"}
-                label="Do"
-                value={customTo}
-                onChange={setCustomTo}
-                onOpenChange={(open) => setOpenCalendar(open ? "to" : null)}
-              />
-            </div>
-            {error ? (
-              <p className="mt-2 text-xs font-semibold text-red-600">{error}</p>
-            ) : null}
-            <button
-              type="button"
-              onClick={applyCustomRange}
-              className="mt-3 w-full rounded-xl bg-brand px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#4D4EE8]"
-            >
-              Zastosuj zakres
-            </button>
-          </div>
-        </div>
-      ) : null}
+      {isOpen
+        ? isMobileViewport
+          ? createPortal(rangePicker, document.body)
+          : rangePicker
+        : null}
     </div>
   );
 }

@@ -37,7 +37,7 @@ export default async function OnboardingPage() {
     <main className="min-h-screen bg-[#F7F7FA] text-ink">
       <header className="border-b border-black/[0.06] bg-white">
         <div className="mx-auto flex h-[74px] max-w-[1180px] items-center justify-between px-5 sm:px-8">
-          <BrandLogo />
+          <BrandLogo href="/" />
           <div className="hidden items-center gap-2 text-xs text-black/40 sm:flex">
             <span className="grid h-6 w-6 place-items-center rounded-full bg-brand text-[10px] font-bold text-white">
               1

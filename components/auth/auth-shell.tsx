@@ -19,7 +19,7 @@ export function AuthShell({
         <div className="absolute -left-24 top-1/3 h-72 w-72 rounded-full border border-white/[0.07]" />
         <div className="absolute -right-32 bottom-10 h-96 w-96 rounded-full border border-white/[0.06]" />
         <div className="relative">
-          <BrandLogo inverse />
+          <BrandLogo href="/" inverse />
         </div>
         <div className="relative max-w-xl">
           <span className="inline-flex rounded-full border border-white/10 bg-white/[0.06] px-3.5 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#A6A7FF]">
@@ -53,7 +53,7 @@ export function AuthShell({
         <div className="absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_70%_0%,rgba(91,92,246,0.08),transparent_55%)] lg:hidden" />
         <div className="relative w-full max-w-[470px]">
           <div className="mb-12 lg:hidden">
-            <BrandLogo />
+            <BrandLogo href="/" />
           </div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand">
             {eyebrow}

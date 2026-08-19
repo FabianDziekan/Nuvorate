@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AppThemeScope } from "@/components/theme/app-theme-scope";
 import { ThemeScript } from "@/components/theme/theme-script";
 import "./globals.css";
 
@@ -22,7 +23,10 @@ export default function RootLayout({
       <head>
         <ThemeScript />
       </head>
-      <body>{children}</body>
+      <body>
+        <AppThemeScope />
+        {children}
+      </body>
     </html>
   );
 }

@@ -42,7 +42,7 @@ export function NotificationLink({
   }
 
   return (
-    <Link href={href} className={`${className} active:opacity-80`} onClick={handleClick}>
+    <Link href={href} className={`${className} min-[769px]:active:opacity-80`} onClick={handleClick}>
       {children}
     </Link>
   );

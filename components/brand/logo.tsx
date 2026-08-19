@@ -1,8 +1,14 @@
 import Link from "next/link";
 
-export function BrandLogo({ inverse = false }: { inverse?: boolean }) {
+export function BrandLogo({
+  href = "/dashboard",
+  inverse = false,
+}: {
+  href?: string;
+  inverse?: boolean;
+}) {
   return (
-    <Link href="/" className="inline-flex items-center gap-2.5" aria-label="NuvoRate">
+    <Link href={href} className="inline-flex items-center gap-2.5" aria-label="NuvoRate">
       <img
         src="/brand/nuvorate-logo.png"
         alt=""

@@ -20,6 +20,7 @@ export type StripeCheckoutSession = {
 
 export type StripeSubscription = {
   id: string;
+  cancel_at_period_end?: boolean;
   customer: string | { id: string } | null;
   status: string;
   metadata: Record<string, string>;
@@ -46,11 +47,24 @@ export type StripeInvoice = {
 };
 
 export type StripeEvent = {
+  created: number;
+  id: string;
+  livemode?: boolean;
   type: string;
   data: {
     object: unknown;
   };
 };
+
+export class StripeApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "StripeApiError";
+    this.status = status;
+  }
+}
 
 function requireEnv(name: string) {
   const value = process.env[name]?.trim();
@@ -64,6 +78,20 @@ function requireEnv(name: string) {
 
 function getStripeSecretKey() {
   return requireEnv("STRIPE_SECRET_KEY");
+}
+
+export function getConfiguredStripeMode() {
+  const key = getStripeSecretKey();
+
+  if (key.startsWith("sk_live_") || key.startsWith("rk_live_")) {
+    return "live" as const;
+  }
+
+  if (key.startsWith("sk_test_") || key.startsWith("rk_test_")) {
+    return "test" as const;
+  }
+
+  return "unknown" as const;
 }
 
 async function stripeRequest<T>({
@@ -94,7 +122,7 @@ async function stripeRequest<T>({
         ? payload.error.message
         : "Stripe API zwróciło błąd.";
 
-    throw new Error(message);
+    throw new StripeApiError(message, response.status);
   }
 
   return payload as T;
@@ -245,6 +273,18 @@ export async function retrieveStripeSubscription(subscriptionId: string) {
     method: "GET",
     path: `/subscriptions/${subscriptionId}`,
   });
+}
+
+export async function retrieveStripeSubscriptionOrNull(subscriptionId: string) {
+  try {
+    return await retrieveStripeSubscription(subscriptionId);
+  } catch (error) {
+    if (error instanceof StripeApiError && error.status === 404) {
+      return null;
+    }
+
+    throw error;
+  }
 }
 
 export function constructStripeEvent(payload: string, signatureHeader: string) {

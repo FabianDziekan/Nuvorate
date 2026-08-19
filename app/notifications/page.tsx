@@ -266,9 +266,9 @@ export default async function NotificationsPage({
   return (
     <main className="min-h-screen bg-[#F7F7FA] text-ink">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col border-r border-black/[0.06] bg-white px-4 py-5 lg:flex">
-        <Link href="/dashboard" className="px-2">
+        <div className="px-2">
           <BrandLogo />
-        </Link>
+        </div>
         <div className="mt-8 rounded-[22px] border border-black/[0.06] bg-[#F7F7FA] p-4">
           <p className="text-[11px] uppercase tracking-[0.22em] text-black/35">
             Firma
@@ -410,7 +410,7 @@ export default async function NotificationsPage({
                 return (
                   <NotificationLink
                     key={notification.id}
-                    className={`relative flex cursor-pointer gap-3 border-b border-black/[0.05] px-4 py-4 transition last:border-b-0 hover:bg-black/[0.025] min-[769px]:gap-4 min-[769px]:px-5 min-[769px]:py-5 ${
+                    className={`notification-list-item relative flex cursor-pointer gap-3 border-b border-black/[0.05] px-4 py-4 transition last:border-b-0 min-[769px]:hover:bg-black/[0.025] min-[769px]:gap-4 min-[769px]:px-5 min-[769px]:py-5 ${
                       notification.is_read ? "bg-white" : "bg-brand/[0.035]"
                     }`}
                     href={view.href}

@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 import { ReviewResponseForm } from "@/components/dashboard/review-response-form";
 
@@ -34,6 +35,39 @@ export function MobileReviewList({ reviews }: { reviews: MobileReview[] }) {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedReview]);
+
+  useEffect(() => {
+    if (!selectedReview || !window.matchMedia("(max-width: 768px)").matches) {
+      return;
+    }
+
+    const scrollY = window.scrollY;
+    const previousBodyStyles = {
+      left: document.body.style.left,
+      overflow: document.body.style.overflow,
+      position: document.body.style.position,
+      right: document.body.style.right,
+      top: document.body.style.top,
+      width: document.body.style.width,
+    };
+
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.right = "0";
+    document.body.style.left = "0";
+    document.body.style.width = "100%";
+
+    return () => {
+      document.body.style.left = previousBodyStyles.left;
+      document.body.style.overflow = previousBodyStyles.overflow;
+      document.body.style.position = previousBodyStyles.position;
+      document.body.style.right = previousBodyStyles.right;
+      document.body.style.top = previousBodyStyles.top;
+      document.body.style.width = previousBodyStyles.width;
+      window.scrollTo(0, scrollY);
+    };
   }, [selectedReview]);
 
   function loadMoreReviews() {
@@ -109,66 +143,68 @@ export function MobileReviewList({ reviews }: { reviews: MobileReview[] }) {
         </div>
       </div>
 
-      {selectedReview ? (
-        <div
-          className="fixed inset-0 z-[80] flex items-end bg-ink/35 p-3 backdrop-blur-sm min-[769px]:hidden"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.currentTarget === event.target) {
-              setSelectedReview(null);
-            }
-          }}
-        >
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="review-details-title"
-            className="analysis-context-alert-enter max-h-[min(680px,calc(100vh-24px))] w-full overflow-y-auto rounded-[28px] border border-black/[0.06] bg-white p-5 shadow-[0_-16px_60px_rgba(15,15,16,0.2)]"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-sm font-bold text-brand shadow-sm">
-                  {selectedReview.authorName.slice(0, 1).toUpperCase()}
-                </span>
-                <div className="min-w-0">
-                  <h2 id="review-details-title" className="truncate text-base font-semibold">
-                    {selectedReview.authorName}
-                  </h2>
-                  <p className="mt-0.5 text-[11px] text-black/35">{selectedReview.createdAtLabel}</p>
-                </div>
-              </div>
+      {selectedReview && typeof document !== "undefined"
+        ? createPortal(
+            <div className="fixed inset-0 z-[110] min-[769px]:hidden" role="presentation">
               <button
                 type="button"
-                onClick={() => setSelectedReview(null)}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-lg text-black/45 transition hover:bg-black/[0.04] hover:text-ink focus:outline-none focus:ring-4 focus:ring-brand/10"
                 aria-label="Zamknij szczegóły opinii"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="mt-4 flex items-center gap-2">
-              <span className="rounded-full border border-black/[0.06] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-black/40">
-                {selectedReview.sourceLabel}
-              </span>
-              <span className="rounded-full bg-brand-soft px-2.5 py-1 text-xs font-semibold text-brand">
-                {selectedReview.rating.toLocaleString("pl-PL", {
-                  minimumFractionDigits: 1,
-                  maximumFractionDigits: 1,
-                })} ★
-              </span>
-            </div>
-            <p className="mt-5 text-sm leading-6 text-black/60">{selectedReview.content}</p>
-
-            <div className="mt-5 border-t border-black/[0.06] pt-4">
-              <ReviewResponseForm
-                reviewId={selectedReview.id}
-                mobileLabel="Wygeneruj odpowiedź"
+                className="fixed inset-0 bg-ink/35 backdrop-blur-sm"
+                onClick={() => setSelectedReview(null)}
               />
-            </div>
-          </section>
-        </div>
-      ) : null}
+              <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="review-details-title"
+                className="analysis-context-alert-enter fixed inset-x-0 bottom-0 z-[111] max-h-[calc(100dvh-5.5rem)] w-full overflow-y-auto overscroll-contain rounded-t-[28px] border border-black/[0.06] bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_-16px_60px_rgba(15,15,16,0.2)]"
+              >
+                <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-black/10" />
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-sm font-bold text-brand shadow-sm">
+                      {selectedReview.authorName.slice(0, 1).toUpperCase()}
+                    </span>
+                    <div className="min-w-0">
+                      <h2 id="review-details-title" className="truncate text-base font-semibold">
+                        {selectedReview.authorName}
+                      </h2>
+                      <p className="mt-0.5 text-[11px] text-black/35">{selectedReview.createdAtLabel}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedReview(null)}
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-lg text-black/45 transition hover:bg-black/[0.04] hover:text-ink focus:outline-none focus:ring-4 focus:ring-brand/10"
+                    aria-label="Zamknij szczegóły opinii"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="mt-4 flex items-center gap-2">
+                  <span className="rounded-full border border-black/[0.06] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-black/40">
+                    {selectedReview.sourceLabel}
+                  </span>
+                  <span className="rounded-full bg-brand-soft px-2.5 py-1 text-xs font-semibold text-brand">
+                    {selectedReview.rating.toLocaleString("pl-PL", {
+                      minimumFractionDigits: 1,
+                      maximumFractionDigits: 1,
+                    })} ★
+                  </span>
+                </div>
+                <p className="mt-5 text-sm leading-6 text-black/60">{selectedReview.content}</p>
+
+                <div className="mt-5 border-t border-black/[0.06] pt-4">
+                  <ReviewResponseForm
+                    reviewId={selectedReview.id}
+                    mobileLabel="Wygeneruj odpowiedź"
+                  />
+                </div>
+              </section>
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   );
 }

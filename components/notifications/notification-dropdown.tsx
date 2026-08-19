@@ -163,7 +163,7 @@ export function NotificationDropdown({
                 return (
                   <NotificationLink
                     key={notification.id}
-                    className={`group relative flex w-full cursor-pointer gap-3 border-b border-black/[0.04] px-4 py-3.5 text-left transition hover:bg-black/[0.025] max-[768px]:px-3 max-[768px]:py-3 ${
+                    className={`notification-list-item group relative flex w-full cursor-pointer gap-3 border-b border-black/[0.04] px-4 py-3.5 text-left transition min-[769px]:hover:bg-black/[0.025] max-[768px]:px-3 max-[768px]:py-3 ${
                       notification.is_read ? "bg-white" : "bg-brand/[0.035]"
                     } ${
                       index > 2 ? "max-[768px]:hidden" : ""
