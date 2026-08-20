@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand/logo";
+import { DesktopBusinessSwitcher } from "@/components/business/desktop-business-switcher";
 import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationHistoryActions } from "@/components/notifications/notification-history-actions";
@@ -268,15 +269,11 @@ export default async function NotificationsPage({
         <div className="px-2">
           <BrandLogo />
         </div>
-        <div className="mt-8 rounded-[22px] border border-black/[0.06] bg-[#F7F7FA] p-4">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-black/35">
-            Firma
-          </p>
-          <p className="mt-2 truncate text-sm font-semibold">{business.name}</p>
-          <p className="mt-2 truncate text-xs text-black/40">{business.industry}</p>
-          <p className="mt-1 truncate text-xs text-black/40">{business.city}</p>
-          <p className="mt-2 text-[11px] font-semibold text-brand">Plan {plan}</p>
-        </div>
+        <DesktopBusinessSwitcher
+          activeBusiness={business}
+          plan={plan}
+          userId={user.id}
+        />
         <nav className="mt-7 space-y-1.5" aria-label="Nawigacja dashboardu">
           {navigation.map((item) => {
             const active = item.label === "Powiadomienia";

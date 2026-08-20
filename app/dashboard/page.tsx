@@ -7,6 +7,7 @@ import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { AiUsageCard } from "@/components/billing/ai-usage-card";
 import { PlanPicker } from "@/components/billing/plan-picker";
 import { BrandLogo } from "@/components/brand/logo";
+import { DesktopBusinessSwitcher } from "@/components/business/desktop-business-switcher";
 import { AnalysisPreviewCard } from "@/components/dashboard/analysis-preview-card";
 import { AnalysisContextAlert } from "@/components/dashboard/analysis-context-alert";
 import { GoogleSyncButton } from "@/components/dashboard/google-sync-button";
@@ -1222,15 +1223,11 @@ export default async function DashboardPage({
       <AnalysisContextAlert feedback={analysisFeedback} />
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col border-r border-black/[0.06] bg-white px-5 py-6 lg:flex">
         <BrandLogo />
-        <div className="mt-9 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-3.5">
-          <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-black/35">
-            Twoja firma
-          </p>
-          <p className="mt-1.5 truncate font-semibold">{businessName}</p>
-          <p className="mt-2 truncate text-xs text-black/40">{businessIndustry}</p>
-          <p className="mt-1 truncate text-xs text-black/40">{businessCity}</p>
-          <p className="mt-2 text-[11px] font-semibold text-brand">Plan {plan}</p>
-        </div>
+        <DesktopBusinessSwitcher
+          activeBusiness={business}
+          plan={plan}
+          userId={user.id}
+        />
         <nav className="mt-7 space-y-1.5" aria-label="Nawigacja dashboardu">
           {navigation.map((item) => {
             const className = `sidebar-nav-item flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition ${

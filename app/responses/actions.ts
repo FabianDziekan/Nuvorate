@@ -5,6 +5,10 @@ import { redirect } from "next/navigation";
 import type { GenerateReviewResponseState } from "@/components/dashboard/review-response-state";
 import { createClient } from "@/lib/supabase/server";
 import { generateReviewResponseForReview } from "@/app/dashboard/review-response-service";
+import {
+  requireActiveBusinessForUser,
+  requireRequestedActiveBusiness,
+} from "@/lib/active-business";
 
 export type SaveResponseState = {
   error?: string;
@@ -24,16 +28,40 @@ export async function generateResponseForResponsesPage(
     typeof reviewId === "string"
   ) {
     const supabase = await createClient();
-    const { error } = await supabase
+    const { data: userData } = await supabase.auth.getUser();
+
+    if (!userData.user) {
+      redirect("/login?next=/responses");
+    }
+
+    let activeBusiness;
+    try {
+      activeBusiness = await requireActiveBusinessForUser(
+        supabase,
+        userData.user.id,
+        "id",
+        "manage",
+      );
+    } catch {
+      return {
+        ok: false,
+        error: "Odpowiedź została wygenerowana, ale nie udało się jej zapisać.",
+      };
+    }
+
+    const { data: syncedReview, error } = await supabase
       .from("reviews")
       .update({
         response_generated_at: new Date().toISOString(),
         response_status: "ready",
         response_text: result.responseText,
       })
-      .eq("id", reviewId);
+      .eq("id", reviewId)
+      .eq("business_id", activeBusiness.business.id)
+      .select("id")
+      .maybeSingle();
 
-    if (error) {
+    if (error || !syncedReview) {
       console.error("Review response sync failed", error);
       return {
         ok: false,
@@ -72,20 +100,40 @@ export async function saveReviewResponse(
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
 
-  if (!userData.user) {
+  const user = userData.user;
+
+  if (!user) {
     redirect("/login?next=/responses");
   }
 
+  let activeBusiness;
+  try {
+    activeBusiness = await requireActiveBusinessForUser(
+      supabase,
+      user.id,
+      "id",
+      "manage",
+    );
+  } catch {
+    return {
+      ok: false,
+      error: "Nie udało się zapisać odpowiedzi.",
+    };
+  }
+
   const nextStatus = intent === "responded" ? "responded" : "ready";
-  const { error } = await supabase
+  const { data: updatedReview, error } = await supabase
     .from("reviews")
     .update({
       response_status: nextStatus,
       response_text: responseText.trim(),
     })
-    .eq("id", reviewId);
+    .eq("id", reviewId)
+    .eq("business_id", activeBusiness.business.id)
+    .select("id")
+    .maybeSingle();
 
-  if (error) {
+  if (error || !updatedReview) {
     console.error("Review response save failed", error);
     return {
       ok: false,
@@ -115,14 +163,28 @@ export async function saveResponseSettings(formData: FormData) {
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
 
-  if (!userData.user) {
+  const user = userData.user;
+
+  if (!user) {
     redirect("/login?next=/responses");
+  }
+
+  let activeBusiness;
+  try {
+    activeBusiness = await requireRequestedActiveBusiness(
+      supabase,
+      user.id,
+      businessId,
+      "manage",
+    );
+  } catch {
+    throw new Error("Nie udało się zweryfikować firmy.");
   }
 
   const { error } = await supabase.from("business_response_settings").upsert(
     {
       auto_generate: formData.get("autoGenerate") === "on",
-      business_id: businessId,
+      business_id: activeBusiness.business.id,
       enabled_ratings: enabledRatings,
       updated_at: new Date().toISOString(),
     },

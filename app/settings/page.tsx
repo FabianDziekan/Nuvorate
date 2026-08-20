@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { BrandLogo } from "@/components/brand/logo";
+import { DesktopBusinessSwitcher } from "@/components/business/desktop-business-switcher";
 import { AiUsageCard } from "@/components/billing/ai-usage-card";
 import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { NotificationBell } from "@/components/notifications/notification-bell";
@@ -255,21 +256,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     <main className="min-h-screen overflow-x-hidden bg-[#F7F7FA] text-ink">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col border-r border-black/[0.06] bg-white px-5 py-6 lg:flex">
         <BrandLogo />
-        <div className="mt-9 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-3.5">
-          <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-black/35">
-            Twoja firma
-          </p>
-          <p className="mt-1.5 truncate font-semibold">{business.name}</p>
-          <p className="mt-2 truncate text-xs text-black/40">
-            {business.industry ?? "Branża nieuzupełniona"}
-          </p>
-          <p className="mt-1 truncate text-xs text-black/40">
-            {business.city ?? "Miasto nieuzupełnione"}
-          </p>
-          <p className="mt-2 text-[11px] font-semibold text-brand">
-            Plan {plan}
-          </p>
-        </div>
+        <DesktopBusinessSwitcher
+          activeBusiness={business}
+          plan={plan}
+          userId={user.id}
+        />
         <nav className="mt-7 space-y-1.5" aria-label="Nawigacja dashboardu">
           {navigation.map((item) => {
             const active = item.label === "Ustawienia";

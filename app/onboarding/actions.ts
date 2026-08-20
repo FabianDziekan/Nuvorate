@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createBusinessLocationAction } from "@/app/business-locations/actions";
 import type { OnboardingState } from "@/app/onboarding/state";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveBusinessForUser } from "@/lib/active-business";
@@ -60,24 +61,26 @@ export async function createBusiness(
     redirect("/dashboard");
   }
 
-  const { error: insertError } = await supabase.from("businesses").insert({
-    owner_id: user.id,
+  const result = await createBusinessLocationAction({
     name,
     industry,
     city,
-    google_review_url: googleReviewUrl,
-    setup_status: "completed",
+    googleReviewUrl,
   });
 
-  if (insertError) {
-    if (insertError.code === "23505") {
+  if (!result.success) {
+    // A concurrent onboarding request may have created the first location
+    // while this request was waiting for the database entitlement lock.
+    const activeAfterAttempt = await getActiveBusinessForUser(
+      supabase,
+      user.id,
+      "id",
+    );
+    if (activeAfterAttempt) {
       redirect("/dashboard");
     }
 
-    return {
-      error:
-        "Nie udało się zapisać firmy. Sprawdź dane i spróbuj ponownie.",
-    };
+    return { error: result.error };
   }
 
   revalidatePath("/dashboard");

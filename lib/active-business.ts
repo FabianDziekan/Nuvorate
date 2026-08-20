@@ -15,11 +15,7 @@ export type ActiveBusiness<TBusiness = Record<string, any>> = {
   membership: BusinessMembership;
 };
 
-/**
- * Uses the oldest membership as the temporary deterministic active location.
- * ETAP 3 can replace this selection with persisted active_business_id without
- * changing callers.
- */
+/** Uses the oldest membership as the deterministic fallback location. */
 export function selectActiveMembership(
   memberships: readonly BusinessMembership[],
 ): BusinessMembership | null {
@@ -30,6 +26,40 @@ export function selectActiveMembership(
         new Date(left.created_at).getTime() - new Date(right.created_at).getTime() ||
         left.business_id.localeCompare(right.business_id),
     )[0] ?? null;
+}
+
+/**
+ * Prefers a persisted selection only when it is still one of the user's
+ * current memberships. The UUID is a preference, never an authorization proof.
+ */
+export function selectPreferredActiveMembership(
+  memberships: readonly BusinessMembership[],
+  activeBusinessId: string | null | undefined,
+): BusinessMembership | null {
+  if (activeBusinessId) {
+    const preferred = memberships.find(
+      (membership) => membership.business_id === activeBusinessId,
+    );
+    if (preferred) return preferred;
+  }
+
+  return selectActiveMembership(memberships);
+}
+
+function activeMembershipCandidates(
+  memberships: readonly BusinessMembership[],
+  activeBusinessId: string | null | undefined,
+) {
+  const selected = selectPreferredActiveMembership(memberships, activeBusinessId);
+  const fallback = selectActiveMembership(memberships);
+
+  if (!selected) return [];
+  if (!fallback || selected.business_id === fallback.business_id) return [selected];
+
+  // A referenced business cannot normally disappear while its membership
+  // remains because of database FKs. Keeping this fallback makes the resolver
+  // safe even if legacy data is stale or a row vanishes between reads.
+  return [selected, fallback];
 }
 
 export function canManageBusiness(role: BusinessRole) {
@@ -65,25 +95,39 @@ export async function getActiveBusinessForUser<TBusiness = Record<string, any>>(
   userId: string,
   fields = "*",
 ): Promise<ActiveBusiness<TBusiness> | null> {
-  const membership = selectActiveMembership(
-    await getUserBusinessMemberships(supabase, userId),
-  );
+  const memberships = await getUserBusinessMemberships(supabase, userId);
+  if (memberships.length === 0) return null;
 
-  if (!membership) return null;
-
-  const { data: business, error } = await supabase
-    .from("businesses")
-    .select(fields)
-    .eq("id", membership.business_id)
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("active_business_id")
+    .eq("user_id", userId)
     .maybeSingle();
 
-  if (error) {
-    throw new Error("Nie udało się odczytać aktywnej firmy.");
+  if (profileError) {
+    throw new Error("Nie udało się odczytać preferowanej firmy.");
   }
 
-  if (!business) return null;
+  const activeBusinessId = (profile as { active_business_id?: string | null } | null)
+    ?.active_business_id;
 
-  return { business: business as TBusiness & { id: string }, membership };
+  for (const membership of activeMembershipCandidates(memberships, activeBusinessId)) {
+    const { data: business, error } = await supabase
+      .from("businesses")
+      .select(fields)
+      .eq("id", membership.business_id)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error("Nie udało się odczytać aktywnej firmy.");
+    }
+
+    if (business) {
+      return { business: business as TBusiness & { id: string }, membership };
+    }
+  }
+
+  return null;
 }
 
 export async function requireActiveBusinessForUser<TBusiness = Record<string, any>>(

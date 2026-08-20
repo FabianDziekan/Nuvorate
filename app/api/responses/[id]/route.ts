@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { requireActiveBusinessForUser } from "@/lib/active-business";
 
 export async function PATCH(
   request: Request,
@@ -20,10 +21,27 @@ export async function PATCH(
     const supabase = await createClient();
     const { data: userData } = await supabase.auth.getUser();
 
-    if (!userData.user) {
+    const user = userData.user;
+
+    if (!user) {
       return NextResponse.json(
         { error: "Musisz się zalogować." },
         { status: 401 },
+      );
+    }
+
+    let activeBusiness;
+    try {
+      activeBusiness = await requireActiveBusinessForUser(
+        supabase,
+        user.id,
+        "id",
+        "manage",
+      );
+    } catch {
+      return NextResponse.json(
+        { error: "Nie udało się zapisać odpowiedzi." },
+        { status: 403 },
       );
     }
 
@@ -34,6 +52,7 @@ export async function PATCH(
         response_text: responseText.trim(),
       })
       .eq("id", id)
+      .eq("business_id", activeBusiness.business.id)
       .select("response_status, response_text")
       .maybeSingle();
 
