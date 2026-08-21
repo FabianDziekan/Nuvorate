@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AppThemeScope } from "@/components/theme/app-theme-scope";
 import { ThemeScript } from "@/components/theme/theme-script";
+import { CookieBanner } from "@/components/legal/cookie-banner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -26,6 +27,7 @@ export default function RootLayout({
       <body>
         <AppThemeScope />
         {children}
+        <CookieBanner />
       </body>
     </html>
   );

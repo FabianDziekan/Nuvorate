@@ -328,6 +328,7 @@ export const landingTranslations = {
       copyright: "© 2026 NuvoRate. Wszystkie prawa zastrzeżone.",
       privacy: "Polityka prywatności",
       terms: "Regulamin",
+      cookies: "Polityka cookies",
     },
   },
   EN: {
@@ -657,6 +658,7 @@ export const landingTranslations = {
       copyright: "© 2026 NuvoRate. All rights reserved.",
       privacy: "Privacy policy",
       terms: "Terms",
+      cookies: "Cookies policy",
     },
   },
 } as const;

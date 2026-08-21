@@ -8,6 +8,7 @@ import { AiUsageCard } from "@/components/billing/ai-usage-card";
 import { PlanPicker } from "@/components/billing/plan-picker";
 import { BrandLogo } from "@/components/brand/logo";
 import { DesktopBusinessSwitcher } from "@/components/business/desktop-business-switcher";
+import { MobileBusinessSwitcher } from "@/components/business/mobile-business-switcher";
 import { AnalysisPreviewCard } from "@/components/dashboard/analysis-preview-card";
 import { AnalysisContextAlert } from "@/components/dashboard/analysis-context-alert";
 import { GoogleSyncButton } from "@/components/dashboard/google-sync-button";
@@ -1316,6 +1317,7 @@ export default async function DashboardPage({
               <p className="mt-0.5 text-sm font-semibold">Pulpit główny</p>
             </div>
             <div className="flex items-center gap-2.5">
+              <MobileBusinessSwitcher userId={user.id} />
               <TrendRangeSelect
                 from={selectedRange.from}
                 isCustom={selectedRange.isCustom}
