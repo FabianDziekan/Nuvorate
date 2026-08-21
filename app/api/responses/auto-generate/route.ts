@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import type { GenerateReviewResponseState } from "@/components/dashboard/review-response-state";
 import { createClient } from "@/lib/supabase/server";
 import { generateReviewResponseForReview } from "@/app/dashboard/review-response-service";
-import { hasPlanCapability, normalizePlan } from "@/lib/plans";
-import { requireRequestedActiveBusiness } from "@/lib/active-business";
+import { hasPlanCapability } from "@/lib/plans";
+import { requireActiveBusinessBillingContext } from "@/lib/active-business-billing";
 
 type GeneratedResponse = {
   responseText: string;
@@ -46,38 +46,35 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("plan")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    let billingContext;
+    try {
+      billingContext = await requireActiveBusinessBillingContext(
+        supabase,
+        user.id,
+        "id",
+        "manage",
+      );
+    } catch {
+      return NextResponse.json({ error: "Nie znaleziono firmy." }, { status: 404 });
+    }
 
-    if (profileError || !profile) {
+    if (billingContext.activeBusiness.business.id !== businessId) {
       return NextResponse.json(
-        { error: "Nie udało się sprawdzić planu." },
-        { status: 500 },
+        { error: "Aktywna lokalizacja została zmieniona. Odśwież stronę i spróbuj ponownie." },
+        { status: 409 },
       );
     }
+    const business = billingContext.activeBusiness.business;
 
     if (
       !hasPlanCapability(
-        normalizePlan(profile.plan),
+        billingContext.plan,
         "automaticReviewResponses",
       )
     ) {
       return NextResponse.json(
         { error: "Automatyczne odpowiedzi są dostępne w planie Business." },
         { status: 403 },
-      );
-    }
-
-    let business;
-    try {
-      business = (await requireRequestedActiveBusiness(supabase, user.id, businessId, "manage")).business;
-    } catch {
-      return NextResponse.json(
-        { error: "Nie znaleziono firmy." },
-        { status: 404 },
       );
     }
 

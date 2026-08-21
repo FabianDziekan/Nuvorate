@@ -18,10 +18,9 @@ import {
   getAiLimit,
   getPlanLabel,
   hasPlanCapability,
-  normalizePlan,
 } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
-import { getActiveBusinessForUser } from "@/lib/active-business";
+import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
 import { signOut } from "@/app/dashboard/actions";
 
 export const metadata: Metadata = {
@@ -183,24 +182,24 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   }
 
   const [
-    activeBusiness,
+    billingContext,
     { data: profile, error: profileError },
   ] = await Promise.all([
-    getActiveBusinessForUser(supabase, user.id, "id, name, industry, city"),
+    getActiveBusinessBillingContext(supabase, user.id, "id, name, industry, city"),
     supabase
       .from("profiles")
-      .select("first_name, plan, subscription_status, stripe_customer_id")
+      .select("first_name")
       .eq("user_id", user.id)
       .maybeSingle(),
   ]);
 
-  const business = activeBusiness?.business;
+  const business = billingContext?.activeBusiness.business;
 
   if (profileError) {
     throw new Error("Nie udało się odczytać ustawień konta.");
   }
 
-  if (!business) {
+  if (!billingContext || !business) {
     redirect("/onboarding");
   }
 
@@ -221,8 +220,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     );
   }
 
-  const appPlan = normalizePlan(profile.plan);
+  const appPlan = billingContext.plan;
   const plan = getPlanLabel(appPlan);
+  const canManageActiveBusinessBilling = billingContext.billingOwnerId === user.id;
   const firstName =
     typeof profile.first_name === "string" ? profile.first_name.trim() : "";
   const displayName = firstName || user.email || "NU";
@@ -233,7 +233,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const { data: aiUsage, error: aiUsageError } = await supabase
     .from("ai_usage")
     .select("ai_replies_used, ai_analyses_used")
-    .eq("user_id", user.id)
+    .eq("user_id", billingContext.billingOwnerId)
     .eq("period_month", currentPeriodMonth())
     .maybeSingle();
 
@@ -416,7 +416,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                   <p className="mt-2 text-sm leading-6 text-black/45">
                     Status subskrypcji:{" "}
                     <span className="font-semibold text-ink">
-                      {subscriptionStatusLabel(profile.subscription_status)}
+                      {subscriptionStatusLabel(billingContext.subscriptionStatus)}
                     </span>
                   </p>
                   <p className="mt-1 text-sm leading-6 text-black/45">
@@ -425,12 +425,14 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  <Link
-                    href="/billing/portal"
-                    className="rounded-xl bg-ink px-4 py-3 text-center text-xs font-semibold text-white transition hover:bg-black"
-                  >
-                    Zarządzaj subskrypcją
-                  </Link>
+                  {canManageActiveBusinessBilling ? (
+                    <Link
+                      href="/billing/portal"
+                      className="rounded-xl bg-ink px-4 py-3 text-center text-xs font-semibold text-white transition hover:bg-black"
+                    >
+                      Zarządzaj subskrypcją
+                    </Link>
+                  ) : null}
                   <button
                     type="button"
                     disabled
@@ -453,7 +455,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             <section className="mt-4 overflow-hidden rounded-[24px] border border-black/[0.06] bg-white shadow-card min-[769px]:hidden">
               <div className="px-4 py-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-black/35">Konto i plan</p>
-                <div className="mt-2 flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">Plan {plan}</p><p className="mt-0.5 text-xs text-black/45">{subscriptionStatusLabel(profile.subscription_status)}</p></div><Link href="/billing/portal" className="text-xs font-semibold text-brand">Zarządzaj ›</Link></div>
+                <div className="mt-2 flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">Plan {plan}</p><p className="mt-0.5 text-xs text-black/45">{subscriptionStatusLabel(billingContext.subscriptionStatus)}</p></div>{canManageActiveBusinessBilling ? <Link href="/billing/portal" className="text-xs font-semibold text-brand">Zarządzaj ›</Link> : null}</div>
               </div>
               <details className="border-t border-black/[0.06]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-sm font-semibold text-ink"><span>Limity planu</span><span className="text-brand" aria-hidden="true">⌄</span></summary>

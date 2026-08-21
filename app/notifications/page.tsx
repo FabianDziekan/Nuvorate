@@ -19,10 +19,9 @@ import {
 import {
   getPlanLabel,
   hasPlanCapability,
-  normalizePlan,
 } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
-import { getActiveBusinessForUser } from "@/lib/active-business";
+import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
 import { signOut } from "@/app/dashboard/actions";
 
 export const metadata: Metadata = {
@@ -188,24 +187,24 @@ export default async function NotificationsPage({
   }
 
   const [
-    activeBusiness,
+    billingContext,
     { data: profile, error: profileError },
   ] = await Promise.all([
-    getActiveBusinessForUser(supabase, user.id, "id, name, industry, city"),
+    getActiveBusinessBillingContext(supabase, user.id, "id, name, industry, city"),
     supabase
       .from("profiles")
-      .select("first_name, plan")
+      .select("first_name")
       .eq("user_id", user.id)
       .maybeSingle(),
   ]);
 
-  const business = activeBusiness?.business;
+  const business = billingContext?.activeBusiness.business;
 
   if (profileError) {
     throw new Error("Nie udało się odczytać powiadomień.");
   }
 
-  if (!business) {
+  if (!billingContext || !business) {
     redirect("/onboarding");
   }
 
@@ -213,7 +212,7 @@ export default async function NotificationsPage({
     throw new Error("Nie znaleziono profilu użytkownika.");
   }
 
-  const appPlan = normalizePlan(profile.plan);
+  const appPlan = billingContext.plan;
   const plan = getPlanLabel(appPlan);
   const firstName =
     typeof profile.first_name === "string" ? profile.first_name.trim() : "";

@@ -19,7 +19,6 @@ import {
   currentPeriodMonth,
   getAiLimit,
   hasPlanCapability,
-  normalizePlan,
 } from "@/lib/plans";
 import {
   projectAnalysisForPlan,
@@ -32,7 +31,7 @@ import {
 } from "@/lib/analysis-feedback";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { getActiveBusinessForUser } from "@/lib/active-business";
+import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
 import { signOut } from "@/app/dashboard/actions";
 import { compareAnalysisSnapshots } from "@/lib/analysis-snapshot";
 
@@ -246,24 +245,24 @@ export default async function AnalysisPage({
   }
 
   const [
-    activeBusiness,
+    billingContext,
     { data: profile, error: profileError },
   ] = await Promise.all([
-    getActiveBusinessForUser(supabase, user.id, "id, name, industry, city"),
+    getActiveBusinessBillingContext(supabase, user.id, "id, name, industry, city"),
     supabase
       .from("profiles")
-      .select("first_name, plan")
+      .select("first_name")
       .eq("user_id", user.id)
       .maybeSingle(),
   ]);
 
-  const business = activeBusiness?.business;
+  const business = billingContext?.activeBusiness.business;
 
   if (profileError) {
     throw new Error("Nie udało się odczytać danych firmy lub profilu.");
   }
 
-  if (!business) {
+  if (!billingContext || !business) {
     redirect("/onboarding");
   }
 
@@ -271,7 +270,7 @@ export default async function AnalysisPage({
     throw new Error("Nie znaleziono profilu użytkownika.");
   }
 
-  const appPlan = normalizePlan(profile.plan);
+  const appPlan = billingContext.plan;
   const isBusiness = hasPlanCapability(appPlan, "fullAnalysis");
   const canUseAutomaticAnalysis = hasPlanCapability(appPlan, "automaticAnalysis");
   const isPaid = hasPlanCapability(appPlan, "basicAnalysis");
@@ -279,7 +278,7 @@ export default async function AnalysisPage({
   const { data: aiUsage, error: aiUsageError } = await supabase
     .from("ai_usage")
     .select("ai_analyses_used")
-    .eq("user_id", user.id)
+    .eq("user_id", billingContext.billingOwnerId)
     .eq("period_month", currentPeriodMonth())
     .maybeSingle();
 

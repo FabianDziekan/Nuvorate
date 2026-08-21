@@ -27,7 +27,7 @@ test("analysis actions require owner/admin authorization before privileged work"
   for (const body of [manualAnalysis, automaticAnalysis]) {
     assert.match(
       body,
-      /requireActiveBusinessForUser\([\s\S]*?"manage"/,
+    /requireActiveBusinessBillingContext(?:<[\s\S]*?>)?\([\s\S]*?"manage"/,
       "the action must reject members before privileged work",
     );
   }

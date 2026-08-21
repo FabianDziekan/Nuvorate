@@ -1,5 +1,7 @@
 import { getUserBusinessMemberships } from "@/lib/active-business";
+import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
 import { normalizePlan } from "@/lib/plans";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
   DesktopBusinessSwitcherClient,
@@ -38,6 +40,7 @@ export async function DesktopBusinessSwitcher({
   let ownerLocationCount = 0;
   let allowedLocationCount = 0;
   let isBillingOwner = false;
+  let activeLocationPlan = plan;
 
   try {
     const memberships = await getUserBusinessMemberships(supabase, userId);
@@ -70,30 +73,27 @@ export async function DesktopBusinessSwitcher({
   }
 
   try {
-    const [{ data: profile }, { count, error: ownerLocationsError }] =
-      await Promise.all([
-        supabase
-          .from("profiles")
-          .select("plan, extra_location_count")
-          .eq("user_id", userId)
-          .maybeSingle(),
-        supabase
+    const billingContext = await getActiveBusinessBillingContext(
+      supabase,
+      userId,
+      "id, owner_id",
+    );
+
+    if (billingContext) {
+      activeLocationPlan = billingContext.plan;
+      isBillingOwner = billingContext.billingOwnerId === userId;
+      allowedLocationCount =
+        includedLocationCount(billingContext.plan) + billingContext.extraLocationCount;
+
+      if (isBillingOwner) {
+        const admin = createAdminClient();
+        const { count, error: ownerLocationsError } = await admin
           .from("businesses")
           .select("id", { count: "exact", head: true })
-          .eq("owner_id", userId),
-      ]);
+          .eq("owner_id", billingContext.billingOwnerId);
 
-    if (profile && !ownerLocationsError) {
-      ownerLocationCount = count ?? 0;
-      allowedLocationCount =
-        includedLocationCount(profile.plan) +
-        Math.max(
-          0,
-          typeof profile.extra_location_count === "number"
-            ? profile.extra_location_count
-            : 0,
-        );
-      isBillingOwner = ownerLocationCount > 0;
+        if (!ownerLocationsError) ownerLocationCount = count ?? 0;
+      }
     }
   } catch {
     // The creation action remains protected by the RPC. If optional entitlement
@@ -124,7 +124,7 @@ export async function DesktopBusinessSwitcher({
         current: ownerLocationCount,
         allowed: allowedLocationCount,
       }}
-      plan={plan}
+      plan={activeLocationPlan}
     />
   );
 }

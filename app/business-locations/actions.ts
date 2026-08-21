@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
 
 const locationDependentPaths = [
   "/dashboard",
@@ -72,6 +73,27 @@ export async function createBusinessLocationAction(
   } = await supabase.auth.getUser();
 
   if (userError || !user) return cannotCreateLocation();
+
+  // A first location has no active-business context yet. Once a context
+  // exists, only its billing owner may create a location charged to that
+  // account; membership never grants billing authority.
+  let activeBillingContext;
+  try {
+    activeBillingContext = await getActiveBusinessBillingContext(
+      supabase,
+      user.id,
+      "id",
+    );
+  } catch {
+    return cannotCreateLocation();
+  }
+
+  if (
+    activeBillingContext &&
+    activeBillingContext.billingOwnerId !== user.id
+  ) {
+    return cannotCreateLocation();
+  }
 
   const { data: businessId, error } = await supabase.rpc(
     "create_business_location",

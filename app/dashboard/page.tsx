@@ -29,7 +29,6 @@ import {
   getAiLimit,
   getPlanLabel,
   hasPlanCapability,
-  normalizePlan,
 } from "@/lib/plans";
 import { hasPriceIdForPlan } from "@/lib/stripe";
 import {
@@ -43,7 +42,7 @@ import {
 } from "@/lib/analysis-projection";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { getActiveBusinessForUser } from "@/lib/active-business";
+import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
 import { signOut } from "./actions";
 
 export const metadata: Metadata = {
@@ -867,18 +866,18 @@ export default async function DashboardPage({
   }
 
   const [
-    activeBusiness,
+    billingContext,
     { data: profile, error: profileError },
   ] = await Promise.all([
-    getActiveBusinessForUser(supabase, user.id, "id, name, industry, city, monthly_review_goal"),
+    getActiveBusinessBillingContext(supabase, user.id, "id, name, industry, city, monthly_review_goal"),
     supabase
       .from("profiles")
-      .select("first_name, plan, stripe_customer_id, subscription_status")
+      .select("first_name")
       .eq("user_id", user.id)
       .maybeSingle(),
   ]);
 
-  const business = activeBusiness?.business;
+  const business = billingContext?.activeBusiness.business;
 
   if (profileError) {
     throw new Error(
@@ -886,7 +885,7 @@ export default async function DashboardPage({
     );
   }
 
-  if (!business) {
+  if (!billingContext || !business) {
     redirect("/onboarding");
   }
 
@@ -907,7 +906,7 @@ export default async function DashboardPage({
     console.warn("Google connection lookup failed", googleConnectionError);
   }
 
-  const appPlan = normalizePlan(profile.plan);
+  const appPlan = billingContext.plan;
   const isPaid = hasPlanCapability(appPlan, "basicDashboard");
   const businessName = business.name ?? "Twoja firma";
   const businessIndustry = business.industry ?? "Branża nieuzupełniona";
@@ -916,15 +915,15 @@ export default async function DashboardPage({
   const firstName =
     typeof profile.first_name === "string" ? profile.first_name.trim() : "";
   const accountDisplayName = firstName || user.email || "NU";
-  const hasActiveSubscription =
-    Boolean(profile.stripe_customer_id) &&
-    ["active", "trialing"].includes(profile.subscription_status ?? "");
+  const hasActiveSubscription = ["active", "trialing"].includes(
+    billingContext.subscriptionStatus ?? "",
+  );
   const isGoogleConnected = Boolean(googleConnection);
   const periodMonth = currentPeriodMonth();
   const { data: aiUsage, error: aiUsageError } = await supabase
     .from("ai_usage")
     .select("ai_replies_used, ai_analyses_used")
-    .eq("user_id", user.id)
+    .eq("user_id", billingContext.billingOwnerId)
     .eq("period_month", periodMonth)
     .maybeSingle();
 

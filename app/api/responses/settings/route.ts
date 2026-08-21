@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { hasPlanCapability, normalizePlan } from "@/lib/plans";
+import { hasPlanCapability } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
-import { requireRequestedActiveBusiness } from "@/lib/active-business";
+import { requireActiveBusinessBillingContext } from "@/lib/active-business-billing";
 
 export async function PATCH(request: Request) {
   try {
@@ -33,27 +33,28 @@ export async function PATCH(request: Request) {
       );
     }
 
-    let activeBusiness;
+    let billingContext;
     try {
-      activeBusiness = await requireRequestedActiveBusiness(
+      billingContext = await requireActiveBusinessBillingContext(
         supabase,
         user.id,
-        businessId,
+        "id",
         "manage",
       );
     } catch {
       return NextResponse.json({ error: "Brak dostępu do firmy." }, { status: 403 });
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("plan")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    if (billingContext.activeBusiness.business.id !== businessId) {
+      return NextResponse.json(
+        { error: "Aktywna lokalizacja została zmieniona. Odśwież stronę i spróbuj ponownie." },
+        { status: 409 },
+      );
+    }
 
     if (
       !hasPlanCapability(
-        normalizePlan(profile?.plan),
+        billingContext.plan,
         "automaticReviewResponses",
       )
     ) {
@@ -68,7 +69,7 @@ export async function PATCH(request: Request) {
       .upsert(
         {
           auto_generate: autoGenerate,
-          business_id: businessId,
+          business_id: billingContext.activeBusiness.business.id,
           enabled_ratings: enabledRatings,
           updated_at: new Date().toISOString(),
         },

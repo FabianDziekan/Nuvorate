@@ -2,11 +2,11 @@
 
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { hasPlanCapability, normalizePlan } from "@/lib/plans";
+import { hasPlanCapability } from "@/lib/plans";
 import { validateNfcTagInput } from "@/lib/nfc";
 import type { NfcTagActionState } from "@/lib/nfc-types";
 import { createClient } from "@/lib/supabase/server";
-import { requireActiveBusinessForUser } from "@/lib/active-business";
+import { requireActiveBusinessBillingContext } from "@/lib/active-business-billing";
 
 async function getOwnedNfcBusiness() {
   const supabase = await createClient();
@@ -17,19 +17,21 @@ async function getOwnedNfcBusiness() {
     return { error: "Sesja wygasła. Zaloguj się ponownie." } as const;
   }
 
-  const [activeBusiness, { data: profile, error: profileError }] =
-    await Promise.all([
-      requireActiveBusinessForUser(supabase, user.id, "id", "manage"),
-      supabase.from("profiles").select("plan").eq("user_id", user.id).maybeSingle(),
-    ]);
-
-  const business = activeBusiness.business;
-
-  if (profileError || !business || !profile) {
+  let billingContext;
+  try {
+    billingContext = await requireActiveBusinessBillingContext(
+      supabase,
+      user.id,
+      "id",
+      "manage",
+    );
+  } catch {
     return { error: "Nie udało się odczytać danych firmy." } as const;
   }
 
-  if (!hasPlanCapability(normalizePlan(profile.plan), "nfcBasicStats")) {
+  const business = billingContext.activeBusiness.business;
+
+  if (!hasPlanCapability(billingContext.plan, "nfcBasicStats")) {
     return { error: "Moduł NFC jest dostępny w planie Starter albo Business." } as const;
   }
 

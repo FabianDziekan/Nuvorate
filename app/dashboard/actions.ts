@@ -9,11 +9,12 @@ import {
   getNextAutomaticAnalysisDate,
   normalizeAutomaticAnalysisFrequency,
 } from "@/lib/analysis-snapshot";
-import { hasPlanCapability, normalizePlan } from "@/lib/plans";
+import { hasPlanCapability } from "@/lib/plans";
 import type { AnalysisErrorCode } from "@/lib/analysis-feedback";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveBusinessForUser, requireActiveBusinessForUser } from "@/lib/active-business";
+import { requireActiveBusinessBillingContext } from "@/lib/active-business-billing";
 
 export async function signOut() {
   const supabase = await createClient();
@@ -131,39 +132,33 @@ export async function generateBusinessAnalysis(formData?: FormData) {
     redirect("/login?next=/dashboard");
   }
 
-  const [
-    activeBusiness,
-    { data: profile, error: profileError },
-  ] = await Promise.all([
-    requireActiveBusinessForUser(
-      supabase,
-      user.id,
-      "id, name, industry, city",
-      "manage",
-    ),
-    supabase
-      .from("profiles")
-      .select("plan")
-      .eq("user_id", user.id)
-      .maybeSingle(),
-  ]);
-
-  const business = activeBusiness?.business;
-  if (profileError || !business || !profile) {
+  const billingContext = await requireActiveBusinessBillingContext<{
+    id: string;
+    name: string | null;
+    industry: string | null;
+    city: string | null;
+  }>(
+    supabase,
+    user.id,
+    "id, name, industry, city",
+    "manage",
+  );
+  const business = billingContext.activeBusiness.business;
+  if (!business) {
     throw new Error("Nie udało się odczytać firmy lub planu.");
   }
 
-  const plan = normalizePlan(profile.plan);
+  const plan = billingContext.plan;
 
   if (!hasPlanCapability(plan, "basicAnalysis")) {
     aiErrorRedirect(redirectPath, "technical");
   }
 
   const result = await generateBusinessAnalysisSnapshot({
-    business: business as { id: string; name: string; industry: string; city: string },
+    business,
     executionType: "manual",
     plan,
-    userId: user.id,
+    userId: billingContext.billingOwnerId,
   });
 
   if (!result.ok) {
@@ -193,17 +188,14 @@ export async function updateAutomaticAnalysisSettings(input: {
     redirect("/login?next=/analysis");
   }
 
-  const [activeBusiness, { data: profile }] = await Promise.all([
-    requireActiveBusinessForUser(supabase, user.id, "id", "manage"),
-    supabase
-      .from("profiles")
-      .select("plan")
-      .eq("user_id", user.id)
-      .maybeSingle(),
-  ]);
-
-  const business = activeBusiness?.business;
-  if (!business || !hasPlanCapability(normalizePlan(profile?.plan), "automaticAnalysis")) {
+  const billingContext = await requireActiveBusinessBillingContext(
+    supabase,
+    user.id,
+    "id",
+    "manage",
+  );
+  const business = billingContext.activeBusiness.business;
+  if (!business || !hasPlanCapability(billingContext.plan, "automaticAnalysis")) {
     return {
       error: "Automatyczna analiza jest dostępna w planie Business.",
       success: false,

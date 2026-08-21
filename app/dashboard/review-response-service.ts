@@ -13,7 +13,6 @@ import {
 } from "@/lib/openai";
 import {
   hasPlanCapability,
-  normalizePlan,
 } from "@/lib/plans";
 import {
   completeAiUsageReservation,
@@ -21,7 +20,7 @@ import {
   reserveAiUsage,
 } from "@/lib/ai-usage";
 import { createClient } from "@/lib/supabase/server";
-import { requireActiveBusinessForUser } from "@/lib/active-business";
+import { requireActiveBusinessBillingContext } from "@/lib/active-business-billing";
 
 const responseToneLabels: Record<string, string> = {
   friendly: "przyjazny",
@@ -51,21 +50,23 @@ export async function generateReviewResponseForReview(
     redirect("/login?next=/dashboard");
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("plan")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (profileError || !profile) {
-    console.error("AI review response profile lookup failed", profileError);
+  let billingContext;
+  try {
+    billingContext = await requireActiveBusinessBillingContext(
+      supabase,
+      user.id,
+      "id, name",
+      "manage",
+    );
+  } catch (error) {
+    console.error("AI review response billing context lookup failed", error);
     return {
       ok: false,
       error: "Nie udało się wygenerować odpowiedzi. Spróbuj ponownie.",
     };
   }
 
-  const plan = normalizePlan(profile.plan);
+  const plan = billingContext.plan;
 
   if (!hasPlanCapability(plan, "manualReviewResponses")) {
     return {
@@ -77,7 +78,7 @@ export async function generateReviewResponseForReview(
   const reservation = await reserveAiUsage({
     plan,
     usageKind: "reply",
-    userId: user.id,
+    userId: billingContext.billingOwnerId,
   });
 
   if (!reservation.ok) {
@@ -88,7 +89,7 @@ export async function generateReviewResponseForReview(
   }
 
   try {
-    const business = (await requireActiveBusinessForUser(supabase, user.id, "id, name", "manage")).business;
+    const business = billingContext.activeBusiness.business;
 
 
     const { data: review, error: reviewError } = await supabase
@@ -170,7 +171,7 @@ export async function generateReviewResponseForReview(
       console.warn("Review response fields sync skipped", reviewSyncError);
     }
 
-    await completeAiUsageReservation(reservation.id, user.id);
+    await completeAiUsageReservation(reservation.id, billingContext.billingOwnerId);
 
     revalidatePath("/dashboard");
     revalidatePath("/responses");
@@ -180,7 +181,7 @@ export async function generateReviewResponseForReview(
       responseText,
     };
   } catch (error) {
-    await releaseAiUsageReservation(reservation.id, user.id);
+    await releaseAiUsageReservation(reservation.id, billingContext.billingOwnerId);
     console.error("AI review response generation failed", error);
     return {
       ok: false,

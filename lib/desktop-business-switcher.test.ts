@@ -51,8 +51,10 @@ test("desktop switcher creates locations only through the central server action"
 });
 
 test("desktop switcher displays authoritative location usage and the limit state", () => {
-  assert.match(serverSource, /\.select\("plan, extra_location_count"\)/);
-  assert.match(serverSource, /\.eq\("owner_id", userId\)/);
+  assert.match(serverSource, /getActiveBusinessBillingContext\(/);
+  assert.match(serverSource, /billingContext\.billingOwnerId === userId/);
+  assert.match(serverSource, /\.eq\("owner_id", billingContext\.billingOwnerId\)/);
+  assert.match(serverSource, /billingContext\.extraLocationCount/);
   assert.match(serverSource, /ownerLocationCount < allowedLocationCount/);
   assert.match(clientSource, /\{locationUsage\.current\} z \{locationUsage\.allowed\} lokalizacji/);
   assert.match(clientSource, /Wykorzystano limit lokalizacji planu Business\./);
