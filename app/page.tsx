@@ -10,7 +10,6 @@ import {
 } from "@/lib/pricing";
 import {
   landingTranslations,
-  type LandingLanguage,
   type LandingTranslations,
 } from "@/lib/landing-translations";
 
@@ -157,15 +156,7 @@ function Logo({ inverse = false }: { inverse?: boolean }) {
   );
 }
 
-function Navbar({
-  language,
-  setLanguage,
-  t,
-}: {
-  language: LandingLanguage;
-  setLanguage: (language: LandingLanguage) => void;
-  t: LandingTranslations;
-}) {
+function Navbar({ t }: { t: LandingTranslations }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -184,26 +175,6 @@ function Navbar({
           ))}
         </nav>
         <div className="hidden items-center gap-3 lg:flex">
-          <div
-            className="flex rounded-full border border-black/10 bg-black/[0.025] p-1"
-            aria-label={t.aria.languageSelect}
-          >
-            {(["PL", "EN"] as const).map((item) => (
-              <button
-                type="button"
-                key={item}
-                onClick={() => setLanguage(item)}
-                className={`rounded-full px-2.5 py-1 text-xs font-semibold transition ${
-                  language === item
-                    ? "bg-white text-ink shadow-sm"
-                    : "text-black/40 hover:text-ink"
-                }`}
-                aria-pressed={language === item}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
           <Link href="/login" className="px-3 text-sm font-semibold text-ink">
             {t.nav.login}
           </Link>
@@ -234,23 +205,6 @@ function Navbar({
                 {item.label}
               </a>
             ))}
-            <div className="flex items-center justify-between py-4">
-              <span className="text-sm text-black/50">{t.nav.language}</span>
-              <div className="flex rounded-full bg-black/[0.04] p-1">
-                {(["PL", "EN"] as const).map((item) => (
-                  <button
-                    type="button"
-                    key={item}
-                    onClick={() => setLanguage(item)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-                      language === item ? "bg-white shadow-sm" : "text-black/40"
-                    }`}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-            </div>
             <div className="mt-2 grid grid-cols-2 gap-3">
               <Link href="/login" className="button-secondary px-3">
                 {t.nav.login}
@@ -1482,7 +1436,6 @@ function Footer({ t, nav }: { t: LandingTranslations["footer"]; nav: LandingTran
             <Link href="/login" className="text-left text-white/55 transition hover:text-white">
               {nav.login}
             </Link>
-            <span className="text-white/55">{t.language}</span>
           </div>
         </div>
         <div className="flex flex-col justify-between gap-4 pt-7 text-xs text-white/35 sm:flex-row">
@@ -1499,25 +1452,11 @@ function Footer({ t, nav }: { t: LandingTranslations["footer"]; nav: LandingTran
 }
 
 export default function Home() {
-  const [language, setLanguageState] = useState<LandingLanguage>("PL");
-  const t = landingTranslations[language];
-
-  useEffect(() => {
-    const savedLanguage = window.localStorage.getItem("nuvorate-landing-language");
-
-    if (savedLanguage === "PL" || savedLanguage === "EN") {
-      setLanguageState(savedLanguage);
-    }
-  }, []);
-
-  const setLanguage = (nextLanguage: LandingLanguage) => {
-    setLanguageState(nextLanguage);
-    window.localStorage.setItem("nuvorate-landing-language", nextLanguage);
-  };
+  const t = landingTranslations.PL;
 
   return (
     <>
-      <Navbar language={language} setLanguage={setLanguage} t={t} />
+      <Navbar t={t} />
       <main>
         <Hero t={t} />
         <Benefits t={t.benefits} />

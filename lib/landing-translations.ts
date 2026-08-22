@@ -1,11 +1,8 @@
-export type LandingLanguage = "PL" | "EN";
-
 export const landingTranslations = {
   PL: {
     aria: {
       mainNav: "Główna nawigacja",
       mobileMenu: "Menu mobilne",
-      languageSelect: "Wybór języka",
       openMenu: "Otwórz menu",
       closeMenu: "Zamknij menu",
       growthChart: "Wykres wzrostu liczby opinii",
@@ -17,7 +14,6 @@ export const landingTranslations = {
         { label: "Cennik", href: "#cennik" },
         { label: "FAQ", href: "#faq" },
       ],
-      language: "Język",
       login: "Zaloguj się",
       register: "Załóż konto",
     },
@@ -324,7 +320,6 @@ export const landingTranslations = {
     },
     footer: {
       description: "Profesjonalna platforma do zarządzania opiniami i reputacją online.",
-      language: "PL / EN",
       copyright: "© 2026 NuvoRate. Wszystkie prawa zastrzeżone.",
       privacy: "Polityka prywatności",
       terms: "Regulamin",
@@ -335,7 +330,6 @@ export const landingTranslations = {
     aria: {
       mainNav: "Main navigation",
       mobileMenu: "Mobile menu",
-      languageSelect: "Language selection",
       openMenu: "Open menu",
       closeMenu: "Close menu",
       growthChart: "Review growth chart",
@@ -347,7 +341,6 @@ export const landingTranslations = {
         { label: "Pricing", href: "#cennik" },
         { label: "FAQ", href: "#faq" },
       ],
-      language: "Language",
       login: "Log in",
       register: "Create account",
     },
@@ -654,7 +647,6 @@ export const landingTranslations = {
     },
     footer: {
       description: "A professional platform for managing reviews and online reputation.",
-      language: "PL / EN",
       copyright: "© 2026 NuvoRate. All rights reserved.",
       privacy: "Privacy policy",
       terms: "Terms",
@@ -663,4 +655,4 @@ export const landingTranslations = {
   },
 } as const;
 
-export type LandingTranslations = (typeof landingTranslations)[LandingLanguage];
+export type LandingTranslations = (typeof landingTranslations)["PL"];
