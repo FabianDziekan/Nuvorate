@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 import {
@@ -17,6 +18,7 @@ type ResponseCardProps = {
   initialResponseText?: string | null;
   rating: number;
   reviewId: string;
+  responseTone: string;
   status: ResponseStatus;
 };
 
@@ -31,17 +33,37 @@ type GeneratedResponsesEvent = CustomEvent<{
 const statusDetails: Record<ResponseStatus, { className: string; label: string }> = {
   pending: {
     className: "bg-orange-50 text-orange-700 ring-1 ring-orange-100",
-    label: "Bez odpowiedzi",
+    label: "Do odpowiedzi",
   },
   ready: {
     className: "bg-blue-50 text-blue-700 ring-1 ring-blue-100",
-    label: "Odpowiedź gotowa",
+    label: "Gotowa odpowiedź AI",
   },
   responded: {
     className: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
-    label: "Odpowiedziano",
+    label: "Opublikowano w Google",
   },
 };
+
+const draftStatusDetails = {
+  className: "bg-orange-50 text-orange-700 ring-1 ring-orange-100",
+  label: "Wersja robocza",
+};
+
+function getStatusDetails(
+  status: ResponseStatus,
+  responseText: string,
+  savedResponseText: string,
+) {
+  if (
+    responseText.trim() &&
+    responseText.trim() !== savedResponseText.trim()
+  ) {
+    return draftStatusDetails;
+  }
+
+  return statusDetails[status];
+}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("pl-PL", {
@@ -66,6 +88,7 @@ export function ResponseCard({
   initialResponseText,
   rating,
   reviewId,
+  responseTone,
   status,
 }: ResponseCardProps) {
   const trimmedInitialResponse =
@@ -75,15 +98,16 @@ export function ResponseCard({
   const [currentStatus, setCurrentStatus] = useState<ResponseStatus>(status);
   const [isEditorOpen, setIsEditorOpen] = useState(Boolean(trimmedInitialResponse));
   const [responseText, setResponseText] = useState(trimmedInitialResponse);
+  const [savedResponseText, setSavedResponseText] = useState(trimmedInitialResponse);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
   const [progressStatus, setProgressStatus] =
     useState<AiGenerationProgressStatus>("idle");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [isMarkingResponded, setIsMarkingResponded] = useState(false);
   const [isMobileEditorOpen, setIsMobileEditorOpen] = useState(false);
-  const details = statusDetails[currentStatus];
+  const [publishedAt, setPublishedAt] = useState<string | null>(null);
+  const details = getStatusDetails(currentStatus, responseText, savedResponseText);
 
   useEffect(() => {
     if (!toast) {
@@ -106,6 +130,7 @@ export function ResponseCard({
       }
 
       setResponseText(generatedResponse.responseText);
+      setSavedResponseText(generatedResponse.responseText);
       setCurrentStatus("ready");
       setIsEditorOpen(true);
       setToast("✓ Odpowiedź wygenerowana");
@@ -167,6 +192,7 @@ export function ResponseCard({
       }
 
       setResponseText(generatedText);
+      setSavedResponseText(generatedText);
       setCurrentStatus("ready");
       setIsEditorOpen(true);
       if (window.matchMedia("(max-width: 768px)").matches) {
@@ -189,46 +215,6 @@ export function ResponseCard({
     }
   }
 
-  async function handleSave() {
-    if (!responseText.trim()) {
-      setError("Wpisz treść odpowiedzi przed zapisem.");
-      return;
-    }
-
-    setError("");
-    setIsSaving(true);
-
-    try {
-      const response = await fetch(`/api/responses/${reviewId}`, {
-        body: JSON.stringify({ responseText }),
-        headers: {
-          "Content-Type": "application/json",
-        },
-        method: "PATCH",
-      });
-
-      if (!response.ok) {
-        throw new Error(await readApiError(response, "Nie udało się zapisać."));
-      }
-
-      const data = await response.json();
-      setResponseText(
-        typeof data?.responseText === "string" ? data.responseText : responseText,
-      );
-      setCurrentStatus("ready");
-      setIsEditorOpen(true);
-      setToast("✓ Zapisano odpowiedź");
-    } catch (saveError) {
-      setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "Nie udało się zapisać.",
-      );
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
   async function handleResponded() {
     setError("");
     setIsMarkingResponded(true);
@@ -245,7 +231,8 @@ export function ResponseCard({
       }
 
       setCurrentStatus("responded");
-      setToast("✓ Oznaczono jako odpowiedziano");
+      setPublishedAt(new Date().toISOString());
+      setToast("✓ Przygotowano status publikacji w Google");
     } catch (respondedError) {
       setError(
         respondedError instanceof Error
@@ -311,19 +298,6 @@ export function ResponseCard({
         </button>
         <button
           type="button"
-          onClick={() => {
-            setError("");
-            setIsEditorOpen(true);
-            if (!responseText) {
-              setResponseText("");
-            }
-          }}
-          className="hidden h-10 items-center justify-center rounded-xl border border-black/[0.08] bg-white px-4 text-xs font-semibold text-black/55 transition duration-200 hover:-translate-y-0.5 hover:border-brand/30 hover:text-brand min-[769px]:inline-flex"
-        >
-          Napisz ręcznie
-        </button>
-        <button
-          type="button"
           disabled={!responseText}
           onClick={handleCopy}
           className="hidden h-10 items-center justify-center rounded-xl border border-black/[0.08] bg-white px-4 text-xs font-semibold text-black/55 transition duration-200 hover:-translate-y-0.5 hover:border-brand/30 hover:text-brand disabled:cursor-not-allowed disabled:opacity-40 min-[769px]:inline-flex"
@@ -339,6 +313,13 @@ export function ResponseCard({
           ›
         </button>
       </div>
+
+      <p className="mt-2 text-[11px] leading-5 text-black/35">
+        Ton odpowiedzi: <span className="font-semibold text-black/50">{responseTone}</span>{" "}
+        <Link href="/settings" className="font-semibold text-brand transition hover:text-[#4D4EE8]">
+          Zmień w ustawieniach
+        </Link>
+      </p>
 
       {isGenerating && (
         <AiGenerationProgress
@@ -372,27 +353,24 @@ export function ResponseCard({
             placeholder="Wpisz odpowiedź dla klienta..."
           />
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-[11px] text-black/35">
-              Odpowiedź możesz edytować przed użyciem poza NuvoRate.
-            </p>
+            <div className="text-[11px] leading-5 text-black/35">
+              <p>Odpowiedź możesz edytować przed publikacją.</p>
+              {currentStatus === "responded" && publishedAt ? (
+                <p className="mt-0.5 text-emerald-700">
+                  Opublikowano w Google: {formatDate(publishedAt)}
+                </p>
+              ) : null}
+            </div>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                disabled={isSaving}
-                onClick={handleSave}
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-black/[0.08] bg-white px-4 text-xs font-semibold text-black/55 transition duration-200 hover:-translate-y-0.5 hover:border-brand/30 hover:text-brand disabled:cursor-wait disabled:opacity-60"
-              >
-                {isSaving ? "Zapisywanie..." : "Zapisz"}
-              </button>
-              <button
-                type="button"
-                disabled={isMarkingResponded}
+                disabled={!responseText.trim() || isMarkingResponded}
                 onClick={handleResponded}
                 className="inline-flex h-10 items-center justify-center rounded-xl border border-black/[0.08] bg-white px-4 text-xs font-semibold text-black/55 transition duration-200 hover:-translate-y-0.5 hover:border-brand/30 hover:text-brand disabled:cursor-wait disabled:opacity-60"
               >
                 {isMarkingResponded
-                  ? "Oznaczanie..."
-                  : "Oznacz jako odpowiedziano"}
+                  ? "Publikowanie..."
+                  : "Opublikuj w Google"}
               </button>
             </div>
           </div>
@@ -430,11 +408,14 @@ export function ResponseCard({
                     <p className="mt-3 text-sm leading-6 text-black/60">{content}</p>
                   </div>
                   <textarea name="responseText" value={responseText} onChange={(event) => setResponseText(event.target.value)} rows={5} className="mt-4 w-full resize-none scroll-mb-6 rounded-2xl border border-black/[0.08] bg-white p-4 text-base leading-6 text-ink outline-none transition placeholder:text-black/30 focus:border-brand/30 focus:ring-4 focus:ring-brand/10" placeholder="Wpisz odpowiedź dla klienta..." />
+                  <div className="mt-2 text-[11px] leading-5 text-black/35">
+                    <p>Odpowiedź możesz edytować przed publikacją.</p>
+                    {currentStatus === "responded" && publishedAt ? <p className="mt-0.5 text-emerald-700">Opublikowano w Google: {formatDate(publishedAt)}</p> : null}
+                  </div>
                   {error ? <div className="mt-3 rounded-xl border border-red-100 bg-red-50 p-3 text-xs font-medium leading-5 text-red-600">{error}</div> : null}
                 </div>
-                <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-black/[0.06] bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
-                  <button type="button" disabled={isSaving} onClick={handleSave} className="min-w-0 rounded-xl bg-brand px-2 py-3 text-sm font-semibold text-white transition hover:bg-[#4D4EE8] disabled:cursor-wait disabled:opacity-60">{isSaving ? "Zapisywanie..." : "Zapisz"}</button>
-                  <button type="button" disabled={isMarkingResponded} onClick={handleResponded} className="min-w-0 rounded-xl border border-black/[0.08] bg-white px-2 py-3 text-sm font-semibold text-black/55 transition hover:border-brand/30 hover:text-brand disabled:cursor-wait disabled:opacity-60">{isMarkingResponded ? "Oznaczanie..." : "Odpowiedziano"}</button>
+                <div className="grid shrink-0 grid-cols-1 gap-2 border-t border-black/[0.06] bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
+                  <button type="button" disabled={!responseText.trim() || isMarkingResponded} onClick={handleResponded} className="min-w-0 rounded-xl border border-black/[0.08] bg-white px-2 py-3 text-sm font-semibold text-black/55 transition hover:border-brand/30 hover:text-brand disabled:cursor-wait disabled:opacity-60">{isMarkingResponded ? "Publikowanie..." : "Opublikuj w Google"}</button>
                 </div>
               </section>
             </div>,

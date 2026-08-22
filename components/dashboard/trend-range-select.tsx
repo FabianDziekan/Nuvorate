@@ -89,19 +89,15 @@ function ChevronIcon({ direction }: { direction: "left" | "right" }) {
   );
 }
 
-function CalendarDateField({
-  align = "left",
-  isCalendarOpen,
-  label,
-  onChange,
-  onOpenChange,
+function CalendarPanel({
+  closeOnSelect = false,
+  onClose,
+  onSelect,
   value,
 }: {
-  align?: "left" | "right";
-  isCalendarOpen: boolean;
-  label: string;
-  onChange: (value: string) => void;
-  onOpenChange: (open: boolean) => void;
+  closeOnSelect?: boolean;
+  onClose?: () => void;
+  onSelect: (value: string) => void;
   value: string;
 }) {
   const selectedDate = parseCalendarDate(value);
@@ -140,10 +136,92 @@ function CalendarDateField({
   }
 
   function selectDate(date: Date) {
-    onChange(formatCalendarDate(date));
-    onOpenChange(false);
+    onSelect(formatCalendarDate(date));
+
+    if (closeOnSelect) {
+      onClose?.();
+    }
   }
 
+  return (
+    <>
+      <div className="mb-3 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => moveMonth(-1)}
+          className="date-range-calendar-nav grid h-8 w-8 place-items-center rounded-lg text-black/50 outline-none transition duration-150 hover:bg-brand-soft hover:text-brand focus:ring-4 focus:ring-brand/10"
+          aria-label="Poprzedni miesiąc"
+        >
+          <ChevronIcon direction="left" />
+        </button>
+        <p className="text-center text-sm font-semibold text-ink">
+          {getMonthLabel(monthStart)}
+        </p>
+        <button
+          type="button"
+          onClick={() => moveMonth(1)}
+          className="date-range-calendar-nav grid h-8 w-8 place-items-center rounded-lg text-black/50 outline-none transition duration-150 hover:bg-brand-soft hover:text-brand focus:ring-4 focus:ring-brand/10"
+          aria-label="Następny miesiąc"
+        >
+          <ChevronIcon direction="right" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {weekdayLabels.map((day) => (
+          <div
+            key={day}
+            className="grid h-8 place-items-center text-xs font-medium text-black/40"
+          >
+            {day}
+          </div>
+        ))}
+
+        {days.map((date) => {
+          const dateKey = formatCalendarDate(date);
+          const isSelected = dateKey === selectedKey;
+          const isToday = dateKey === todayKey;
+          const isOutsideMonth = date.getMonth() !== monthStart.getMonth();
+
+          return (
+            <button
+              key={dateKey}
+              type="button"
+              onClick={() => selectDate(date)}
+              className={`date-range-calendar-day grid h-9 w-9 place-items-center rounded-full text-sm font-medium outline-none transition duration-150 focus:ring-4 focus:ring-brand/10 ${
+                isSelected
+                  ? "bg-brand text-white"
+                  : "text-ink hover:bg-brand-soft hover:text-brand"
+              } ${isToday && !isSelected ? "ring-1 ring-brand/35" : ""} ${
+                isOutsideMonth && !isSelected ? "opacity-35" : ""
+              }`}
+            >
+              {date.getDate()}
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+function CalendarDateField({
+  align = "left",
+  isCalendarOpen,
+  label,
+  onChange,
+  onOpenChange,
+  renderCalendar = true,
+  value,
+}: {
+  align?: "left" | "right";
+  isCalendarOpen: boolean;
+  label: string;
+  onChange: (value: string) => void;
+  onOpenChange: (open: boolean) => void;
+  renderCalendar?: boolean;
+  value: string;
+}) {
   return (
     <div className="relative space-y-1.5">
       <span className="text-[11px] font-semibold text-black/40">{label}</span>
@@ -187,68 +265,18 @@ function CalendarDateField({
         </span>
       </div>
 
-      {isCalendarOpen ? (
+      {renderCalendar && isCalendarOpen ? (
         <div
-          className={`date-range-calendar absolute top-[calc(100%+8px)] z-[70] w-[286px] rounded-2xl border border-black/[0.08] bg-white p-4 shadow-[0_22px_70px_rgba(15,15,16,0.16)] max-[768px]:fixed max-[768px]:left-1/2 max-[768px]:top-1/2 max-[768px]:z-[120] max-[768px]:w-[min(286px,calc(100vw-32px))] max-[768px]:-translate-x-1/2 max-[768px]:-translate-y-1/2 ${
+          className={`date-range-calendar absolute top-[calc(100%+8px)] z-[70] w-[286px] rounded-2xl border border-black/[0.08] bg-white p-4 shadow-[0_22px_70px_rgba(15,15,16,0.16)] ${
             align === "right" ? "right-0" : "left-0"
           }`}
         >
-          <div className="mb-3 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => moveMonth(-1)}
-              className="date-range-calendar-nav grid h-8 w-8 place-items-center rounded-lg text-black/50 outline-none transition duration-150 hover:bg-brand-soft hover:text-brand focus:ring-4 focus:ring-brand/10"
-              aria-label="Poprzedni miesiąc"
-            >
-              <ChevronIcon direction="left" />
-            </button>
-            <p className="text-center text-sm font-semibold text-ink">
-              {getMonthLabel(monthStart)}
-            </p>
-            <button
-              type="button"
-              onClick={() => moveMonth(1)}
-              className="date-range-calendar-nav grid h-8 w-8 place-items-center rounded-lg text-black/50 outline-none transition duration-150 hover:bg-brand-soft hover:text-brand focus:ring-4 focus:ring-brand/10"
-              aria-label="Następny miesiąc"
-            >
-              <ChevronIcon direction="right" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-7 gap-1">
-            {weekdayLabels.map((day) => (
-              <div
-                key={day}
-                className="grid h-8 place-items-center text-xs font-medium text-black/40"
-              >
-                {day}
-              </div>
-            ))}
-
-            {days.map((date) => {
-              const dateKey = formatCalendarDate(date);
-              const isSelected = dateKey === selectedKey;
-              const isToday = dateKey === todayKey;
-              const isOutsideMonth = date.getMonth() !== monthStart.getMonth();
-
-              return (
-                <button
-                  key={dateKey}
-                  type="button"
-                  onClick={() => selectDate(date)}
-                  className={`date-range-calendar-day grid h-9 w-9 place-items-center rounded-full text-sm font-medium outline-none transition duration-150 focus:ring-4 focus:ring-brand/10 ${
-                    isSelected
-                      ? "bg-brand text-white"
-                      : "text-ink hover:bg-brand-soft hover:text-brand"
-                  } ${isToday && !isSelected ? "ring-1 ring-brand/35" : ""} ${
-                    isOutsideMonth && !isSelected ? "opacity-35" : ""
-                  }`}
-                >
-                  {date.getDate()}
-                </button>
-              );
-            })}
-          </div>
+          <CalendarPanel
+            closeOnSelect
+            onClose={() => onOpenChange(false)}
+            onSelect={onChange}
+            value={value}
+          />
         </div>
       ) : null}
     </div>
@@ -376,15 +404,8 @@ export function TrendRangeSelect({
     pushParams(params);
   }
 
-  const rangePicker = (
-    <div
-      ref={popoverRef}
-      className={
-        isMobileViewport
-          ? "fixed inset-x-4 top-[84px] z-[100] w-auto rounded-[22px] border border-black/[0.08] bg-white p-3 shadow-[0_20px_70px_rgba(15,15,16,0.14)]"
-          : "absolute right-0 top-[calc(100%+10px)] z-50 w-[320px] rounded-[22px] border border-black/[0.08] bg-white p-3 shadow-[0_20px_70px_rgba(15,15,16,0.14)]"
-      }
-    >
+  const rangePickerContent = (
+    <>
       <div className="space-y-1">
         {trendRangeOptions.map((option) => {
           const active = !isCustom && option.value === value;
@@ -415,6 +436,7 @@ export function TrendRangeSelect({
           <CalendarDateField
             isCalendarOpen={openCalendar === "from"}
             label="Od"
+            renderCalendar={!isMobileViewport}
             value={customFrom}
             onChange={setCustomFrom}
             onOpenChange={(open) => setOpenCalendar(open ? "from" : null)}
@@ -423,11 +445,20 @@ export function TrendRangeSelect({
             align="right"
             isCalendarOpen={openCalendar === "to"}
             label="Do"
+            renderCalendar={!isMobileViewport}
             value={customTo}
             onChange={setCustomTo}
             onOpenChange={(open) => setOpenCalendar(open ? "to" : null)}
           />
         </div>
+        {isMobileViewport && openCalendar ? (
+          <div className="date-range-calendar mt-3 rounded-2xl border border-black/[0.08] bg-white p-4 shadow-[0_22px_70px_rgba(15,15,16,0.16)]">
+            <CalendarPanel
+              onSelect={openCalendar === "from" ? setCustomFrom : setCustomTo}
+              value={openCalendar === "from" ? customFrom : customTo}
+            />
+          </div>
+        ) : null}
         {error ? (
           <p className="mt-2 text-xs font-semibold text-red-600">{error}</p>
         ) : null}
@@ -439,6 +470,24 @@ export function TrendRangeSelect({
           Zastosuj zakres
         </button>
       </div>
+    </>
+  );
+
+  const rangePicker = isMobileViewport ? (
+    <div className="fixed inset-0 z-[100] flex items-end bg-ink/20" role="dialog" aria-modal="true" aria-label="Wybór zakresu dat">
+      <div
+        ref={popoverRef}
+        className="max-h-[calc(100dvh-1rem)] w-full overflow-y-auto rounded-t-[26px] border border-black/[0.08] bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-20px_70px_rgba(15,15,16,0.14)]"
+      >
+        {rangePickerContent}
+      </div>
+    </div>
+  ) : (
+    <div
+      ref={popoverRef}
+      className="absolute right-0 top-[calc(100%+10px)] z-50 w-[320px] rounded-[22px] border border-black/[0.08] bg-white p-3 shadow-[0_20px_70px_rgba(15,15,16,0.14)]"
+    >
+      {rangePickerContent}
     </div>
   );
 

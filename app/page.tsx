@@ -857,85 +857,14 @@ function DashboardMockup({ hero = false, t }: { hero?: boolean; t: LandingTransl
   );
 }
 
-function MobileHeroMockup({
-  hero,
-  mockup,
-}: {
-  hero: LandingTranslations["hero"];
-  mockup: LandingTranslations["mockup"];
-}) {
+function MobileDashboardProductMockup() {
   return (
-    <div className="relative mx-auto h-[780px] w-full max-w-[420px]">
-      <div className="absolute bottom-8 left-1/2 h-24 w-[78%] -translate-x-1/2 rounded-full bg-brand/25 blur-3xl" />
-      <div className="absolute left-1/2 top-0 w-[min(86vw,360px)] -translate-x-1/2 rotate-[9deg] rounded-[42px] border-[7px] border-[#16161A] bg-[#16161A] p-1.5 shadow-[0_28px_70px_rgba(15,15,16,0.28)]">
-        <div className="relative flex aspect-[0.49] flex-col overflow-hidden rounded-[34px] bg-[#F7F7FA] px-4 pb-4 pt-12 text-ink">
-          <span className="absolute left-1/2 top-2 h-6 w-[96px] -translate-x-1/2 rounded-full bg-[#16161A]" />
-          <div className="absolute left-0 top-0 flex h-[106.383%] w-[106.383%] min-w-0 origin-top-left scale-[0.94] flex-col px-4 pb-4 pt-12">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand text-[11px] font-bold text-white">N</span>
-              <p className="text-[11px] font-semibold">NuvoRate</p>
-            </div>
-            <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-soft text-[10px] font-bold text-brand">AK</span>
-          </div>
-          <div className="mt-5">
-            <p className="text-[10px] text-black/35">{mockup.dashboardLabel}</p>
-            <h3 className="mt-1 text-[18px] font-semibold tracking-[-0.04em]">{mockup.greeting}</h3>
-            <p className="mt-1 text-[10px] text-black/40">{mockup.subtitle}</p>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {mockup.metrics.slice(0, 2).map((metric, index) => (
-              <div key={metric.label} className="rounded-2xl border border-black/[0.06] bg-white p-3 shadow-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[8px] font-medium text-black/40">{metric.label}</p>
-                  <span className="grid h-5 w-5 place-items-center rounded-md bg-brand-soft text-brand">
-                    <Icon name={index === 0 ? "quote" : "star"} className="h-3 w-3" />
-                  </span>
-                </div>
-                <p className="mt-3 text-lg font-semibold tracking-[-0.04em]">{metric.value}</p>
-                <p className="mt-1 text-[8px] text-black/35">{metric.detail}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 rounded-2xl border border-black/[0.06] bg-white p-3 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[8px] font-medium uppercase tracking-[0.1em] text-black/35">Najnowsza opinia</p>
-                <p className="mt-1 text-[11px] font-semibold">Anna K. <span className="text-brand">5,0 ★</span></p>
-              </div>
-              <span className="rounded-full bg-brand-soft px-2 py-1 text-[8px] font-semibold text-brand">Nowa</span>
-            </div>
-            <p className="mt-2 text-[9px] leading-4 text-black/45">Świetna obsługa i bardzo miła atmosfera.</p>
-          </div>
-          <div className="mt-3 rounded-2xl bg-ink p-3 text-white shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[8px] font-medium uppercase tracking-[0.1em] text-white/45">{mockup.analysisLabel}</p>
-                <p className="mt-1 text-[11px] font-semibold">Reputacja rośnie</p>
-              </div>
-              <span className="rounded-full bg-brand/30 px-2 py-1 text-[8px] font-semibold text-[#C7C8FF]">92/100</span>
-            </div>
-            <p className="mt-2 text-[9px] leading-4 text-white/60">Klienci najczęściej chwalą obsługę i atmosferę.</p>
-          </div>
-          <div className="mt-auto flex items-center justify-between border-t border-black/[0.06] pt-3 text-[8px] font-medium text-black/35">
-            {mockup.nav.slice(0, 4).map((item, index) => (
-              <span key={item} className={index === 0 ? "text-brand" : ""}>{item}</span>
-            ))}
-          </div>
-          </div>
-        </div>
-      </div>
-      <div className="absolute bottom-6 right-0 origin-bottom-right scale-[0.7] rounded-2xl border border-black/[0.06] bg-white p-4 shadow-card">
-        <div className="flex items-center gap-3">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#EAF9F1] text-[#198754]">
-            <Icon name="trend" />
-          </span>
-          <div>
-            <p className="text-xs text-black/40">{hero.floatingLabel}</p>
-            <p className="mt-0.5 text-sm font-semibold">{hero.floatingValue}</p>
-          </div>
-        </div>
-      </div>
+    <div className="relative mx-auto flex w-full justify-center overflow-visible">
+      <img
+        src="/landing/a_clean_product_marketing_style_render_a_single_i.png"
+        alt="Mobilny pulpit aplikacji NuvoRate"
+        className="block h-auto w-[min(76vw,300px)] rotate-[-2deg] object-contain drop-shadow-[0_24px_26px_rgba(10,10,22,0.28)]"
+      />
     </div>
   );
 }
@@ -1192,8 +1121,15 @@ function DashboardPreview({
           </p>
         </div>
         <div className="relative mt-10 lg:mt-14">
-          <div className="absolute -inset-20 bg-[radial-gradient(circle_at_center,rgba(91,92,246,0.25),transparent_55%)]" />
-          <div className="relative mx-auto max-w-[1050px]"><DashboardDemo /></div>
+          <div className="absolute -inset-20 hidden bg-[radial-gradient(circle_at_center,rgba(91,92,246,0.25),transparent_55%)] md:block" />
+          <div className="relative mx-auto max-w-[1050px]">
+            <div className="md:hidden">
+              <MobileDashboardProductMockup />
+            </div>
+            <div className="hidden md:block">
+              <DashboardDemo />
+            </div>
+          </div>
         </div>
         <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:mt-10 lg:grid-cols-3">
           {t.cards.map(([title, text], index) => (

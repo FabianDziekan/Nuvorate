@@ -54,7 +54,7 @@ export function MobileResponseFilters({
         </svg>
         <span>
           <span className="block text-xs font-semibold text-ink">Filtruj opinie</span>
-          <span className="block text-[10px] text-black/40">{activeFilter?.label ?? "Wszystkie"}</span>
+          <span className="block text-[10px] text-black/40">{activeFilter?.label ?? "Wszystkie opinie"}</span>
         </span>
       </button>
 

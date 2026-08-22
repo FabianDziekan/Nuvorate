@@ -44,6 +44,7 @@ type Review = {
 type ResponseSettings = {
   auto_generate: boolean | null;
   enabled_ratings: number[] | null;
+  response_tone: string | null;
 };
 
 type ResponsesIcon =
@@ -162,9 +163,9 @@ const navigation = [
 ];
 
 const filters = [
-  { label: "Wszystkie", value: "all" },
-  { label: "Bez odpowiedzi", value: "pending" },
-  { label: "Z odpowiedzią", value: "answered" },
+  { label: "Wszystkie opinie", value: "all" },
+  { label: "Do odpowiedzi", value: "pending" },
+  { label: "Odpowiedziano", value: "answered" },
   { label: "5★", value: "5" },
   { label: "4★", value: "4" },
   { label: "3★", value: "3" },
@@ -213,6 +214,13 @@ function buildResponsesHref(filter: string, page: number) {
   const query = params.toString();
   return query ? `/responses?${query}` : "/responses";
 }
+
+const responseToneLabels: Record<string, string> = {
+  friendly: "Przyjazny",
+  premium: "Premium",
+  professional: "Profesjonalny",
+  short: "Krótki",
+};
 
 export default async function ResponsesPage({ searchParams }: ResponsesPageProps) {
   const params = await searchParams;
@@ -314,7 +322,7 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
       .order("created_at", { ascending: false }),
     supabase
       .from("business_response_settings")
-      .select("auto_generate, enabled_ratings")
+      .select("auto_generate, enabled_ratings, response_tone")
       .eq("business_id", business.id)
       .maybeSingle(),
   ]);
@@ -330,6 +338,8 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
   const enabledRatings = Array.isArray(responseSettings?.enabled_ratings)
     ? responseSettings.enabled_ratings
     : [];
+  const responseTone =
+    responseToneLabels[responseSettings?.response_tone ?? ""] ?? "Profesjonalny";
   const filteredReviews = filterReviews(allReviews, selectedFilter);
   const totalPages = Math.max(1, Math.ceil(filteredReviews.length / reviewsPerPage));
   const currentPage = Number.isInteger(requestedPage)
@@ -599,6 +609,7 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
                       initialResponseText={review.response_text}
                       rating={Number(review.rating)}
                       reviewId={review.id}
+                      responseTone={responseTone}
                       status={normalizeStatus(review.response_status)}
                     />
                   ))}
