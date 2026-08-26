@@ -197,6 +197,7 @@ const navigation = [
   { label: "NFC", icon: "nfc" as const, href: "/nfc" },
   { label: "Powiadomienia", icon: "bell" as const, href: "/notifications" },
   { label: "Ustawienia", icon: "settings" as const, href: "/settings" },
+  { label: "Pomoc i kontakt", icon: "help" as const, href: "/support" },
 ];
 
 function stringList(value: unknown) {

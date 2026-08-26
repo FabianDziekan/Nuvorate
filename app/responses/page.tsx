@@ -37,7 +37,9 @@ type Review = {
   rating: number;
   content: string;
   created_at: string;
+  source: string;
   response_text: string | null;
+  response_published_at: string | null;
   response_status: ResponseStatus | null;
 };
 
@@ -160,6 +162,7 @@ const navigation = [
   { label: "NFC", icon: "nfc" as const, href: "/nfc" },
   { label: "Powiadomienia", icon: "bell" as const, href: "/notifications" },
   { label: "Ustawienia", icon: "settings" as const, href: "/settings" },
+  { label: "Pomoc i kontakt", icon: "help" as const, href: "/support" },
 ];
 
 const filters = [
@@ -317,7 +320,7 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
   ] = await Promise.all([
     supabase
       .from("reviews")
-      .select("id, author_name, rating, content, created_at, response_text, response_status")
+      .select("id, author_name, rating, content, created_at, source, response_text, response_published_at, response_status")
       .eq("business_id", business.id)
       .order("created_at", { ascending: false }),
     supabase
@@ -606,10 +609,12 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
                       authorName={review.author_name}
                       content={review.content}
                       createdAt={review.created_at}
+                      initialResponsePublishedAt={review.response_published_at}
                       initialResponseText={review.response_text}
                       rating={Number(review.rating)}
                       reviewId={review.id}
                       responseTone={responseTone}
+                      source={review.source}
                       status={normalizeStatus(review.response_status)}
                     />
                   ))}

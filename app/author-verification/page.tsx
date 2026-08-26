@@ -144,6 +144,7 @@ const navigation = [
   { label: "NFC", icon: "nfc" as const, href: "/nfc" },
   { label: "Powiadomienia", icon: "bell" as const, href: "/notifications" },
   { label: "Ustawienia", icon: "settings" as const, href: "/settings" },
+  { label: "Pomoc i kontakt", icon: "help" as const, href: "/support" },
 ];
 
 type ReviewRow = {
@@ -407,7 +408,7 @@ export default async function AuthorVerificationPage({
             <div className="mt-1 flex items-center justify-between">
               <p className="font-semibold">{plan}</p>
               <span className="rounded-full bg-brand px-2 py-1 text-[9px] font-semibold uppercase tracking-wider">
-                konto
+                aktywny
               </span>
             </div>
             {plan === "Starter" && (

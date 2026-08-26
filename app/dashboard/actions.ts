@@ -13,44 +13,13 @@ import { hasPlanCapability } from "@/lib/plans";
 import type { AnalysisErrorCode } from "@/lib/analysis-feedback";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { getActiveBusinessForUser, requireActiveBusinessForUser } from "@/lib/active-business";
+import { requireActiveBusinessForUser } from "@/lib/active-business";
 import { requireActiveBusinessBillingContext } from "@/lib/active-business-billing";
 
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/login");
-}
-
-export async function syncGoogleReviews(): Promise<{
-  message: string;
-  connected: boolean;
-  success: boolean;
-}> {
-  const supabase = await createClient();
-  const { data: userData } = await supabase.auth.getUser();
-  const user = userData.user;
-
-  if (!user) {
-    redirect("/login?next=/dashboard");
-  }
-
-  const business = (await getActiveBusinessForUser(supabase, user.id, "id, google_review_url"))?.business;
-
-  if (!business) {
-    return {
-      message: "Nie udało się odczytać danych firmy.",
-      connected: false,
-      success: false,
-    };
-  }
-
-  const { data: connection } = await supabase.from("google_business_connections").select("id").eq("business_id", business.id).maybeSingle();
-  return {
-    message: connection ? "Profil Google jest połączony. Synchronizacja opinii zostanie dodana w kolejnym etapie." : "Najpierw połącz profil Google Business w Ustawieniach.",
-    connected: Boolean(connection),
-    success: true,
-  };
 }
 
 export async function updateMonthlyReviewGoal(goal: number): Promise<{

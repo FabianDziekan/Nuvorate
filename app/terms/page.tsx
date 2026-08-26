@@ -42,7 +42,8 @@ export default function TermsPage() {
         {
           title: "Plany, opłaty i limity",
           paragraphs: [
-            "NuvoRate może oferować plany Starter i Business. Ceny, zakres funkcji, limity użycia oraz dostępność poszczególnych funkcji są prezentowane przed aktywacją płatnego planu.",
+            "NuvoRate oferuje płatne subskrypcje miesięczne i roczne, w tym plany Starter i Business. Aktualna cena, okres rozliczeniowy, zakres funkcji, limity użycia oraz dostępność poszczególnych funkcji są prezentowane użytkownikowi przed aktywacją subskrypcji.",
+            "Płatności za subskrypcje są obsługiwane przez Stripe. Subskrypcja odnawia się automatycznie na kolejny okres rozliczeniowy, chyba że użytkownik anuluje ją przed rozpoczęciem kolejnego okresu.",
             "Limity, w tym limity analiz i odpowiedzi AI, są stosowane zgodnie z wybranym planem. Usługodawca może odmówić wykonania operacji po wykorzystaniu danego limitu do czasu jego odnowienia lub zmiany planu.",
           ],
         },
@@ -65,8 +66,15 @@ export default function TermsPage() {
         {
           title: "Anulowanie subskrypcji",
           paragraphs: [
-            "Płatną subskrypcję można anulować zgodnie z warunkami przedstawionymi podczas zakupu lub w panelu rozliczeń. Anulowanie może skutkować zakończeniem dostępu do funkcji płatnego planu po upływie opłaconego okresu rozliczeniowego.",
-            "Szczegółowe zasady zwrotów, rozliczeń i zmian planu należy uzupełnić zgodnie z modelem sprzedaży oraz obowiązującymi przepisami.",
+            "Użytkownik może anulować subskrypcję w dowolnym momencie za pomocą dostępnego mechanizmu zarządzania subskrypcją.",
+            "Po anulowaniu dostęp do płatnego planu pozostaje aktywny do końca już opłaconego okresu rozliczeniowego. Po jego zakończeniu płatna subskrypcja nie zostanie ponownie odnowiona.",
+          ],
+        },
+        {
+          title: "Zwroty i rozliczenia",
+          paragraphs: [
+            "Samo anulowanie subskrypcji nie powoduje automatycznego proporcjonalnego zwrotu opłaty za rozpoczęty lub już opłacony okres rozliczeniowy, z zastrzeżeniem przypadków, w których zwrot jest wymagany przez obowiązujące przepisy prawa.",
+            "W przypadku zmiany planu sposób rozliczenia zmiany wynika z informacji przedstawionych użytkownikowi przed jej potwierdzeniem oraz z mechanizmu rozliczeń Stripe.",
           ],
         },
         {

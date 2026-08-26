@@ -2,46 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { syncGoogleReviews } from "@/app/dashboard/actions";
-
-function formatSyncTime(lastSyncedAt: string | null) {
-  if (!lastSyncedAt) {
-    return "Ostatnia synchronizacja: brak danych";
-  }
-
-  const diffInSeconds = Math.max(
-    0,
-    Math.floor((Date.now() - new Date(lastSyncedAt).getTime()) / 1000),
-  );
-
-  if (diffInSeconds < 60) {
-    return "Ostatnia synchronizacja: przed chwilą";
-  }
-
-  const diffInMinutes = Math.floor(diffInSeconds / 60);
-
-  if (diffInMinutes === 1) {
-    return "Ostatnia synchronizacja: 1 min temu";
-  }
-
-  if (diffInMinutes < 60) {
-    return `Ostatnia synchronizacja: ${diffInMinutes} min temu`;
-  }
-
-  const diffInHours = Math.floor(diffInMinutes / 60);
-
-  if (diffInHours === 1) {
-    return "Ostatnia synchronizacja: 1 godz. temu";
-  }
-
-  return `Ostatnia synchronizacja: ${diffInHours} godz. temu`;
-}
+import { useRouter } from "next/navigation";
 
 export function GoogleSyncButton({
   isGoogleConnected = false,
 }: {
   isGoogleConnected?: boolean;
 }) {
+  const router = useRouter();
   const [isSyncing, setIsSyncing] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -53,9 +21,27 @@ export function GoogleSyncButton({
     setIsSyncing(true);
 
     try {
-      const result = await syncGoogleReviews();
+      const response = await fetch("/api/google/sync-reviews", {
+        method: "POST",
+      });
+      const result = await response.json() as {
+        error?: string;
+        success?: boolean;
+        synced?: number;
+      };
 
-      setMessage(result.message);
+      if (!response.ok || !result.success) {
+        setError(result.error ?? "Nie udało się uruchomić synchronizacji.");
+        return;
+      }
+
+      const reviewCount = result.synced ?? 0;
+      setMessage(
+        reviewCount === 1
+          ? "Zsynchronizowano 1 opinię z Google."
+          : `Zsynchronizowano ${reviewCount} opinii z Google.`,
+      );
+      router.refresh();
     } catch {
       setError("Nie udało się uruchomić synchronizacji.");
     } finally {
@@ -75,7 +61,7 @@ export function GoogleSyncButton({
         {isSyncing ? "Synchronizuję..." : "Synchronizuj z Google"}
       </button>
       <div className="w-full min-w-[220px] sm:text-right">
-        <p className="text-xs font-medium text-black/40">Synchronizacja opinii: wkrótce</p>
+        <p className="text-xs font-medium text-black/40">Synchronizacja opinii Google</p>
         {isSyncing ? (
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-brand-soft">
             <div className="h-full w-2/3 animate-pulse rounded-full bg-brand" />
@@ -84,7 +70,6 @@ export function GoogleSyncButton({
         {message ? (
           <p className="mt-1 text-xs font-semibold text-brand">{message}</p>
         ) : null}
-        {message.includes("Ustawienia") ? <Link href="/settings" className="mt-2 inline-block text-xs font-semibold text-brand underline">Przejdź do Ustawień</Link> : null}
         {error ? (
           <p className="mt-1 text-xs font-semibold text-red-600">{error}</p>
         ) : null}

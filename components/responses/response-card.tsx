@@ -16,9 +16,11 @@ type ResponseCardProps = {
   content: string;
   createdAt: string;
   initialResponseText?: string | null;
+  initialResponsePublishedAt?: string | null;
   rating: number;
   reviewId: string;
   responseTone: string;
+  source: string;
   status: ResponseStatus;
 };
 
@@ -86,9 +88,11 @@ export function ResponseCard({
   content,
   createdAt,
   initialResponseText,
+  initialResponsePublishedAt,
   rating,
   reviewId,
   responseTone,
+  source,
   status,
 }: ResponseCardProps) {
   const trimmedInitialResponse =
@@ -105,9 +109,30 @@ export function ResponseCard({
     useState<AiGenerationProgressStatus>("idle");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isMarkingResponded, setIsMarkingResponded] = useState(false);
+  const [isDeletingPublishedReply, setIsDeletingPublishedReply] = useState(false);
   const [isMobileEditorOpen, setIsMobileEditorOpen] = useState(false);
-  const [publishedAt, setPublishedAt] = useState<string | null>(null);
+  const [publishedAt, setPublishedAt] = useState<string | null>(initialResponsePublishedAt ?? null);
   const details = getStatusDetails(currentStatus, responseText, savedResponseText);
+  const isPublishedResponse = currentStatus === "responded";
+  const canDeleteGoogleReply =
+    source === "google" &&
+    isPublishedResponse &&
+    Boolean(savedResponseText.trim());
+  const hasPublishedResponseChanges =
+    isPublishedResponse &&
+    responseText.trim() !== savedResponseText.trim();
+  const canSubmitToGoogle =
+    Boolean(responseText.trim()) &&
+    (!isPublishedResponse || hasPublishedResponseChanges);
+  const googleActionLabel = isMarkingResponded
+    ? hasPublishedResponseChanges
+      ? "Aktualizowanie..."
+      : "Publikowanie..."
+    : isPublishedResponse
+      ? hasPublishedResponseChanges
+        ? "Zaktualizuj w Google"
+        : "Opublikowano w Google"
+      : "Opublikuj w Google";
 
   useEffect(() => {
     if (!toast) {
@@ -221,6 +246,10 @@ export function ResponseCard({
 
     try {
       const response = await fetch(`/api/responses/${reviewId}/responded`, {
+        body: JSON.stringify({ responseText }),
+        headers: {
+          "Content-Type": "application/json",
+        },
         method: "POST",
       });
 
@@ -230,17 +259,75 @@ export function ResponseCard({
         );
       }
 
+      const data = await response.json() as {
+        responsePublishedAt?: string | null;
+        responseText?: string | null;
+        status?: ResponseStatus;
+      };
+      const publishedResponseText = typeof data.responseText === "string"
+        ? data.responseText.trim()
+        : responseText.trim();
+
+      setResponseText(publishedResponseText);
+      setSavedResponseText(publishedResponseText);
       setCurrentStatus("responded");
-      setPublishedAt(new Date().toISOString());
-      setToast("✓ Przygotowano status publikacji w Google");
+      setPublishedAt(typeof data.responsePublishedAt === "string" ? data.responsePublishedAt : new Date().toISOString());
+      setToast(
+        hasPublishedResponseChanges
+          ? "✓ Zaktualizowano odpowiedź w Google"
+          : "✓ Opublikowano odpowiedź w Google",
+      );
     } catch (respondedError) {
       setError(
         respondedError instanceof Error
           ? respondedError.message
-          : "Nie udało się oznaczyć odpowiedzi.",
+          : "Nie udało się zapisać odpowiedzi w Google.",
       );
     } finally {
       setIsMarkingResponded(false);
+    }
+  }
+
+  async function handleDeletePublishedReply() {
+    if (!window.confirm("Czy na pewno chcesz usunąć tę odpowiedź z Google?")) {
+      return;
+    }
+
+    setError("");
+    setIsDeletingPublishedReply(true);
+
+    try {
+      const response = await fetch(`/api/responses/${reviewId}/responded`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          await readApiError(response, "Nie udało się usunąć odpowiedzi z Google."),
+        );
+      }
+
+      const data = await response.json() as {
+        responseText?: string | null;
+        status?: ResponseStatus;
+      };
+      const retainedResponseText = typeof data.responseText === "string"
+        ? data.responseText.trim()
+        : savedResponseText;
+
+      setResponseText(retainedResponseText);
+      setSavedResponseText(retainedResponseText);
+      setCurrentStatus("ready");
+      setPublishedAt(null);
+      setToast("✓ Usunięto odpowiedź z Google");
+    } catch (deletionError) {
+      setError(
+        deletionError instanceof Error
+          ? deletionError.message
+          : "Nie udało się usunąć odpowiedzi z Google.",
+      );
+    } finally {
+      setIsDeletingPublishedReply(false);
     }
   }
 
@@ -364,14 +451,22 @@ export function ResponseCard({
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                disabled={!responseText.trim() || isMarkingResponded}
+                disabled={!canSubmitToGoogle || isMarkingResponded || isDeletingPublishedReply}
                 onClick={handleResponded}
                 className="inline-flex h-10 items-center justify-center rounded-xl border border-black/[0.08] bg-white px-4 text-xs font-semibold text-black/55 transition duration-200 hover:-translate-y-0.5 hover:border-brand/30 hover:text-brand disabled:cursor-wait disabled:opacity-60"
               >
-                {isMarkingResponded
-                  ? "Publikowanie..."
-                  : "Opublikuj w Google"}
+                {googleActionLabel}
               </button>
+              {canDeleteGoogleReply ? (
+                <button
+                  type="button"
+                  disabled={isDeletingPublishedReply || isMarkingResponded}
+                  onClick={handleDeletePublishedReply}
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-red-100 bg-white px-4 text-xs font-semibold text-red-600 transition duration-200 hover:-translate-y-0.5 hover:border-red-200 hover:bg-red-50 disabled:cursor-wait disabled:opacity-60"
+                >
+                  {isDeletingPublishedReply ? "Usuwanie..." : "Usuń odpowiedź z Google"}
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
@@ -415,7 +510,8 @@ export function ResponseCard({
                   {error ? <div className="mt-3 rounded-xl border border-red-100 bg-red-50 p-3 text-xs font-medium leading-5 text-red-600">{error}</div> : null}
                 </div>
                 <div className="grid shrink-0 grid-cols-1 gap-2 border-t border-black/[0.06] bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
-                  <button type="button" disabled={!responseText.trim() || isMarkingResponded} onClick={handleResponded} className="min-w-0 rounded-xl border border-black/[0.08] bg-white px-2 py-3 text-sm font-semibold text-black/55 transition hover:border-brand/30 hover:text-brand disabled:cursor-wait disabled:opacity-60">{isMarkingResponded ? "Publikowanie..." : "Opublikuj w Google"}</button>
+                  <button type="button" disabled={!canSubmitToGoogle || isMarkingResponded || isDeletingPublishedReply} onClick={handleResponded} className="min-w-0 rounded-xl border border-black/[0.08] bg-white px-2 py-3 text-sm font-semibold text-black/55 transition hover:border-brand/30 hover:text-brand disabled:cursor-wait disabled:opacity-60">{googleActionLabel}</button>
+                  {canDeleteGoogleReply ? <button type="button" disabled={isDeletingPublishedReply || isMarkingResponded} onClick={handleDeletePublishedReply} className="min-w-0 rounded-xl border border-red-100 bg-white px-2 py-3 text-sm font-semibold text-red-600 transition hover:border-red-200 hover:bg-red-50 disabled:cursor-wait disabled:opacity-60">{isDeletingPublishedReply ? "Usuwanie..." : "Usuń odpowiedź z Google"}</button> : null}
                 </div>
               </section>
             </div>,

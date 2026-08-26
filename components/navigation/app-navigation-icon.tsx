@@ -4,6 +4,7 @@ export type AppNavigationIconName =
   | "analysis"
   | "bell"
   | "dashboard"
+  | "help"
   | "logout"
   | "nfc"
   | "responses"
@@ -15,6 +16,7 @@ const iconPaths: Record<AppNavigationIconName, ReactNode> = {
   analysis: <><path d="M4 19V5" /><path d="M4 19h16" /><path d="m7 15 4-4 3 2 5-7" /></>,
   bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" /></>,
   dashboard: <><rect x="3" y="3" width="7" height="7" rx="2" /><rect x="14" y="3" width="7" height="7" rx="2" /><rect x="3" y="14" width="7" height="7" rx="2" /><rect x="14" y="14" width="7" height="7" rx="2" /></>,
+  help: <><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.7 2.7 0 1 1 4.7 1.8c-.9.9-1.7 1.3-1.7 2.7" /><path d="M12 17h.01" /></>,
   logout: <><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /><path d="M14 3h4a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3h-4" /></>,
   nfc: <><path d="M3.5 9a12 12 0 0 1 17 0" /><path d="M6.75 12.5a7.5 7.5 0 0 1 10.5 0" /><path d="M10 16a3 3 0 0 1 4 0" /></>,
   responses: <><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" /><path d="m8 10 2 2 4-4" /><path d="M8 15h7" /></>,

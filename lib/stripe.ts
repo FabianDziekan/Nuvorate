@@ -37,7 +37,12 @@ export type StripeSubscription = {
 
 export type StripeInvoice = {
   id: string;
+  amount_paid?: number;
+  currency?: string;
   customer: string | { id: string } | null;
+  payment_intent?: string | { id: string } | null;
+  status?: string | null;
+  created?: number;
   subscription?: string | { id: string } | null;
   parent?: {
     subscription_details?: {
@@ -285,6 +290,15 @@ export async function retrieveStripeSubscriptionOrNull(subscriptionId: string) {
 
     throw error;
   }
+}
+
+export async function retrieveLatestStripeInvoice(customerId: string) {
+  const payload = await stripeRequest<{ data?: StripeInvoice[] }>({
+    method: "GET",
+    path: `/invoices?customer=${encodeURIComponent(customerId)}&limit=1`,
+  });
+
+  return payload.data?.[0] ?? null;
 }
 
 export function constructStripeEvent(payload: string, signatureHeader: string) {

@@ -31,13 +31,26 @@ test("response card keeps direct editing and removes the separate manual-writing
   assert.match(responseCard, />\s*Kopiuj\s*</);
 });
 
-test("response card exposes draft, AI-ready and publication placeholder states", () => {
+test("response card exposes draft, AI-ready and Google publication states", () => {
   assert.match(responseCard, /label: "Wersja robocza"/);
   assert.match(responseCard, /label: "Gotowa odpowiedź AI"/);
   assert.match(responseCard, /label: "Opublikowano w Google"/);
   assert.match(responseCard, /getStatusDetails/);
   assert.match(responseCard, /Opublikuj w Google/);
-  assert.match(responseCard, /setPublishedAt\(new Date\(\)\.toISOString\(\)\)/);
+  assert.match(responseCard, /initialResponsePublishedAt/);
+  assert.match(responseCard, /responsePublishedAt/);
+  assert.match(responseCard, /setPublishedAt\(typeof data\.responsePublishedAt === "string"/);
+  assert.match(responseCard, /hasPublishedResponseChanges/);
+  assert.match(responseCard, /"Zaktualizuj w Google"/);
+});
+
+test("only an already published Google reply exposes the guarded delete action", () => {
+  assert.match(responseCard, /const canDeleteGoogleReply/);
+  assert.match(responseCard, /source === "google"/);
+  assert.match(responseCard, /isPublishedResponse/);
+  assert.match(responseCard, /Czy na pewno chcesz usunąć tę odpowiedź z Google\?/);
+  assert.match(responseCard, /method: "DELETE"/);
+  assert.match(responseCard, /Usuń odpowiedź z Google/);
 });
 
 test("response generation surfaces the configured response tone through settings", () => {
