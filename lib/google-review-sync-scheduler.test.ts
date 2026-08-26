@@ -12,6 +12,7 @@ const migration = readFileSync(
 );
 const manualRoute = readFileSync(new URL("../app/api/google/sync-reviews/route.ts", import.meta.url), "utf8");
 const service = readFileSync(new URL("./google-review-sync-service.ts", import.meta.url), "utf8");
+const diagnosticError = readFileSync(new URL("./google-review-sync-error.ts", import.meta.url), "utf8");
 
 test("system sync endpoint accepts only a matching server-to-server secret", () => {
   assert.match(schedulerRoute, /process\.env\.GOOGLE_REVIEW_SYNC_SECRET\?\.trim\(\)/);
@@ -62,9 +63,20 @@ test("a stale lease token cannot finish or fail a newer synchronization lease", 
 
 test("transient and reconnect-required failures have different safe connection states", () => {
   assert.match(service, /Google token refresh failed/);
+  assert.match(service, /p_last_error: failure\.diagnosticCode\.slice/);
   assert.match(service, /p_requires_reconnect: failure\.requiresReconnect/);
   assert.match(migration, /status = case when coalesce\(p_requires_reconnect, false\) then 'error' else 'connected' end/);
   assert.match(migration, /last_error = left\(/);
+});
+
+test("sync failures persist a safe diagnostic code without logging credentials or Google payloads", () => {
+  assert.match(diagnosticError, /readonly diagnosticCode: string/);
+  assert.match(service, /diagnosticCode: "lease_renew_failed"/);
+  assert.match(service, /diagnosticCode: "reviews_upsert_failed"/);
+  assert.match(service, /diagnosticCode: "reply_sync_failed"/);
+  assert.match(service, /diagnosticCode: "sync_completion_failed"/);
+  assert.doesNotMatch(service, /console\./);
+  assert.doesNotMatch(diagnosticError, /refresh_token|access_token|authorization/i);
 });
 
 test("manual and automatic synchronization call the same server-only service without logging tokens", () => {

@@ -47,3 +47,12 @@ test("Google review fetch follows every nextPageToken before returning reviews",
   assert.match(googleReviews, /\} while \(pageToken\)/);
   assert.match(googleReviews, /nextPageToken: null/);
 });
+
+test("Google review fetch exposes only safe stage codes for token and API failures", () => {
+  assert.match(googleReviews, /diagnosticCode: "token_decryption_failed"/);
+  assert.match(googleReviews, /diagnosticCode: `token_refresh_failed_\$\{response\.status\}`/);
+  assert.match(googleReviews, /diagnosticCode: "token_refresh_response_parse_failed"/);
+  assert.match(googleReviews, /diagnosticCode: `reviews_request_failed_\$\{response\.status\}`/);
+  assert.match(googleReviews, /diagnosticCode: "reviews_response_parse_failed"/);
+  assert.doesNotMatch(googleReviews, /console\./);
+});

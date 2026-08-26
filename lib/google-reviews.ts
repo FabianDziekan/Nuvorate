@@ -2,6 +2,7 @@ import "server-only";
 
 import { decryptGoogleToken } from "@/lib/google-business";
 import { mapGoogleReview, type GoogleReviewPayload } from "@/lib/google-review-mapping";
+import { GoogleReviewSyncError } from "@/lib/google-review-sync-error";
 
 type GoogleReviewsResponse = {
   reviews?: GoogleReviewPayload[];
@@ -20,7 +21,9 @@ function requireGoogleOAuthConfig() {
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
 
   if (!clientId || !clientSecret) {
-    throw new Error("Google integration is not configured.");
+    throw new GoogleReviewSyncError("Google integration is not configured.", {
+      diagnosticCode: "google_oauth_config_missing",
+    });
   }
 
   return { clientId, clientSecret };
@@ -32,7 +35,14 @@ function isGoogleResourceName(value: string, prefix: "accounts" | "locations") {
 
 async function createGoogleAccessToken(encryptedRefreshToken: string) {
   const { clientId, clientSecret } = requireGoogleOAuthConfig();
-  const refreshToken = decryptGoogleToken(encryptedRefreshToken);
+  let refreshToken: string;
+  try {
+    refreshToken = decryptGoogleToken(encryptedRefreshToken);
+  } catch {
+    throw new GoogleReviewSyncError("Google refresh token could not be decrypted.", {
+      diagnosticCode: "token_decryption_failed",
+    });
+  }
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -46,12 +56,24 @@ async function createGoogleAccessToken(encryptedRefreshToken: string) {
   });
 
   if (!response.ok) {
-    throw new Error(`Google token refresh failed (${response.status}).`);
+    throw new GoogleReviewSyncError(`Google token refresh failed (${response.status}).`, {
+      diagnosticCode: `token_refresh_failed_${response.status}`,
+      requiresReconnect: response.status === 400 || response.status === 401,
+    });
   }
 
-  const token = (await response.json()) as { access_token?: string };
+  let token: { access_token?: string };
+  try {
+    token = (await response.json()) as { access_token?: string };
+  } catch {
+    throw new GoogleReviewSyncError("Google token refresh response could not be parsed.", {
+      diagnosticCode: "token_refresh_response_parse_failed",
+    });
+  }
   if (!token.access_token) {
-    throw new Error("Google token refresh returned no access token.");
+    throw new GoogleReviewSyncError("Google token refresh returned no access token.", {
+      diagnosticCode: "token_refresh_response_invalid",
+    });
   }
 
   return token.access_token;
@@ -67,7 +89,9 @@ export async function fetchGoogleLocationReviews({
   locationId: string;
 }) {
   if (!isGoogleResourceName(accountId, "accounts") || !isGoogleResourceName(locationId, "locations")) {
-    throw new Error("Google connection has invalid account or location data.");
+    throw new GoogleReviewSyncError("Google connection has invalid account or location data.", {
+      diagnosticCode: "google_connection_resource_invalid",
+    });
   }
 
   const accessToken = await createGoogleAccessToken(encryptedRefreshToken);
@@ -91,10 +115,20 @@ export async function fetchGoogleLocationReviews({
     });
 
     if (!response.ok) {
-      throw new Error(`Google reviews request failed (${response.status}).`);
+      throw new GoogleReviewSyncError(`Google reviews request failed (${response.status}).`, {
+        diagnosticCode: `reviews_request_failed_${response.status}`,
+        requiresReconnect: response.status === 401 || response.status === 403,
+      });
     }
 
-    const data = (await response.json()) as GoogleReviewsResponse;
+    let data: GoogleReviewsResponse;
+    try {
+      data = (await response.json()) as GoogleReviewsResponse;
+    } catch {
+      throw new GoogleReviewSyncError("Google reviews response could not be parsed.", {
+        diagnosticCode: "reviews_response_parse_failed",
+      });
+    }
     reviews.push(...(data.reviews ?? []).map(mapGoogleReview));
 
     if (averageRating === null && typeof data.averageRating === "number") {

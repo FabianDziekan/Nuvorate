@@ -1,5 +1,6 @@
 import "server-only";
 
+import { GoogleReviewSyncError } from "@/lib/google-review-sync-error";
 import { fetchGoogleLocationReviews } from "@/lib/google-reviews";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -15,16 +16,6 @@ export type ClaimedGoogleReviewConnection = {
   google_location_id: string | null;
   sync_lease_token: string;
 };
-
-export class GoogleReviewSyncError extends Error {
-  readonly requiresReconnect: boolean;
-
-  constructor(message: string, { requiresReconnect = false }: { requiresReconnect?: boolean } = {}) {
-    super(message);
-    this.name = "GoogleReviewSyncError";
-    this.requiresReconnect = requiresReconnect;
-  }
-}
 
 function nonEmptyText(value: string | null, fallback: string) {
   const normalized = value?.trim();
@@ -50,7 +41,7 @@ function normalizeSyncFailure(error: unknown) {
     requiresReconnect
       ? "Połączenie Google wymaga ponownego połączenia."
       : "Nie udało się zsynchronizować opinii Google. Spróbujemy ponownie później.",
-    { requiresReconnect },
+    { diagnosticCode: "sync_unknown_failed", requiresReconnect },
   );
 }
 
@@ -73,7 +64,9 @@ export async function claimGoogleReviewSyncConnections({
   });
 
   if (error) {
-    throw new GoogleReviewSyncError("Nie udało się przygotować synchronizacji Google.");
+    throw new GoogleReviewSyncError("Nie udało się przygotować synchronizacji Google.", {
+      diagnosticCode: "sync_claim_failed",
+    });
   }
 
   return (data ?? []) as ClaimedGoogleReviewConnection[];
@@ -86,7 +79,9 @@ export async function completeGoogleReviewSync(connection: ClaimedGoogleReviewCo
   });
 
   if (error || data !== true) {
-    throw new GoogleReviewSyncError("Nie udało się zakończyć synchronizacji Google.");
+    throw new GoogleReviewSyncError("Nie udało się zakończyć synchronizacji Google.", {
+      diagnosticCode: "sync_completion_failed",
+    });
   }
 }
 
@@ -98,7 +93,9 @@ async function renewGoogleReviewSyncLease(connection: ClaimedGoogleReviewConnect
   });
 
   if (error || data !== true) {
-    throw new GoogleReviewSyncError("Synchronizacja Google wygasła przed zapisaniem danych.");
+    throw new GoogleReviewSyncError("Synchronizacja Google wygasła przed zapisaniem danych.", {
+      diagnosticCode: "lease_renew_failed",
+    });
   }
 }
 
@@ -106,13 +103,15 @@ export async function failGoogleReviewSync(connection: ClaimedGoogleReviewConnec
   const failure = normalizeSyncFailure(error);
   const { data, error: completionError } = await createAdminClient().rpc("fail_google_review_sync_connection", {
     p_connection_id: connection.connection_id,
-    p_last_error: failure.message.slice(0, MAX_SAFE_SYNC_ERROR_LENGTH),
+    p_last_error: failure.diagnosticCode.slice(0, MAX_SAFE_SYNC_ERROR_LENGTH),
     p_lease_token: connection.sync_lease_token,
     p_requires_reconnect: failure.requiresReconnect,
   });
 
   if (completionError || data !== true) {
-    throw new GoogleReviewSyncError("Nie udało się zapisać stanu synchronizacji Google.");
+    throw new GoogleReviewSyncError("Nie udało się zapisać stanu synchronizacji Google.", {
+      diagnosticCode: "sync_failure_persist_failed",
+    });
   }
 
   return failure;
@@ -120,7 +119,10 @@ export async function failGoogleReviewSync(connection: ClaimedGoogleReviewConnec
 
 export async function syncClaimedGoogleReviewConnection(connection: ClaimedGoogleReviewConnection) {
   if (!connection.google_account_id || !connection.google_location_id || !connection.encrypted_refresh_token) {
-    throw new GoogleReviewSyncError("Połączenie Google wymaga ponownego połączenia.", { requiresReconnect: true });
+    throw new GoogleReviewSyncError("Połączenie Google wymaga ponownego połączenia.", {
+      diagnosticCode: "google_connection_metadata_missing",
+      requiresReconnect: true,
+    });
   }
 
   try {
@@ -180,7 +182,9 @@ export async function syncClaimedGoogleReviewConnection(connection: ClaimedGoogl
         .upsert(reviewsToUpsert, { onConflict: "business_id,google_review_id" });
 
       if (upsertError) {
-        throw new GoogleReviewSyncError("Nie udało się zapisać opinii z Google.");
+        throw new GoogleReviewSyncError("Nie udało się zapisać opinii z Google.", {
+          diagnosticCode: "reviews_upsert_failed",
+        });
       }
     }
 
@@ -190,7 +194,9 @@ export async function syncClaimedGoogleReviewConnection(connection: ClaimedGoogl
         .upsert(reviewsWithGoogleReplies, { onConflict: "business_id,google_review_id" });
 
       if (replyUpsertError) {
-        throw new GoogleReviewSyncError("Nie udało się zapisać odpowiedzi z Google.");
+        throw new GoogleReviewSyncError("Nie udało się zapisać odpowiedzi z Google.", {
+          diagnosticCode: "reply_sync_failed",
+        });
       }
     }
 
@@ -206,7 +212,9 @@ export async function syncClaimedGoogleReviewConnection(connection: ClaimedGoogl
         .in("google_review_id", googleReviewIdsInSync);
 
       if (respondedGoogleReviewsError) {
-        throw new GoogleReviewSyncError("Nie udało się zsynchronizować odpowiedzi z Google.");
+        throw new GoogleReviewSyncError("Nie udało się zsynchronizować odpowiedzi z Google.", {
+          diagnosticCode: "reply_sync_failed",
+        });
       }
 
       const repliesRemovedInGoogle = (respondedGoogleReviews ?? [])
@@ -226,7 +234,9 @@ export async function syncClaimedGoogleReviewConnection(connection: ClaimedGoogl
           .in("id", repliesRemovedInGoogle);
 
         if (replyRemovalSyncError) {
-          throw new GoogleReviewSyncError("Nie udało się zsynchronizować odpowiedzi z Google.");
+          throw new GoogleReviewSyncError("Nie udało się zsynchronizować odpowiedzi z Google.", {
+            diagnosticCode: "reply_sync_failed",
+          });
         }
       }
     }
