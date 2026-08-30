@@ -15,11 +15,13 @@ type OpenAIResponse = {
 export const openAIModel = process.env.OPENAI_MODEL || "gpt-5.5";
 
 export async function generateStructuredOutput<T>({
+  idempotencyKey,
   schemaName,
   schema,
   system,
   user,
 }: {
+  idempotencyKey?: string;
   schemaName: string;
   schema: JsonSchema;
   system: string;
@@ -36,6 +38,7 @@ export async function generateStructuredOutput<T>({
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
     },
     body: JSON.stringify({
       model: openAIModel,

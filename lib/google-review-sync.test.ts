@@ -13,6 +13,13 @@ test("Google review sync uses an idempotent business-scoped Google review identi
   assert.match(service, /google_review_id: review\.googleReviewId/);
 });
 
+test("Google review sync returns only new local review IDs for downstream automation", () => {
+  assert.match(service, /ignoreDuplicates: true/);
+  assert.match(service, /\.select\("id"\)/);
+  assert.match(service, /newReviewIds/);
+  assert.match(service, /enqueueAutomaticReviewResponseJobs/);
+});
+
 test("Google review sync writes the mapped Google review fields", () => {
   assert.match(service, /author_name: nonEmptyText\(review\.author\.displayName/);
   assert.match(service, /content: nonEmptyText\(review\.comment/);

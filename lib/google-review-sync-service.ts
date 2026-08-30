@@ -2,6 +2,7 @@ import "server-only";
 
 import { GoogleReviewSyncError } from "@/lib/google-review-sync-error";
 import { fetchGoogleLocationReviews } from "@/lib/google-reviews";
+import { enqueueAutomaticReviewResponseJobs } from "@/lib/automatic-review-response-service";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const MAX_SYNC_BATCH_SIZE = 25;
@@ -176,7 +177,24 @@ export async function syncClaimedGoogleReviewConnection(connection: ClaimedGoogl
     // has reclaimed an expired synchronization lease.
     await renewGoogleReviewSyncLease(connection);
 
+    let newReviewIds: string[] = [];
     if (reviewsToUpsert.length > 0) {
+      // INSERT ... ON CONFLICT DO NOTHING is the authoritative new-record
+      // detector. Only rows inserted in this exact call are returned.
+      const { data: insertedReviews, error: insertError } = await admin
+        .from("reviews")
+        .upsert(reviewsToUpsert, {
+          ignoreDuplicates: true,
+          onConflict: "business_id,google_review_id",
+        })
+        .select("id");
+      if (insertError) {
+        throw new GoogleReviewSyncError("Nie udało się zapisać opinii z Google.", {
+          diagnosticCode: "reviews_upsert_failed",
+        });
+      }
+      newReviewIds = (insertedReviews ?? []).map((review) => review.id);
+
       const { error: upsertError } = await admin
         .from("reviews")
         .upsert(reviewsToUpsert, { onConflict: "business_id,google_review_id" });
@@ -241,7 +259,26 @@ export async function syncClaimedGoogleReviewConnection(connection: ClaimedGoogl
       }
     }
 
+    // Enqueue happens only after review and owner-reply state are synchronized.
+    // The durable UNIQUE(review_id) job prevents retries from duplicating AI work.
+    const { data: pendingEnqueueReviews, error: pendingEnqueueError } = await admin
+      .from("reviews")
+      .select("id")
+      .eq("business_id", connection.business_id)
+      .eq("source", "google")
+      .eq("automatic_response_enqueue_pending", true);
+    if (pendingEnqueueError) {
+      throw new GoogleReviewSyncError("Nie udało się przygotować opinii z Google.", {
+        diagnosticCode: "reviews_upsert_failed",
+      });
+    }
+    const enqueueReviewIds = (pendingEnqueueReviews ?? []).map((review) => review.id);
+    if (enqueueReviewIds.length > 0) {
+      await enqueueAutomaticReviewResponseJobs(connection.business_id, enqueueReviewIds);
+    }
+
     return {
+      newReviewIds,
       skipped: result.reviews.length - reviewsToUpsert.length,
       synced: reviewsToUpsert.length,
     };
