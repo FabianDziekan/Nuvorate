@@ -11,6 +11,7 @@ import {
 type ResponseSettingsCardProps = {
   businessId: string;
   initialAutoGenerate: boolean;
+  initialAutoPublish: boolean;
   initialEnabledRatings: number[];
 };
 
@@ -36,9 +37,11 @@ async function readApiError(response: Response, fallback: string) {
 export function ResponseSettingsCard({
   businessId,
   initialAutoGenerate,
+  initialAutoPublish,
   initialEnabledRatings,
 }: ResponseSettingsCardProps) {
   const [autoGenerate, setAutoGenerate] = useState(initialAutoGenerate);
+  const [autoPublish, setAutoPublish] = useState(initialAutoPublish);
   const [enabledRatings, setEnabledRatings] = useState(initialEnabledRatings);
   const [isSaving, setIsSaving] = useState(false);
   const [progressStatus, setProgressStatus] =
@@ -48,10 +51,12 @@ export function ResponseSettingsCard({
   const [isRatingsSheetOpen, setIsRatingsSheetOpen] = useState(false);
   const [savedAutoGenerate, setSavedAutoGenerate] =
     useState(initialAutoGenerate);
+  const [savedAutoPublish, setSavedAutoPublish] = useState(initialAutoPublish);
   const [savedEnabledRatings, setSavedEnabledRatings] =
     useState(initialEnabledRatings);
   const isDirty =
     autoGenerate !== savedAutoGenerate ||
+    autoPublish !== savedAutoPublish ||
     enabledRatings.join(",") !== savedEnabledRatings.join(",");
 
   useEffect(() => {
@@ -103,6 +108,7 @@ export function ResponseSettingsCard({
       const response = await fetch("/api/responses/settings", {
         body: JSON.stringify({
           autoGenerate,
+          autoPublish,
           businessId,
           enabledRatings,
         }),
@@ -120,12 +126,14 @@ export function ResponseSettingsCard({
 
       const data = await response.json();
       setAutoGenerate(Boolean(data?.autoGenerate));
+      setAutoPublish(Boolean(data?.autoPublish));
       const savedRatings =
         Array.isArray(data?.enabledRatings)
           ? data.enabledRatings.map((value: unknown) => Number(value))
           : enabledRatings;
       setEnabledRatings(savedRatings);
       setSavedAutoGenerate(Boolean(data?.autoGenerate));
+      setSavedAutoPublish(Boolean(data?.autoPublish));
       setSavedEnabledRatings(savedRatings);
 
       setProgressStatus("idle");
@@ -180,6 +188,33 @@ export function ResponseSettingsCard({
               <span
                 className={`nuvorate-switch-thumb absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
                   autoGenerate ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </span>
+          </label>
+          <label className="flex max-w-md items-center justify-between gap-4 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] px-4 py-3 transition duration-200 hover:border-brand/20 hover:bg-white">
+            <span>
+              <span className="block text-sm font-semibold text-ink">
+                Automatycznie publikuj odpowiedzi w Google
+              </span>
+              <span className="mt-1 block text-xs leading-5 text-black/40">
+                Po wygenerowaniu odpowiedzi NuvoRate opublikuje ją bez dodatkowego zatwierdzania dla wybranych ocen.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={autoPublish}
+              onChange={(event) => setAutoPublish(event.target.checked)}
+              className="peer sr-only"
+            />
+            <span
+              className={`nuvorate-switch-track relative h-6 w-11 shrink-0 rounded-full transition peer-focus-visible:ring-4 peer-focus-visible:ring-brand/20 ${
+                autoPublish ? "nuvorate-switch-track-on bg-brand" : "bg-black/10"
+              }`}
+            >
+              <span
+                className={`nuvorate-switch-thumb absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                  autoPublish ? "translate-x-6" : "translate-x-1"
                 }`}
               />
             </span>
@@ -274,6 +309,30 @@ export function ResponseSettingsCard({
             <span
               className={`nuvorate-switch-thumb absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
                 autoGenerate ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </span>
+        </label>
+
+        <label className="mt-2 flex items-center justify-between gap-4 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] px-4 py-3">
+          <span>
+            <span className="block text-sm font-semibold text-ink">Publikacja w Google</span>
+            <span className="mt-0.5 block text-xs leading-5 text-black/40">Publikuj wygenerowane odpowiedzi dla wybranych ocen bez dodatkowego zatwierdzania.</span>
+          </span>
+          <input
+            type="checkbox"
+            checked={autoPublish}
+            onChange={(event) => setAutoPublish(event.target.checked)}
+            className="peer sr-only"
+          />
+          <span
+            className={`nuvorate-switch-track relative h-6 w-11 shrink-0 rounded-full transition peer-focus-visible:ring-4 peer-focus-visible:ring-brand/20 ${
+              autoPublish ? "nuvorate-switch-track-on bg-brand" : "bg-black/10"
+            }`}
+          >
+            <span
+              className={`nuvorate-switch-thumb absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                autoPublish ? "translate-x-6" : "translate-x-1"
               }`}
             />
           </span>

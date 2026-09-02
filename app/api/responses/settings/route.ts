@@ -8,6 +8,7 @@ export async function PATCH(request: Request) {
     const body = await request.json();
     const businessId = body?.businessId;
     const autoGenerate = Boolean(body?.autoGenerate);
+    const autoPublish = Boolean(body?.autoPublish);
     const enabledRatings = Array.isArray(body?.enabledRatings)
       ? body.enabledRatings
           .map((value: unknown) => Number(value))
@@ -69,13 +70,14 @@ export async function PATCH(request: Request) {
       .upsert(
         {
           auto_generate: autoGenerate,
+          auto_publish: autoPublish,
           business_id: billingContext.activeBusiness.business.id,
           enabled_ratings: enabledRatings,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "business_id" },
       )
-      .select("auto_generate, enabled_ratings")
+      .select("auto_generate, auto_publish, enabled_ratings")
       .maybeSingle();
 
     if (error || !data) {
@@ -88,6 +90,7 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({
       autoGenerate: data.auto_generate,
+      autoPublish: data.auto_publish,
       enabledRatings: data.enabled_ratings ?? [],
     });
   } catch (error) {

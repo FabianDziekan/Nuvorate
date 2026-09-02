@@ -80,6 +80,24 @@ async function renewLease(job: ClaimedAutomaticReviewResponseJob) {
   return !error && data === true;
 }
 
+async function setPublicationState(
+  job: ClaimedAutomaticReviewResponseJob,
+  publicationStatus: "not_requested" | "pending",
+) {
+  const { data, error } = await createAdminClient().rpc(
+    "set_automatic_review_response_publication_state",
+    {
+      p_job_id: job.job_id,
+      p_lease_token: job.lease_token,
+      p_publication_status: publicationStatus,
+    },
+  );
+
+  if (error || data !== true) {
+    throw new Error("Automatic response publication handoff failed");
+  }
+}
+
 /** A recovered job may already have completed its durable reservation. */
 async function completeAutomaticReservationIfNeeded({
   admin,
@@ -112,7 +130,7 @@ export async function processAutomaticReviewResponseJob(job: ClaimedAutomaticRev
   const admin = createAdminClient();
   const [{ data: review }, { data: settings }, { data: business }, { data: existingAiResponse }] = await Promise.all([
     admin.from("reviews").select("id, business_id, author_name, rating, content, response_status, response_text, response_generated_at, source").eq("id", job.review_id).eq("business_id", job.business_id).maybeSingle(),
-    admin.from("business_response_settings").select("auto_generate, enabled_ratings, response_tone").eq("business_id", job.business_id).maybeSingle(),
+    admin.from("business_response_settings").select("auto_generate, auto_publish, enabled_ratings, response_tone").eq("business_id", job.business_id).maybeSingle(),
     admin.from("businesses").select("id, name, owner_id").eq("id", job.business_id).maybeSingle(),
     admin.from("ai_review_responses").select("id").eq("review_id", job.review_id).maybeSingle(),
   ]);
@@ -124,6 +142,9 @@ export async function processAutomaticReviewResponseJob(job: ClaimedAutomaticRev
   const responseText = typeof review?.response_text === "string" ? review.response_text.trim() : "";
   const ratingEnabled = Number.isInteger(review?.rating) && Array.isArray(settings?.enabled_ratings)
     && settings.enabled_ratings.includes(Number(review?.rating));
+  const automaticPublicationEnabled = Boolean(
+    settings?.auto_generate && settings?.auto_publish && ratingEnabled,
+  );
 
   // A crash after persisting an AI draft but before finishing the job must not
   // call OpenAI again. Complete the pre-existing reservation and terminally
@@ -136,6 +157,10 @@ export async function processAutomaticReviewResponseJob(job: ClaimedAutomaticRev
         billingOwnerId: job.billing_owner_id,
       });
     }
+    await setPublicationState(
+      job,
+      automaticPublicationEnabled ? "pending" : "not_requested",
+    );
     await finish(job, "completed");
     return "completed" as const;
   }
@@ -207,6 +232,10 @@ export async function processAutomaticReviewResponseJob(job: ClaimedAutomaticRev
       reservationId: reservation.reservation_id,
       billingOwnerId: job.billing_owner_id,
     });
+    await setPublicationState(
+      job,
+      automaticPublicationEnabled ? "pending" : "not_requested",
+    );
     await finish(job, "completed");
     return "completed" as const;
   } catch (error) {

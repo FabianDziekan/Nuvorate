@@ -7,6 +7,7 @@ function source(path: string) {
 }
 
 const migration = source("docs/database/029_automatic_review_response_jobs.sql");
+const publicationFoundationMigration = source("docs/database/032_automatic_google_publication_foundation.sql");
 const sync = source("lib/google-review-sync-service.ts");
 const worker = source("lib/automatic-review-response-service.ts");
 const workerRoute = source("app/api/internal/automatic-review-responses/route.ts");
@@ -132,4 +133,57 @@ test("the system worker is server-to-server protected and exposes safe aggregate
   assert.match(workerRoute, /status: 401/);
   assert.match(workerRoute, /\{ claimed: jobs\.length, completed, failed, skipped, success: true \}/);
   assert.doesNotMatch(workerRoute, /createClient\(\)/);
+});
+
+test("automatic Google publication remains explicitly off for all existing businesses", () => {
+  assert.match(publicationFoundationMigration, /auto_publish boolean not null default false/);
+  assert.match(publicationFoundationMigration, /add column if not exists auto_publish/);
+  assert.match(settingsUi, /Automatycznie publikuj odpowiedzi w Google/);
+  assert.match(settingsUi, /autoPublish/);
+});
+
+test("generation hands off a completed draft to durable publication state without calling Google", () => {
+  assert.match(worker, /auto_generate && settings\?\.auto_publish && ratingEnabled/);
+  assert.match(worker, /automaticPublicationEnabled \? "pending" : "not_requested"/);
+  assert.match(worker, /await completeAutomaticReservationIfNeeded[\s\S]*await setPublicationState[\s\S]*await finish\(job, "completed"\)/);
+  assert.doesNotMatch(worker, /publishGoogleLocationReviewReply/);
+  assert.doesNotMatch(worker, /google-reviews/);
+  assert.match(publicationFoundationMigration, /publication_status in \('not_requested', 'pending', 'processing', 'completed', 'retryable_failed', 'terminal_failed'\)/);
+});
+
+test("publication claim is separately leased and only accepts completed billed drafts", () => {
+  assert.match(publicationFoundationMigration, /claim_automatic_review_response_publication_jobs/);
+  assert.match(publicationFoundationMigration, /job\.status = 'completed'/);
+  assert.match(publicationFoundationMigration, /reservation\.status = 'completed'/);
+  assert.match(publicationFoundationMigration, /review\.response_status = 'ready'/);
+  assert.match(publicationFoundationMigration, /review\.response_published_at is null/);
+  assert.match(publicationFoundationMigration, /for update of job skip locked/);
+  assert.match(publicationFoundationMigration, /publication_status = 'processing'/);
+  assert.match(publicationFoundationMigration, /publication_attempt_count = job\.publication_attempt_count \+ 1/);
+  assert.match(publicationFoundationMigration, /renew_automatic_review_response_publication_lease/);
+});
+
+test("publication-only retry cannot reserve AI usage or re-enter OpenAI generation", () => {
+  const publicationClaim = publicationFoundationMigration.slice(
+    publicationFoundationMigration.indexOf("create or replace function public.claim_automatic_review_response_publication_jobs"),
+    publicationFoundationMigration.indexOf("create or replace function public.finish_automatic_review_response_publication"),
+  );
+  assert.match(publicationClaim, /job\.publication_status = 'retryable_failed'/);
+  assert.doesNotMatch(publicationClaim, /reserve_ai_usage_for_automatic_review_job/);
+  assert.doesNotMatch(publicationClaim, /ai_replies_used/);
+  assert.doesNotMatch(publicationClaim, /OpenAI/);
+});
+
+test("publication RPCs are service-role-only and do not create a Google publishing route", () => {
+  for (const name of [
+    "set_automatic_review_response_publication_state",
+    "claim_automatic_review_response_publication_jobs",
+    "finish_automatic_review_response_publication",
+    "renew_automatic_review_response_publication_lease",
+  ]) {
+    assert.match(publicationFoundationMigration, new RegExp(`revoke all on function public\\.${name}`));
+    assert.match(publicationFoundationMigration, new RegExp(`grant execute on function public\\.${name}`));
+  }
+  assert.doesNotMatch(publicationFoundationMigration, /mybusiness\.googleapis\.com/);
+  assert.doesNotMatch(publicationFoundationMigration, /http_post/);
 });

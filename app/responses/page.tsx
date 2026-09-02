@@ -45,6 +45,7 @@ type Review = {
 
 type ResponseSettings = {
   auto_generate: boolean | null;
+  auto_publish: boolean | null;
   enabled_ratings: number[] | null;
   response_tone: string | null;
 };
@@ -325,7 +326,7 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
       .order("created_at", { ascending: false }),
     supabase
       .from("business_response_settings")
-      .select("auto_generate, enabled_ratings, response_tone")
+      .select("auto_generate, auto_publish, enabled_ratings, response_tone")
       .eq("business_id", business.id)
       .maybeSingle(),
   ]);
@@ -492,6 +493,7 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
               <ResponseSettingsCard
                 businessId={business.id}
                 initialAutoGenerate={Boolean(responseSettings?.auto_generate)}
+                initialAutoPublish={Boolean(responseSettings?.auto_publish)}
                 initialEnabledRatings={enabledRatings}
               />
             ) : (

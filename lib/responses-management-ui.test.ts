@@ -54,7 +54,7 @@ test("only an already published Google reply exposes the guarded delete action",
 });
 
 test("response generation surfaces the configured response tone through settings", () => {
-  assert.match(responsesPage, /select\("auto_generate, enabled_ratings, response_tone"\)/);
+  assert.match(responsesPage, /select\("auto_generate, auto_publish, enabled_ratings, response_tone"\)/);
   assert.match(responsesPage, /responseTone=\{responseTone\}/);
   assert.match(responseCard, /Ton odpowiedzi:/);
   assert.match(responseCard, /href="\/settings"/);
