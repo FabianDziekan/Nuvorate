@@ -150,6 +150,38 @@ export async function fetchGoogleLocationReviews({
   };
 }
 
+/**
+ * Reads a single review through the already proven, fully paginated reviews
+ * listing. Keeping reconciliation on this path avoids a second OAuth or Google
+ * API implementation and makes an absent owner reply unambiguous.
+ */
+export async function findGoogleLocationReview({
+  accountId,
+  encryptedRefreshToken,
+  locationId,
+  reviewId,
+}: {
+  accountId: string;
+  encryptedRefreshToken: string;
+  locationId: string;
+  reviewId: string;
+}) {
+  const normalizedReviewId = reviewId.trim();
+  if (!normalizedReviewId) {
+    throw new GoogleReviewSyncError("Google review id is required.", {
+      diagnosticCode: "google_review_id_missing",
+    });
+  }
+
+  const result = await fetchGoogleLocationReviews({
+    accountId,
+    encryptedRefreshToken,
+    locationId,
+  });
+
+  return result.reviews.find((review) => review.googleReviewId === normalizedReviewId) ?? null;
+}
+
 export async function publishGoogleLocationReviewReply({
   accountId,
   encryptedRefreshToken,
