@@ -33,7 +33,7 @@ function isGoogleResourceName(value: string, prefix: "accounts" | "locations") {
   return new RegExp(`^${prefix}/[^/]+$`).test(value);
 }
 
-async function createGoogleAccessToken(encryptedRefreshToken: string) {
+export async function createGoogleAccessToken(encryptedRefreshToken: string) {
   const { clientId, clientSecret } = requireGoogleOAuthConfig();
   let refreshToken: string;
   try {
