@@ -18,8 +18,22 @@ test("temporary Places diagnostic uses the existing internal secret and a busine
 test("temporary Places diagnostic reads the API key server-side and performs one minimal Places request", () => {
   assert.match(route, /process\.env\.GOOGLE_PLACES_API_KEY\?\.trim\(\)/);
   assert.equal((route.match(/places\.googleapis\.com\/v1\/places/g) ?? []).length, 1);
-  assert.match(route, /"X-Goog-FieldMask": "reviews,userRatingCount"/);
+  assert.match(
+    route,
+    /"X-Goog-FieldMask": "reviews\.rating,reviews\.text,reviews\.originalText,reviews\.publishTime,reviews\.authorAttribution,userRatingCount"/,
+  );
   assert.doesNotMatch(route, /while\s*\(|retry/i);
+});
+
+test("temporary diagnostic compares GBP and Places reviews conservatively in memory", () => {
+  assert.match(route, /fetchGoogleLocationReviews\(\{/);
+  assert.match(route, /\.normalize\("NFKC"\)/);
+  assert.match(route, /candidate\.rating === review\.rating/);
+  assert.match(route, /normalizeComparisonText\(candidate\.author\.displayName\) === normalizedName/);
+  assert.match(route, /normalizedCandidateText === normalizedPlacesText/);
+  assert.match(route, /createDeltaSeconds === 0 \|\| updateDeltaSeconds === 0/);
+  assert.match(route, /timestampMatches\.length === 1/);
+  assert.match(route, /timestampMatches\.length > 1 \? "AMBIGUOUS" : "NO_MATCH"/);
 });
 
 test("temporary Places diagnostic obtains Place ID from GBP metadata without database writes", () => {
