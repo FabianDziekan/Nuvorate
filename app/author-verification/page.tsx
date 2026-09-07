@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
+import { AUTHOR_PROFILES_ENABLED } from "@/lib/author-profiles-launch";
 import {
   AuthorVerificationList,
   type AuthorVerificationReview,
 } from "@/components/author-verification/author-verification-list";
-import { MobileAuthorVerificationFilters } from "@/components/author-verification/mobile-author-verification-filters";
 import { MobileBottomNavigation } from "@/components/navigation/mobile-bottom-navigation";
 import { AppNavigationIcon } from "@/components/navigation/app-navigation-icon";
 import { BrandLogo } from "@/components/brand/logo";
@@ -14,11 +14,6 @@ import { BusinessFeatureLock } from "@/components/billing/business-feature-lock"
 import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
-import { Pagination } from "@/components/ui/pagination";
-import {
-  RatingFilter,
-  ratingFilterValues,
-} from "@/components/ui/rating-filter";
 import {
   getPlanLabel,
   hasPlanCapability,
@@ -28,7 +23,7 @@ import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
 import { signOut } from "@/app/dashboard/actions";
 
 export const metadata: Metadata = {
-  title: "Weryfikacja autora | NuvoRate",
+  title: "Autorzy opinii | NuvoRate",
 };
 
 type AuthorVerificationIcon =
@@ -136,11 +131,6 @@ const navigation = [
   { label: "Opinie", icon: "reviews" as const, href: "/reviews" },
   { label: "Analiza", icon: "analysis" as const, href: "/analysis" },
   { label: "Odpowiedzi", icon: "responses" as const, href: "/responses" },
-  {
-    label: "Weryfikacja autora",
-    icon: "verification" as const,
-    href: "/author-verification",
-  },
   { label: "NFC", icon: "nfc" as const, href: "/nfc" },
   { label: "Powiadomienia", icon: "bell" as const, href: "/notifications" },
   { label: "Ustawienia", icon: "settings" as const, href: "/settings" },
@@ -156,6 +146,7 @@ type ReviewRow = {
   source: string | null;
 };
 
+
 type AuthorVerificationPageProps = {
   searchParams: Promise<{
     page?: string;
@@ -166,70 +157,8 @@ type AuthorVerificationPageProps = {
   }>;
 };
 
-const authorVerificationPerPage = 10;
-const statusFilters = ["all", "unverified", "verified"] as const;
-const sortOptions = ["newest", "oldest", "lowest", "highest"] as const;
-
-function buildAuthorVerificationHref({
-  page = 1,
-  q,
-  rating,
-  sort,
-  status,
-}: {
-  page?: number;
-  q: string;
-  rating: string;
-  sort: string;
-  status: string;
-}) {
-  const params = new URLSearchParams();
-
-  if (q) {
-    params.set("q", q);
-  }
-
-  if (rating !== "all") {
-    params.set("rating", rating);
-  }
-
-  if (status !== "all") {
-    params.set("status", status);
-  }
-
-  if (sort !== "newest") {
-    params.set("sort", sort);
-  }
-
-  if (page > 1) {
-    params.set("page", String(page));
-  }
-
-  const query = params.toString();
-  return query ? `/author-verification?${query}` : "/author-verification";
-}
-
-export default async function AuthorVerificationPage({
-  searchParams,
-}: AuthorVerificationPageProps) {
-  const params = await searchParams;
-  const selectedRating = ratingFilterValues.includes(
-    params.rating as (typeof ratingFilterValues)[number],
-  )
-    ? params.rating!
-    : "all";
-  const selectedStatus = statusFilters.includes(
-    params.status as (typeof statusFilters)[number],
-  )
-    ? params.status!
-    : "all";
-  const selectedSort = sortOptions.includes(
-    params.sort as (typeof sortOptions)[number],
-  )
-    ? params.sort!
-    : "newest";
-  const searchQuery = typeof params.q === "string" ? params.q.trim() : "";
-  const requestedPage = Number(params.page ?? "1");
+export default async function AuthorVerificationPage() {
+  if (!AUTHOR_PROFILES_ENABLED) notFound();
   const supabase = await createClient();
   const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
 
@@ -274,99 +203,16 @@ export default async function AuthorVerificationPage({
 
   const appPlan = billingContext.plan;
   const canVerifyAuthors = hasPlanCapability(appPlan, "authorVerification");
-  const { data: reviews, error: reviewsError } = canVerifyAuthors
-    ? await supabase
-        .from("reviews")
-        .select("id, author_name, rating, content, created_at, source")
-        .eq("business_id", business.id)
-        .order("created_at", { ascending: false })
+  const reviewsResult = canVerifyAuthors
+    ? await supabase.from("reviews").select("id, author_name, rating, content, created_at, source").eq("business_id", business.id).eq("source", "google").order("created_at", { ascending: false })
     : { data: [], error: null };
-
-  if (reviewsError) {
-    throw new Error(
-      "Nie udało się odczytać opinii. Sprawdź konfigurację Supabase.",
-    );
-  }
-
   const plan = getPlanLabel(appPlan);
-  const firstName =
-    typeof profile.first_name === "string" ? profile.first_name.trim() : "";
+  const firstName = typeof profile.first_name === "string" ? profile.first_name.trim() : "";
   const displayName = firstName || user.email || "NU";
-  const allVerificationReviews: AuthorVerificationReview[] = (
-    (reviews ?? []) as ReviewRow[]
-  ).map((review) => ({
-    authorName: review.author_name,
-    authorProfileUrl: null,
-    content: review.content,
-    createdAt: review.created_at,
-    id: review.id,
-    rating: Number(review.rating),
-    source: review.source ?? "google",
-    verificationStatus: "unverified",
+  const authorReviews: AuthorVerificationReview[] = ((reviewsResult.data ?? []) as ReviewRow[]).map(review => ({
+    id: review.id, authorName: review.author_name, rating: Number(review.rating),
+    content: review.content, createdAt: review.created_at,
   }));
-  const normalizedSearchQuery = searchQuery.toLowerCase();
-  const filteredReviews = allVerificationReviews
-    .filter((review) => {
-      if (selectedRating !== "all" && review.rating !== Number(selectedRating)) {
-        return false;
-      }
-
-      if (
-        selectedStatus !== "all" &&
-        review.verificationStatus !== selectedStatus
-      ) {
-        return false;
-      }
-
-      if (!normalizedSearchQuery) {
-        return true;
-      }
-
-      return (
-        review.authorName.toLowerCase().includes(normalizedSearchQuery) ||
-        review.content.toLowerCase().includes(normalizedSearchQuery)
-      );
-    })
-    .sort((firstReview, secondReview) => {
-      if (selectedSort === "oldest") {
-        return (
-          new Date(firstReview.createdAt).getTime() -
-          new Date(secondReview.createdAt).getTime()
-        );
-      }
-
-      if (selectedSort === "lowest") {
-        return firstReview.rating - secondReview.rating;
-      }
-
-      if (selectedSort === "highest") {
-        return secondReview.rating - firstReview.rating;
-      }
-
-      return (
-        new Date(secondReview.createdAt).getTime() -
-        new Date(firstReview.createdAt).getTime()
-      );
-    });
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredReviews.length / authorVerificationPerPage),
-  );
-  const currentPage = Number.isInteger(requestedPage)
-    ? Math.min(Math.max(requestedPage, 1), totalPages)
-    : 1;
-  const pageStart = (currentPage - 1) * authorVerificationPerPage;
-  const pageEnd = pageStart + authorVerificationPerPage;
-  const paginatedReviews = filteredReviews.slice(pageStart, pageEnd);
-  const buildHref = (page: number) =>
-    buildAuthorVerificationHref({
-      page,
-      q: searchQuery,
-      rating: selectedRating,
-      sort: selectedSort,
-      status: selectedStatus,
-    });
-
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#F7F7FA] text-ink">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col border-r border-black/[0.06] bg-white px-5 py-6 lg:flex">
@@ -378,7 +224,7 @@ export default async function AuthorVerificationPage({
         />
         <nav className="mt-7 space-y-1.5" aria-label="Nawigacja dashboardu">
           {navigation.map((item) => {
-            const active = item.label === "Weryfikacja autora";
+            const active = item.label === "Autorzy opinii";
             const className = `sidebar-nav-item flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition ${
               active
                 ? "bg-brand-soft text-brand"
@@ -391,7 +237,7 @@ export default async function AuthorVerificationPage({
                 <span className="min-w-0 flex-1">{item.label}</span>
                 <BusinessNavBadge
                   show={
-                    item.label === "Weryfikacja autora" &&
+                    item.label === "Autorzy opinii" &&
                     !canVerifyAuthors
                   }
                 />
@@ -438,7 +284,7 @@ export default async function AuthorVerificationPage({
             <div className="hidden min-w-0 lg:block">
               <p className="truncate text-xs text-black/35">{business.name}</p>
               <p className="mt-0.5 text-sm font-semibold">
-                Weryfikacja autora
+                Autorzy opinii
               </p>
             </div>
             <div className="flex min-w-0 items-center gap-2.5">
@@ -477,239 +323,22 @@ export default async function AuthorVerificationPage({
                   </p>
                 </div>
                 <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-                  Weryfikacja autora
+                  Autorzy opinii
                 </h1>
                 <p className="mt-1 max-w-2xl text-sm leading-6 text-black/45 min-[769px]:mt-2">
-                  <span className="min-[769px]:hidden">Sprawdzaj autorów opinii i oceniaj wiarygodność profilu.</span>
-                  <span className="max-[768px]:hidden">Sprawdzaj autorów opinii i przygotuj się na przyszłą integrację z publicznym profilem Google autora.</span>
+                  Dla części opinii NuvoRate może udostępnić bezpośredni link do publicznego profilu autora w Google Maps.
                 </p>
               </div>
             </div>
 
             {!canVerifyAuthors ? (
-              <BusinessFeatureLock
-                className="mt-8 min-h-[520px]"
-                title="Weryfikacja autora"
-                description="Sprawdź publiczną aktywność autora opinii i uzyskaj dodatkowy kontekst recenzji."
-                preview={
-                  <div className="p-5 sm:p-6">
-                    <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                      <div>
-                        <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
-                          Przykładowa lista opinii
-                        </p>
-                        <h2 className="mt-1 text-xl font-semibold tracking-tight">
-                          3 autorów
-                        </h2>
-                      </div>
-                      <div className="rounded-xl border border-black/[0.08] bg-[#FAFAFC] px-4 py-2.5 text-xs text-black/40">
-                        Szukaj autora…
-                      </div>
-                    </div>
-                    <div className="mt-6 space-y-3">
-                      {[
-                        {
-                          author: "Anna K.",
-                          rating: "★★★★★",
-                          review: "Bardzo dobra obsługa i przyjazna atmosfera.",
-                          status: "Aktywność publiczna",
-                        },
-                        {
-                          author: "Marek P.",
-                          rating: "★★★☆☆",
-                          review: "Wizyta przebiegła sprawnie, choć czas oczekiwania był dłuższy.",
-                          status: "Profil do sprawdzenia",
-                        },
-                        {
-                          author: "Katarzyna W.",
-                          rating: "★★★★☆",
-                          review: "Profesjonalne podejście i dobry kontakt z klientem.",
-                          status: "Zweryfikowany kontekst",
-                        },
-                      ].map((item) => (
-                        <article
-                          key={item.author}
-                          className="grid gap-4 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4 sm:grid-cols-[1fr_auto] sm:items-center"
-                        >
-                          <div>
-                            <div className="flex items-center gap-3">
-                              <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-soft text-xs font-semibold text-brand">
-                                {item.author.slice(0, 2)}
-                              </span>
-                              <div>
-                                <p className="text-sm font-semibold">{item.author}</p>
-                                <p className="text-xs text-amber-500">{item.rating}</p>
-                              </div>
-                            </div>
-                            <p className="mt-3 text-sm leading-6 text-black/50">
-                              {item.review}
-                            </p>
-                          </div>
-                          <span className="rounded-xl border border-brand/15 bg-brand-soft px-3 py-2 text-xs font-semibold text-brand">
-                            {item.status}
-                          </span>
-                        </article>
-                      ))}
-                    </div>
-                  </div>
-                }
-              />
+              <BusinessFeatureLock className="mt-8 min-h-[400px]" title="Autorzy opinii"
+                description="Publiczne profile autorów w Google Maps dla części opinii."
+                preview={<div className="p-8 text-black/40">Autor opinii · ★★★★★ · Google Maps</div>} />
             ) : (
-            <section className="mt-5 min-w-0 overflow-hidden rounded-[24px] border border-black/[0.06] bg-white p-4 shadow-card min-[769px]:mt-8 min-[769px]:p-5 sm:p-6">
-              <div className="flex flex-col justify-between gap-3 min-[769px]:gap-4 sm:flex-row sm:items-center">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
-                    Lista opinii
-                  </p>
-                  <div className="mt-1 flex items-center gap-3">
-                    <h2 className="text-xl font-semibold tracking-tight">
-                      {filteredReviews.length}{" "}
-                      {filteredReviews.length === 1 ? "autor" : "autorów"}
-                    </h2>
-                    <MobileAuthorVerificationFilters
-                      searchQuery={searchQuery}
-                      selectedRating={selectedRating}
-                      selectedSort={selectedSort}
-                      selectedStatus={selectedStatus}
-                    />
-                  </div>
-                </div>
-                <p className="hidden max-w-md text-sm leading-6 text-black/45 min-[769px]:block">
-                  Kliknij opinię albo przycisk „Sprawdź autora”, aby otworzyć
-                  panel weryfikacji.
-                </p>
-              </div>
-
-              <div className="mt-6 hidden rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4 min-[769px]:block">
-                <div className="grid gap-4 xl:grid-cols-[1fr_260px]">
-                  <form action="/author-verification" className="min-w-0">
-                    <input type="hidden" name="rating" value={selectedRating} />
-                    <input type="hidden" name="status" value={selectedStatus} />
-                    <label className="block">
-                      <span className="text-xs font-semibold text-black/45">
-                        Wyszukiwarka
-                      </span>
-                      <div className="mt-2 flex gap-2">
-                        <input
-                          name="q"
-                          defaultValue={searchQuery}
-                          placeholder="Szukaj autora..."
-                          className="w-full rounded-2xl border border-black/[0.08] bg-white px-4 py-3 text-sm outline-none transition focus:border-brand/30 focus:ring-4 focus:ring-brand/10"
-                        />
-                        <button
-                          type="submit"
-                          className="rounded-2xl bg-brand px-4 py-3 text-xs font-semibold text-white transition hover:bg-[#4D4EE8]"
-                        >
-                          Szukaj
-                        </button>
-                      </div>
-                    </label>
-                  </form>
-
-                  <form action="/author-verification">
-                    <input type="hidden" name="q" value={searchQuery} />
-                    <input type="hidden" name="rating" value={selectedRating} />
-                    <input type="hidden" name="status" value={selectedStatus} />
-                    <label className="block">
-                      <span className="text-xs font-semibold text-black/45">
-                        Sortowanie
-                      </span>
-                      <select
-                        name="sort"
-                        defaultValue={selectedSort}
-                        className="mt-2 w-full rounded-2xl border border-black/[0.08] bg-white px-4 py-3 text-sm outline-none transition focus:border-brand/30 focus:ring-4 focus:ring-brand/10"
-                      >
-                        <option value="newest">Najnowsze</option>
-                        <option value="oldest">Najstarsze</option>
-                        <option value="lowest">Najniższa ocena</option>
-                        <option value="highest">Najwyższa ocena</option>
-                      </select>
-                      <button
-                        type="submit"
-                        className="mt-2 w-full rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-xs font-semibold text-black/55 transition hover:border-brand/30 hover:text-brand"
-                      >
-                        Zastosuj
-                      </button>
-                    </label>
-                  </form>
-                </div>
-
-                <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                  <div>
-                    <p className="text-xs font-semibold text-black/45">
-                      Ocena
-                    </p>
-                    <div className="mt-2">
-                      <RatingFilter
-                        selectedRating={selectedRating}
-                        buildHref={(rating) =>
-                          buildAuthorVerificationHref({
-                            q: searchQuery,
-                            rating,
-                            sort: selectedSort,
-                            status: selectedStatus,
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-semibold text-black/45">
-                      Status
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {[
-                        { label: "Wszystkie", value: "all" },
-                        { label: "Niezweryfikowane", value: "unverified" },
-                        { label: "Zweryfikowane", value: "verified" },
-                      ].map((status) => {
-                        const active = selectedStatus === status.value;
-                        const href = buildAuthorVerificationHref({
-                          q: searchQuery,
-                          rating: selectedRating,
-                          sort: selectedSort,
-                          status: status.value,
-                        });
-
-                        return (
-                          <Link
-                            key={status.value}
-                            href={href}
-                            className={`rounded-xl px-3.5 py-2.5 text-xs font-semibold transition ${
-                              active
-                                ? "bg-brand text-white shadow-sm"
-                                : "border border-black/[0.08] bg-white text-black/50 hover:border-brand/30 hover:text-brand"
-                            }`}
-                          >
-                            {status.label}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 min-[769px]:mt-6">
-                <AuthorVerificationList reviews={paginatedReviews} />
-              </div>
-
-              <div className="mt-6 hidden min-[769px]:block">
-                <Pagination
-                  buildHref={buildHref}
-                  currentPage={currentPage}
-                  itemLabel="autorów"
-                  pageSize={authorVerificationPerPage}
-                  totalItems={filteredReviews.length}
-                />
-              </div>
-              <div className="mt-5 text-center min-[769px]:hidden">
-                {currentPage < totalPages ? <Link href={buildHref(currentPage + 1)} className="inline-flex rounded-xl border border-black/[0.08] px-4 py-2.5 text-xs font-semibold text-brand">Załaduj więcej</Link> : null}
-                <p className="mt-2 text-[11px] text-black/40">Wyświetlono {Math.min(currentPage * authorVerificationPerPage, filteredReviews.length)} z {filteredReviews.length} autorów</p>
-              </div>
-            </section>
+              <AuthorVerificationList key={business.id} businessId={business.id} location={business.name} reviews={authorReviews} />
             )}
+
           </div>
         </div>
       </div>

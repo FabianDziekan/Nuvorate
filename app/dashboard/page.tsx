@@ -164,11 +164,6 @@ const navigation = [
   { label: "Opinie", icon: "reviews" as const },
   { label: "Analiza", icon: "analysis" as const, href: "/analysis" },
   { label: "Odpowiedzi", icon: "responses" as const, href: "/responses" },
-  {
-    label: "Weryfikacja autora",
-    icon: "verification" as const,
-    href: "/author-verification",
-  },
   { label: "NFC", icon: "nfc" as const, href: "/nfc" },
   { label: "Powiadomienia", icon: "bell" as const, href: "/notifications" },
   { label: "Ustawienia", icon: "settings" as const, href: "/settings" },
@@ -1248,7 +1243,7 @@ export default async function DashboardPage({
                   <span className="min-w-0 flex-1">{item.label}</span>
                   <BusinessNavBadge
                     show={
-                      item.label === "Weryfikacja autora" &&
+                      item.label === "Autorzy opinii" &&
                       !hasPlanCapability(appPlan, "authorVerification")
                     }
                   />
@@ -1265,7 +1260,7 @@ export default async function DashboardPage({
                 <span className="min-w-0 flex-1">{item.label}</span>
                 <BusinessNavBadge
                   show={
-                    item.label === "Weryfikacja autora" &&
+                    item.label === "Autorzy opinii" &&
                     !hasPlanCapability(appPlan, "authorVerification")
                   }
                 />

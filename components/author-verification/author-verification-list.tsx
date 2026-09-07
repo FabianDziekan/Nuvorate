@@ -1,230 +1,89 @@
 "use client";
-
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useEffect, useState } from "react";
 
-export type AuthorVerificationReview = {
-  authorName: string;
-  authorProfileUrl?: string | null;
-  content: string;
-  createdAt: string;
-  id: string;
-  rating: number;
-  source: string;
-  verificationStatus: "unverified" | "verified";
-};
-
-function formatReviewDate(createdAt: string) {
-  return new Intl.DateTimeFormat("pl-PL", {
-    dateStyle: "long",
-    timeStyle: "short",
-  }).format(new Date(createdAt));
+export type AuthorVerificationReview = { id: string; authorName: string; rating: number; content: string; createdAt: string };
+type Profile = { reviewId: string; authorProfileUri: string | null; googleMapsUri: string | null };
+function ProfileLinks({ profile }: { profile?: Profile }) {
+  return <div className="mt-4 space-y-2">
+    {profile?.authorProfileUri ? <>
+      <a className="inline-block max-w-full rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white" href={profile.authorProfileUri} target="_blank" rel="noopener noreferrer">Otwórz profil autora w Google Maps ↗</a>
+      {profile.googleMapsUri && <a className="block text-xs text-brand" href={profile.googleMapsUri} target="_blank" rel="noopener noreferrer">Zobacz opinię w Google Maps ↗</a>}
+      <p translate="no" className="whitespace-nowrap text-xs font-normal not-italic tracking-normal text-[#5E5E5E]">Google Maps</p>
+    </> : <p className="text-sm text-black/45">Profil Google autora jest niedostępny</p>}
+  </div>;
 }
-
-function formatRating(rating: number) {
-  return rating.toLocaleString("pl-PL", {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  });
-}
-
-const verificationHints = [
-  "Czy autor posiada wiele opinii?",
-  "Czy wystawia głównie oceny 1★?",
-  "Czy opiniuje podobne firmy?",
-  "Czy wygląda na prawdziwego klienta?",
-  "Czy posiada aktywny profil Google?",
-];
-
-const mobileVerificationHints = [
-  "Liczba opinii autora",
-  "Rozkład ocen",
-  "Podobne firmy",
-  "Realność profilu",
-  "Aktywność profilu",
-];
-
-export function AuthorVerificationList({
-  reviews,
-}: {
-  reviews: AuthorVerificationReview[];
-}) {
-  const [selectedReview, setSelectedReview] =
-    useState<AuthorVerificationReview | null>(null);
-
+export function AuthorVerificationList({ reviews, businessId, location }: { reviews: AuthorVerificationReview[]; businessId: string; location: string }) {
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [query, setQuery] = useState("");
+  const [rating, setRating] = useState("all");
+  const [sort, setSort] = useState("newest");
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<AuthorVerificationReview | null>(null);
+  const dialog = useRef<HTMLDivElement>(null);
+  const controller = useRef<AbortController | null>(null);
+  useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => {
-    if (!selectedReview) return;
-    if (!window.matchMedia("(max-width: 768px)").matches) return;
-
-    const previousOverflow = document.body.style.overflow;
-    const previousOverscrollBehavior = document.body.style.overscrollBehavior;
-
+    if (!selected) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    document.body.style.overscrollBehavior = "none";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.body.style.overscrollBehavior = previousOverscrollBehavior;
+    dialog.current?.focus();
+    const key = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelected(null);
+      if (event.key === "Tab") {
+        const items = dialog.current?.querySelectorAll<HTMLElement>('button, a[href]');
+        if (!items?.length) return;
+        if (event.shiftKey && (document.activeElement === items[0] || document.activeElement === dialog.current)) { event.preventDefault(); items[items.length - 1].focus(); }
+        else if (!event.shiftKey && document.activeElement === items[items.length - 1]) { event.preventDefault(); items[0].focus(); }
+      }
     };
-  }, [selectedReview]);
-
-  return (
-    <>
-      {reviews.length > 0 ? (
-        <div className="space-y-3">
-          {reviews.map((review) => (
-            <article
-              key={review.id}
-              className="relative min-w-0 overflow-hidden rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-3.5 transition hover:-translate-y-0.5 hover:border-brand/20 hover:bg-white hover:shadow-card min-[769px]:p-5"
-            >
-              <button
-                type="button"
-                onClick={() => setSelectedReview(review)}
-                className="block w-full text-left"
-              >
-                <div className="flex min-w-0 flex-col justify-between gap-3 min-[769px]:gap-4 lg:flex-row lg:items-start">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-sm font-bold text-brand shadow-sm min-[769px]:h-10 min-[769px]:w-10">
-                      {review.authorName.slice(0, 1).toUpperCase()}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">
-                        {review.authorName}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-black/35">
-                        {formatReviewDate(review.createdAt)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="absolute right-8 top-3.5 flex shrink-0 flex-wrap items-center gap-2 min-[769px]:static">
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        review.rating <= 2
-                          ? "bg-red-50 text-red-600"
-                          : "bg-brand-soft text-brand"
-                      }`}
-                    >
-                      {formatRating(review.rating)} ★
-                    </span>
-                    <span className="hidden rounded-xl border border-black/[0.08] bg-white px-3.5 py-2.5 text-xs font-semibold text-black/55 transition hover:border-brand/30 hover:text-brand min-[769px]:inline-flex">
-                      Sprawdź autora
-                    </span>
-                  </div>
-                </div>
-                <p className="mt-3 line-clamp-2 pr-5 text-sm leading-5 text-black/60 min-[769px]:mt-4 min-[769px]:pr-0 min-[769px]:leading-6">
-                  {review.content}
-                </p>
-                <span className="absolute bottom-4 right-4 text-lg text-black/35 min-[769px]:hidden" aria-hidden="true">›</span>
-              </button>
-            </article>
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-2xl border border-dashed border-black/[0.08] bg-[#FAFAFC] px-5 py-12 text-center">
-          <p className="text-sm font-semibold">
-            Brak opinii do weryfikacji.
-          </p>
-          <p className="mt-2 text-sm text-black/45">
-            Gdy pojawią się opinie klientów, lista autorów będzie dostępna tutaj.
-          </p>
-        </div>
-      )}
-
-      {selectedReview && typeof document !== "undefined"
-        ? createPortal(
-        <div className="fixed inset-0 z-[110]">
-          <button
-            type="button"
-            aria-label="Zamknij panel weryfikacji autora"
-            className="fixed inset-0 bg-black/35"
-            onClick={() => setSelectedReview(null)}
-          />
-          <aside className="fixed inset-x-0 bottom-0 z-[111] flex max-h-[88dvh] w-full flex-col overflow-y-auto overscroll-contain rounded-t-[28px] border border-black/[0.08] bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_-16px_60px_rgba(15,15,16,0.2)] min-[769px]:absolute min-[769px]:inset-x-auto min-[769px]:right-0 min-[769px]:top-0 min-[769px]:h-full min-[769px]:max-h-none min-[769px]:max-w-[460px] min-[769px]:rounded-none min-[769px]:border-l min-[769px]:p-6 min-[769px]:shadow-[0_24px_80px_rgba(15,15,16,0.22)]">
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-black/10 min-[769px]:hidden" />
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.12em] text-brand">
-                  Weryfikacja autora
-                </p>
-                <h2 className="mt-1 text-xl font-semibold tracking-tight min-[769px]:mt-2 min-[769px]:text-2xl">
-                  {selectedReview.authorName}
-                </h2>
-                <p className="mt-1 text-xs text-black/45 min-[769px]:hidden">{formatRating(selectedReview.rating)} ★ · {formatReviewDate(selectedReview.createdAt)}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedReview(null)}
-                className="grid h-9 w-9 place-items-center rounded-xl text-lg text-black/45 transition hover:bg-black/[0.04] min-[769px]:h-auto min-[769px]:w-auto min-[769px]:border min-[769px]:border-black/[0.08] min-[769px]:bg-white min-[769px]:px-3 min-[769px]:py-2 min-[769px]:text-xs min-[769px]:font-semibold min-[769px]:hover:border-brand/30 min-[769px]:hover:text-brand"
-              >
-                <span className="min-[769px]:hidden">×</span><span className="max-[768px]:hidden">Zamknij</span>
-              </button>
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-3.5 min-[769px]:mt-6 min-[769px]:p-4">
-              <div className="hidden flex-wrap items-center gap-2 min-[769px]:flex">
-                <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                    selectedReview.rating <= 2
-                      ? "bg-red-50 text-red-600"
-                      : "bg-brand-soft text-brand"
-                  }`}
-                >
-                  {formatRating(selectedReview.rating)} ★
-                </span>
-                <span className="text-xs text-black/35">
-                  {formatReviewDate(selectedReview.createdAt)}
-                </span>
-              </div>
-              <p className="text-sm leading-5 text-black/60 min-[769px]:mt-4 min-[769px]:leading-6">
-                {selectedReview.content}
-              </p>
-            </div>
-
-            <section className="mt-4 rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm min-[769px]:mt-6 min-[769px]:p-5">
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
-                Status
-              </p>
-              <p className="mt-2 text-sm font-semibold text-ink">
-                Funkcja będzie dostępna po integracji z Google Business.
-              </p>
-              {selectedReview.authorProfileUrl ? (
-                <a
-                  href={selectedReview.authorProfileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#4D4EE8] min-[769px]:mt-5"
-                >
-                  Otwórz profil autora w Google
-                </a>
-              ) : (
-                <button
-                  type="button"
-                  disabled
-                  className="mt-4 w-full rounded-xl border border-black/[0.08] bg-[#FAFAFC] px-4 py-3 text-sm font-semibold text-black/30 min-[769px]:mt-5"
-                >
-                  Otwórz profil autora w Google
-                </button>
-              )}
-            </section>
-
-            <section className="mt-3 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4 min-[769px]:mt-4 min-[769px]:p-5">
-              <h3 className="text-sm font-semibold">
-                Na co zwrócić uwagę?
-              </h3>
-              <ul className="mt-3 space-y-1.5 text-sm leading-5 text-black/55 min-[769px]:mt-4 min-[769px]:space-y-2 min-[769px]:leading-6">
-                {(mobileVerificationHints).map((hint, index) => (
-                  <li key={hint} className="flex gap-2">
-                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-                    <span className="min-[769px]:hidden">{hint}</span><span className="max-[768px]:hidden">{verificationHints[index]}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          </aside>
-        </div>,
-        document.body,
-      )
-        : null}
-    </>
-  );
+    window.addEventListener("keydown", key);
+    return () => { document.body.style.overflow = overflow; window.removeEventListener("keydown", key); previous?.focus(); };
+  }, [selected]);
+  async function enrich() {
+    if (busy) return;
+    setBusy(true); setProfiles([]);
+    controller.current = new AbortController();
+    try {
+      const response = await fetch("/api/author-google-profiles", { cache: "no-store", signal: controller.current.signal });
+      if (!response.ok) return;
+      const result = await response.json();
+      if (result.businessId === businessId && Array.isArray(result.profiles)) setProfiles(result.profiles);
+    } catch { /* Optional enrichment leaves the original reviews available. */ }
+    finally { setBusy(false); }
+  }
+  const filtered = reviews.filter(r => (rating === "all" || r.rating === Number(rating)) && (r.authorName + " " + r.content).toLocaleLowerCase("pl").includes(query.toLocaleLowerCase("pl")))
+    .sort((a,b) => sort === "lowest" ? a.rating-b.rating : sort === "highest" ? b.rating-a.rating : (Date.parse(b.createdAt)-Date.parse(a.createdAt)) * (sort === "oldest" ? -1 : 1));
+  const pages = Math.max(1, Math.ceil(filtered.length / 10));
+  const current = Math.min(page, pages);
+  const date = (value: string) => Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleDateString("pl-PL") : "";
+  return <section className="mt-6 min-w-0 rounded-3xl border border-black/5 bg-white p-4 shadow-card sm:p-6">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <h2 className="text-xl font-semibold">Opinie Google · {reviews.length}</h2>
+      <button disabled={busy} onClick={enrich} className="rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Sprawdzanie…" : "Sprawdź dostępne profile Google"}</button>
+    </div>
+    <p className="mt-3 text-xs text-black/45" aria-live="polite">Google udostępnia do 5 opinii wybranych według trafności. Link może być dostępny tylko dla części autorów.</p>
+    <div className="my-5 grid gap-3 sm:grid-cols-3">
+      <input aria-label="Szukaj autora lub opinii" placeholder="Szukaj autora lub opinii" value={query} onChange={e=>{setQuery(e.target.value);setPage(1);}} className="min-w-0 rounded-xl border p-3" />
+      <select aria-label="Ocena" value={rating} onChange={e=>{setRating(e.target.value);setPage(1);}} className="rounded-xl border p-3"><option value="all">Wszystkie oceny</option>{[5,4,3,2,1].map(n=><option key={n} value={n}>{n} ★</option>)}</select>
+      <select aria-label="Sortowanie" value={sort} onChange={e=>setSort(e.target.value)} className="rounded-xl border p-3"><option value="newest">Najnowsze</option><option value="oldest">Najstarsze</option><option value="lowest">Najniższa ocena</option><option value="highest">Najwyższa ocena</option></select>
+    </div>
+    <div className="space-y-4">{filtered.slice((current-1)*10,current*10).map(review=><article key={review.id} className="min-w-0 rounded-2xl border border-black/5 p-4">
+      <button onClick={()=>setSelected(review)} className="block w-full text-left"><span className="font-semibold break-words">{review.authorName}</span><span className="mt-1 block text-amber-500" aria-label={review.rating+" z 5"}>{"★".repeat(Math.max(0,Math.min(5,review.rating)))}</span><span className="mt-1 block text-xs text-black/45">{date(review.createdAt)} · {location}</span><span className="mt-3 block whitespace-pre-wrap break-words text-sm leading-6">{review.content}</span></button>
+      <ProfileLinks profile={profiles.find(p=>p.reviewId===review.id)} />
+    </article>)}</div>
+    {!filtered.length && <p className="py-8 text-center text-black/45">Brak opinii do wyświetlenia.</p>}
+    <div className="mt-5 flex items-center justify-center gap-4"><button disabled={current<=1} onClick={()=>setPage(current-1)} className="p-3 disabled:opacity-30">Poprzednia</button><span>{current} / {pages}</span><button disabled={current>=pages} onClick={()=>setPage(current+1)} className="p-3 disabled:opacity-30">Następna</button></div>
+    {selected && createPortal(<div className="fixed inset-0 z-[120] bg-black/30" onMouseDown={e=>{if(e.target===e.currentTarget)setSelected(null);}}>
+      <div ref={dialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Szczegóły autora opinii" className="absolute inset-x-0 bottom-0 max-h-[90dvh] overflow-y-auto overscroll-contain rounded-t-3xl bg-white p-6 pb-[max(24px,env(safe-area-inset-bottom))] sm:inset-y-0 sm:left-auto sm:w-[480px] sm:max-w-full sm:max-h-screen sm:rounded-none">
+        <button onClick={()=>setSelected(null)} className="float-right rounded-xl p-3" aria-label="Zamknij szczegóły">×</button>
+        <p className="text-xs text-black/45">AUTOR</p><h2 className="mt-2 break-words text-xl font-semibold">{selected.authorName}</h2>
+        <p className="mt-8 text-xs text-black/45">OPINIA</p><p className="mt-2 text-amber-500">{selected.rating} ★</p><p className="text-xs text-black/45">{date(selected.createdAt)} · {location}</p><p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6">{selected.content}</p>
+        <p className="mt-8 text-xs text-black/45">PROFIL GOOGLE</p><ProfileLinks profile={profiles.find(p=>p.reviewId===selected.id)} />
+        <p className="mt-6 text-xs leading-5 text-black/45">Profil otwierany jest bezpośrednio w Google Maps. NuvoRate nie potwierdza tożsamości autora.</p>
+      </div>
+    </div>, document.body)}
+  </section>;
 }

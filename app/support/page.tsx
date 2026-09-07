@@ -22,7 +22,6 @@ const navigation = [
   { label: "Opinie", icon: "reviews" as const, href: "/reviews" },
   { label: "Analiza", icon: "analysis" as const, href: "/analysis" },
   { label: "Odpowiedzi", icon: "responses" as const, href: "/responses" },
-  { label: "Weryfikacja autora", icon: "verification" as const, href: "/author-verification" },
   { label: "NFC", icon: "nfc" as const, href: "/nfc" },
   { label: "Powiadomienia", icon: "bell" as const, href: "/notifications" },
   { label: "Ustawienia", icon: "settings" as const, href: "/settings" },

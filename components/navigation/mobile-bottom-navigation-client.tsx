@@ -23,7 +23,6 @@ const primaryItems = [
 
 const moreItems = [
   { label: "Odpowiedzi", href: "/responses", icon: "responses" as const },
-  { label: "Weryfikacja autora", href: "/author-verification", icon: "verification" as const },
   { label: "Powiadomienia", href: "/notifications", icon: "bell" as const },
   { label: "Ustawienia", href: "/settings", icon: "settings" as const },
   { label: "Pomoc i kontakt", href: "/support", icon: "help" as const },

@@ -12,9 +12,9 @@ test("Business routes contain server-side capability gates", () => {
     authorPage,
     /hasPlanCapability\(appPlan, "authorVerification"\)/,
   );
-  assert.doesNotMatch(authorPage, /notFound\(\)/);
+  assert.match(authorPage, /if \(!AUTHOR_PROFILES_ENABLED\) notFound\(\)/);
   assert.match(authorPage, /canVerifyAuthors\s*\?\s*await supabase/);
-  assert.match(authorPage, /: \{ data: \[\], error: null \}/);
+  assert.match(authorPage, /:\s*\{ data: \[\], error: null \}/);
   assert.match(
     source("app/api/responses/auto-generate/route.ts"),
     /"automaticReviewResponses"/,

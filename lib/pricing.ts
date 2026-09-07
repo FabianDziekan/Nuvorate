@@ -51,7 +51,6 @@ export const pricingPlans = [
       "50 analiz opinii miesięcznie",
       "Dashboard z zaawansowanymi statystykami",
       "Zaawansowana analiza opinii",
-      "Weryfikacja autorów opinii",
       "Statystyki skanów NFC",
       "Obsługa wielu lokalizacji",
       "Wszystkie funkcje planu Starter",

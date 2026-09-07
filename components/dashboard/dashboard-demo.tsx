@@ -9,7 +9,6 @@ const navigation: Array<{ icon: AppNavigationIconName; label: string }> = [
   { icon: "reviews", label: "Opinie" },
   { icon: "analysis", label: "Analiza" },
   { icon: "responses", label: "Odpowiedzi" },
-  { icon: "verification", label: "Weryfikacja autora" },
   { icon: "nfc", label: "NFC" },
   { icon: "bell", label: "Powiadomienia" },
   { icon: "settings", label: "Ustawienia" },
