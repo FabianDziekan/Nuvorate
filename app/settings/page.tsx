@@ -310,9 +310,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 aktywny
               </span>
             </div>
-            <Link href="/billing/portal" className="mt-4 block w-full rounded-xl bg-white/10 px-3 py-2.5 text-center text-xs font-semibold text-white transition hover:bg-white/15">
+            <form method="post" action="/billing/portal"><button type="submit" className="mt-4 block w-full rounded-xl bg-white/10 px-3 py-2.5 text-center text-xs font-semibold text-white transition hover:bg-white/15">
               Zarządzaj subskrypcją
-            </Link>
+            </button></form>
           </div>
           <form action={signOut} className="mt-3">
             <button
@@ -337,12 +337,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               <p className="mt-0.5 text-sm font-semibold">Ustawienia</p>
             </div>
             <div className="flex min-w-0 items-center gap-2.5">
-              <Link
-                href="/billing/portal"
+              <form method="post" action="/billing/portal"><button type="submit"
                 className="hidden rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-sm font-medium text-black/55 transition hover:border-brand/30 hover:text-brand sm:block"
               >
                 Billing
-              </Link>
+              </button></form>
               <NotificationBell businessId={business.id} />
               <div className="hidden items-center gap-3 rounded-xl border border-black/[0.08] bg-white py-1.5 pl-1.5 pr-3 sm:flex">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft text-xs font-bold uppercase text-brand">
@@ -422,12 +421,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   {canManageActiveBusinessBilling ? (
-                    <Link
-                      href="/billing/portal"
+                    <form method="post" action="/billing/portal"><button type="submit"
                       className="rounded-xl bg-ink px-4 py-3 text-center text-xs font-semibold text-white transition hover:bg-black"
                     >
                       Zarządzaj subskrypcją
-                    </Link>
+                    </button></form>
                   ) : null}
                   <button
                     type="button"
@@ -451,7 +449,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             <section className="mt-4 overflow-hidden rounded-[24px] border border-black/[0.06] bg-white shadow-card min-[769px]:hidden">
               <div className="px-4 py-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-black/35">Konto i plan</p>
-                <div className="mt-2 flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">Plan {plan}</p><p className="mt-0.5 text-xs text-black/45">{subscriptionStatusLabel(billingContext.subscriptionStatus)}</p></div>{canManageActiveBusinessBilling ? <Link href="/billing/portal" className="text-xs font-semibold text-brand">Zarządzaj ›</Link> : null}</div>
+                <div className="mt-2 flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">Plan {plan}</p><p className="mt-0.5 text-xs text-black/45">{subscriptionStatusLabel(billingContext.subscriptionStatus)}</p></div>{canManageActiveBusinessBilling ? <form method="post" action="/billing/portal"><button type="submit" className="text-xs font-semibold text-brand">Zarządzaj ›</button></form> : null}</div>
               </div>
               <details className="border-t border-black/[0.06]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-sm font-semibold text-ink"><span>Limity planu</span><span className="text-brand" aria-hidden="true">⌄</span></summary>

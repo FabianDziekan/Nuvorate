@@ -1281,9 +1281,9 @@ export default async function DashboardPage({
               </span>
             </div>
             {hasActiveSubscription ? (
-              <Link href="/billing/portal" className="mt-4 block w-full rounded-xl bg-white/10 px-3 py-2.5 text-center text-xs font-semibold text-white transition hover:bg-white/15">
+              <form method="post" action="/billing/portal"><button type="submit" className="mt-4 block w-full rounded-xl bg-white/10 px-3 py-2.5 text-center text-xs font-semibold text-white transition hover:bg-white/15">
                 Zarządzaj subskrypcją
-              </Link>
+              </button></form>
             ) : plan === "Starter" ? (
               <Link href="/checkout?plan=business" className="mt-4 block w-full rounded-xl bg-white/10 px-3 py-2.5 text-center text-xs font-semibold text-white transition hover:bg-white/15">
                 Przejdź na Business
