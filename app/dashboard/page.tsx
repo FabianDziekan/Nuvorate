@@ -41,6 +41,7 @@ import {
   projectAnalysisForPlan,
   type StoredBusinessAnalysis,
 } from "@/lib/analysis-projection";
+import { getReviewTrendBarHeight } from "@/lib/review-trend-bar-height";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
@@ -202,7 +203,6 @@ type ReviewActivityTrendBucket = {
 type ReviewActivityTrendPoint = {
   averageRating: number | null;
   displayHeight: number;
-  displayValue: number;
   label: string;
   value: number;
   tooltipLabel: string;
@@ -504,7 +504,6 @@ function buildReviewActivityTrend(buckets: ReviewActivityTrendBucket[]) {
 
   const points = buckets.map((bucket, index) => {
     const value = dailyCounts[index];
-    const displayValue = value === 0 ? 0.2 : value;
     const averageRating = Number(bucket.average_rating);
     const periodStart = new Date(bucket.period_start);
     const periodEnd = new Date(bucket.period_end);
@@ -514,17 +513,15 @@ function buildReviewActivityTrend(buckets: ReviewActivityTrendBucket[]) {
         : chartWidth / 2;
     const height =
       maxDailyCount > 0 ? (value / maxDailyCount) * chartHeight : 0;
-    const displayHeight =
-      maxDailyCount > 0
-        ? (displayValue / maxDailyCount) * chartHeight
-        : value === 0
-          ? 4
-          : 0;
+    const displayHeight = getReviewTrendBarHeight(
+      value,
+      maxDailyCount,
+      chartHeight,
+    );
 
     return {
       averageRating: Number.isFinite(averageRating) ? averageRating : null,
       displayHeight,
-      displayValue,
       label: formatShortDate(periodStart),
       tooltipLabel: formatTooltipRange(periodStart, periodEnd),
       value,
@@ -755,10 +752,7 @@ function TrendChart({ points }: { points: ReviewActivityTrendPoint[] }) {
             />
           </svg>
           {points.map((point) => {
-            const visibleHeight = Math.max(
-              point.displayHeight,
-              point.value > 0 ? 10 : 4,
-            );
+            const visibleHeight = point.displayHeight;
             const leftPercent = (point.x / 720) * 100;
             const tooltipEdgeClass =
               point.x < 150

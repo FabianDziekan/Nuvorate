@@ -1,3 +1,5 @@
+import { getReviewTrendBarHeight } from "@/lib/review-trend-bar-height";
+
 type MobileTrendPoint = {
   averageRating: number | null;
   label: string;
@@ -72,10 +74,11 @@ export function MobileTrendChart({ points }: { points: MobileTrendPoint[] }) {
         </svg>
 
         {points.map((point, index) => {
-          const visibleHeight =
-            point.value === 0
-              ? 4
-              : Math.max(10, (point.value / maxValue) * chartHeight);
+          const visibleHeight = getReviewTrendBarHeight(
+            point.value,
+            maxValue,
+            chartHeight,
+          );
           const leftPercent = ((index + 0.5) / points.length) * 100;
           const tooltipEdgeClass =
             index < 5
