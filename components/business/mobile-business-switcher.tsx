@@ -1,5 +1,6 @@
 import { getUserBusinessMemberships } from "@/lib/active-business";
 import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
+import type { ActiveBusinessBillingContext } from "@/lib/active-business-billing";
 import { createClient } from "@/lib/supabase/server";
 import {
   MobileBusinessSwitcherClient,
@@ -10,12 +11,20 @@ import {
  * The mobile affordance reads the same membership-backed Active Business
  * Context as the desktop switcher. It only renders when switching is useful.
  */
-export async function MobileBusinessSwitcher({ userId }: { userId: string }) {
+export async function MobileBusinessSwitcher({
+  billingContext: resolvedBillingContext,
+  userId,
+}: {
+  billingContext?: ActiveBusinessBillingContext;
+  userId: string;
+}) {
   const supabase = await createClient();
 
   try {
     const [billingContext, memberships] = await Promise.all([
-      getActiveBusinessBillingContext(supabase, userId, "id, name, industry, city"),
+      resolvedBillingContext
+        ? Promise.resolve(resolvedBillingContext)
+        : getActiveBusinessBillingContext(supabase, userId, "id, name, industry, city"),
       getUserBusinessMemberships(supabase, userId),
     ]);
 

@@ -21,6 +21,7 @@ import {
 } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
+import { getDashboardNotifications } from "@/lib/dashboard-notifications";
 import { signOut } from "@/app/dashboard/actions";
 
 export const metadata: Metadata = {
@@ -222,6 +223,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const firstName =
     typeof profile.first_name === "string" ? profile.first_name.trim() : "";
   const displayName = firstName || user.email || "NU";
+  const dashboardNotifications = await getDashboardNotifications(supabase, business.id);
   const responseTone =
     typeof responseSettings?.response_tone === "string"
       ? responseSettings.response_tone
@@ -254,6 +256,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         <BrandLogo />
         <DesktopBusinessSwitcher
           activeBusiness={business}
+          billingContext={billingContext}
           plan={plan}
           userId={user.id}
         />
@@ -278,7 +281,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                     }
                   />
                   {item.label === "Powiadomienia" ? (
-                    <NotificationSidebarBadge businessId={business.id} />
+                    <NotificationSidebarBadge unreadCount={dashboardNotifications.unreadCount} />
                   ) : null}
                 </Link>
               );
@@ -295,7 +298,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                   }
                 />
                 {item.label === "Powiadomienia" ? (
-                  <NotificationSidebarBadge businessId={business.id} />
+                  <NotificationSidebarBadge unreadCount={dashboardNotifications.unreadCount} />
                 ) : null}
               </button>
             );
@@ -342,7 +345,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               >
                 Billing
               </button></form>
-              <NotificationBell businessId={business.id} />
+              <NotificationBell initialNotifications={dashboardNotifications.latest} />
               <div className="hidden items-center gap-3 rounded-xl border border-black/[0.08] bg-white py-1.5 pl-1.5 pr-3 sm:flex">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft text-xs font-bold uppercase text-brand">
                   {displayName.slice(0, 2)}
@@ -365,7 +368,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           </div>
         </header>
 
-        <MobileBottomNavigation businessId={business.id} />
+        <MobileBottomNavigation unreadCount={dashboardNotifications.unreadCount} />
 
         <div className="min-w-0 px-4 py-5 min-[769px]:px-5 min-[769px]:py-8 sm:px-8 lg:px-9 lg:py-10">
           <div className="mx-auto min-w-0 max-w-[1180px]">

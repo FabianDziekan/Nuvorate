@@ -47,7 +47,7 @@ test("Automatic analysis is Business-gated and the scheduler is protected", () =
 });
 
 test("Analysis data is projected by plan before rendering", () => {
-  const analysisPage = source("app/analysis/page.tsx");
+  const analysisPage = source("app/(dashboard)/analysis/page.tsx");
   assert.match(analysisPage, /projectAnalysisForPlan\(appPlan, analysis\)/);
   assert.match(analysisPage, /analysisProjection\?\.kind === "basic"/);
   assert.match(analysisPage, /createAdminClient\(\)/);
@@ -73,7 +73,7 @@ test("Context alert consumes ai_error without reloading", () => {
 });
 
 test("Dashboard passes only the plan projection to its analysis card", () => {
-  const dashboard = source("app/dashboard/page.tsx");
+  const dashboard = source("app/(dashboard)/dashboard/page.tsx");
   const card = source("components/dashboard/analysis-preview-card.tsx");
   assert.match(
     dashboard,
@@ -119,7 +119,7 @@ test("Atomic limit migration serializes and can roll back reservations", () => {
 test("NFC scans can only be created by the public server redirect", () => {
   const migration = source("docs/database/016_nfc_tags_and_scans.sql");
   const route = source("app/r/[token]/route.ts");
-  const dashboard = source("app/dashboard/page.tsx");
+  const dashboard = source("app/(dashboard)/dashboard/page.tsx");
   assert.match(migration, /alter table public\.nfc_tags enable row level security/);
   assert.match(migration, /alter table public\.nfc_scans enable row level security/);
   assert.match(migration, /revoke insert, update, delete on public\.nfc_scans from authenticated/);

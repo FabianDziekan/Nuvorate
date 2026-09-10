@@ -12,7 +12,7 @@ const clientSource = readFileSync(
   "utf8",
 );
 const dashboardSource = readFileSync(
-  join(process.cwd(), "app/dashboard/page.tsx"),
+  join(process.cwd(), "app/(dashboard)/dashboard/page.tsx"),
   "utf8",
 );
 
@@ -40,5 +40,8 @@ test("mobile switcher renders a fixed, centered dropdown below the dashboard hea
 
 test("dashboard renders the mobile switcher only in its mobile header", () => {
   assert.match(dashboardSource, /import \{ MobileBusinessSwitcher \} from "@\/components\/business\/mobile-business-switcher"/);
-  assert.match(dashboardSource, /<MobileBusinessSwitcher userId=\{user\.id\} \/>/);
+  assert.match(
+    dashboardSource,
+    /<MobileBusinessSwitcher billingContext=\{billingContext\} userId=\{user\.id\} \/>/,
+  );
 });

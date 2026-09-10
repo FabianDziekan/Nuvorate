@@ -1,25 +1,15 @@
-import { createClient } from "@/lib/supabase/server";
-
 export async function NotificationSidebarBadge({
-  businessId,
+  unreadCount,
 }: {
-  businessId: string;
+  unreadCount: number;
 }) {
-  const supabase = await createClient();
-  const { count, error } = await supabase
-    .from("notifications")
-    .select("id", { count: "exact", head: true })
-    .eq("business_id", businessId)
-    .eq("type", "new_review")
-    .eq("is_read", false);
-
-  if (error || !count) {
+  if (!unreadCount) {
     return null;
   }
 
   return (
     <span className="notification-sidebar-badge ml-auto grid min-h-[20px] min-w-[20px] place-items-center rounded-full bg-brand px-1.5 text-[10px] font-bold leading-none text-white">
-      {count > 99 ? "99+" : count}
+      {unreadCount > 99 ? "99+" : unreadCount}
     </span>
   );
 }

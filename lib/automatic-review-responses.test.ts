@@ -7,7 +7,9 @@ function source(path: string) {
 }
 
 const migration = source("docs/database/029_automatic_review_response_jobs.sql");
+const monthBoundaryMigration = source("docs/database/031_automatic_review_response_month_boundary_billing.sql");
 const publicationFoundationMigration = source("docs/database/032_automatic_google_publication_foundation.sql");
+const baseReservationsMigration = source("docs/database/015_atomic_ai_usage_reservations.sql");
 const sync = source("lib/google-review-sync-service.ts");
 const worker = source("lib/automatic-review-response-service.ts");
 const workerRoute = source("app/api/internal/automatic-review-responses/route.ts");
@@ -133,6 +135,79 @@ test("the system worker is server-to-server protected and exposes safe aggregate
   assert.match(workerRoute, /status: 401/);
   assert.match(workerRoute, /\{ claimed: jobs\.length, completed, failed, skipped, success: true \}/);
   assert.doesNotMatch(workerRoute, /createClient\(\)/);
+});
+
+test("same-month released retry reactivates one reservation and charges the current month once", () => {
+  assert.match(monthBoundaryMigration, /elsif v_reservation\.status = 'released' then/);
+  assert.match(monthBoundaryMigration, /v_charge_current := true/);
+  assert.match(monthBoundaryMigration, /ai_replies_used = ai_replies_used \+ 1/);
+  assert.match(monthBoundaryMigration, /automatic_review_response_job_id/);
+});
+
+test("cross-month released retry rebases the reservation before charging the current month", () => {
+  assert.match(monthBoundaryMigration, /v_reservation\.period_month <> v_period_month/);
+  assert.match(monthBoundaryMigration, /period_month = v_period_month/);
+  assert.match(monthBoundaryMigration, /status = 'released'/);
+  assert.match(monthBoundaryMigration, /v_reservation\.status = 'reserved'/);
+});
+
+test("cross-month active reservation reverses its old-month counter exactly once before rebase", () => {
+  assert.match(monthBoundaryMigration, /if v_reservation\.status = 'reserved' then/);
+  assert.match(monthBoundaryMigration, /period_month = v_previous_period_month/);
+  assert.match(monthBoundaryMigration, /greatest\(ai_replies_used - 1, 0\)/);
+  assert.match(monthBoundaryMigration, /v_previous_period_month := v_reservation\.period_month/);
+});
+
+test("cross-month retry enforces the current-month limit before activating the rebased reservation", () => {
+  assert.match(monthBoundaryMigration, /v_period_month date := date_trunc\('month', pg_catalog\.clock_timestamp\(\)\)::date/);
+  assert.match(monthBoundaryMigration, /and period_month = v_period_month/);
+  assert.match(monthBoundaryMigration, /\(v_reservation\.id is null or v_reservation\.status = 'released'\) and v_used >= p_limit/);
+});
+
+test("release after rebase decrements the period stored on the active reservation", () => {
+  assert.match(baseReservationsMigration, /and period_month = v_reservation\.period_month/);
+  assert.match(monthBoundaryMigration, /period_month = v_period_month/);
+});
+
+test("successful retry completes a current-month reservation without another charge", () => {
+  assert.match(monthBoundaryMigration, /v_reservation\.status = 'completed'/);
+  assert.match(monthBoundaryMigration, /return query select v_reservation\.id, true, true/);
+  assert.match(baseReservationsMigration, /status = 'completed'/);
+});
+
+test("cross-month retry locks usage buckets before its reservation row in a deterministic order", () => {
+  const firstReservationRead = monthBoundaryMigration.indexOf(
+    "where automatic_review_response_job_id = v_job.id;",
+  );
+  const firstAdvisoryLock = monthBoundaryMigration.indexOf("pg_advisory_xact_lock");
+  const lockedReservationRead = monthBoundaryMigration.indexOf(
+    "where automatic_review_response_job_id = v_job.id\n  for update;",
+  );
+
+  assert.ok(firstReservationRead >= 0);
+  assert.ok(firstAdvisoryLock > firstReservationRead);
+  assert.ok(lockedReservationRead > firstAdvisoryLock);
+  assert.match(monthBoundaryMigration, /if v_previous_period_month < v_period_month then/);
+  assert.match(monthBoundaryMigration, /v_previous_period_month::text[\s\S]*v_period_month::text/);
+  assert.match(monthBoundaryMigration, /v_period_month::text[\s\S]*v_previous_period_month::text/);
+});
+
+test("retry and release share usage-bucket-before-reservation locking without double decrement", () => {
+  assert.match(baseReservationsMigration, /pg_advisory_xact_lock[\s\S]*for update;/);
+  assert.match(monthBoundaryMigration, /status = 'released',[\s\S]*released_at = pg_catalog\.clock_timestamp\(\)/);
+  assert.match(monthBoundaryMigration, /if v_reservation\.status = 'reserved' then[\s\S]*greatest\(ai_replies_used - 1, 0\)/);
+});
+
+test("complete versus release remains single-winner through the reservation status transition", () => {
+  assert.match(baseReservationsMigration, /and status = 'reserved'[\s\S]*returning id into v_updated/);
+  assert.match(baseReservationsMigration, /where id = v_reservation\.id[\s\S]*and status = 'reserved'/);
+});
+
+test("month-boundary rebase preserves one reservation and one job per review", () => {
+  assert.match(migration, /review_id uuid not null unique/);
+  assert.match(migration, /unique \(automatic_review_response_job_id\)/);
+  assert.doesNotMatch(monthBoundaryMigration, /insert into public\.automatic_review_response_jobs/);
+  assert.doesNotMatch(monthBoundaryMigration, /insert into public\.ai_usage_reservations[\s\S]*automatic_review_response_job_id[\s\S]*on conflict/);
 });
 
 test("automatic Google publication remains explicitly off for all existing businesses", () => {

@@ -96,7 +96,7 @@ test("route uses canonical business resolver and server-scoped customer lookup",
 test("all six entry points submit native POST instead of Next Link", () => {
   let count = 0;
   for (const path of ["dashboard", "settings", "support"]) {
-    const ui = source("app/" + path + "/page.tsx");
+    const ui = source("app/(dashboard)/" + path + "/page.tsx");
     assert.doesNotMatch(ui, /href=["']\/billing\/portal/);
     const forms = ui.match(/<form method="post" action="\/billing\/portal"><button type="submit"/g) ?? [];
     assert.equal(forms.length, path === "settings" ? 4 : 1);

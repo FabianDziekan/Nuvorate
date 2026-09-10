@@ -6,6 +6,18 @@ tags:
 
 # Changelog
 
+## 2026-09-08
+
+### Dashboard: poprawa wykresu opinii
+
+- Commit `8dca808` zmienia wyłącznie wysokość renderowanego słupka dnia z `0` opinii na subtelny marker bazowy.
+- Wartość danych, tooltip oraz średnia ocena pozostają bez zmian.
+
+### UNCOMMITTED LOCAL WORK
+
+- Rozpoczęto Phase 1 optymalizacji nawigacji: wspólny snapshot powiadomień, mniej zduplikowanych resolverów billingowych i skeletony ładowania.
+- Rozpoczęto przenoszenie tras do `app/(dashboard)`. Persistent shared shell nadal wymaga dokończenia przed commitem.
+
 ## 2026-08-03
 
 ### NFC: tracking, redirect i wiele plakietek

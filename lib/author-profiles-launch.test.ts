@@ -13,9 +13,10 @@ test("launch disables page and endpoint before session or Google work", () => {
 });
 
 test("launch removes navigation and Polish/English plan promotion", () => {
-  for (const path of ["dashboard", "analysis", "reviews", "responses", "notifications", "settings", "nfc", "support", "author-verification"]) {
-    assert.doesNotMatch(source(`app/${path}/page.tsx`), /href: "\/author-verification"/);
+  for (const path of ["dashboard", "analysis", "reviews", "responses", "notifications", "settings", "nfc", "support"]) {
+    assert.doesNotMatch(source(`app/(dashboard)/${path}/page.tsx`), /href: "\/author-verification"/);
   }
+  assert.doesNotMatch(source("app/author-verification/page.tsx"), /href: "\/author-verification"/);
   assert.doesNotMatch(source("components/navigation/mobile-bottom-navigation-client.tsx"), /author-verification/);
   assert.doesNotMatch(source("components/dashboard/dashboard-demo.tsx"), /Autorzy opinii/);
   assert.doesNotMatch(source("lib/landing-translations.ts"), /Weryfikacja autorów opinii|Review author verification/);

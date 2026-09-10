@@ -3,14 +3,8 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { GenerateReviewResponseState } from "@/components/dashboard/review-response-state";
-import {
-  reviewResponseSchema,
-  reviewResponseSystemPrompt,
-} from "@/lib/ai-config";
-import {
-  generateStructuredOutput,
-  openAIModel,
-} from "@/lib/openai";
+import { openAIModel } from "@/lib/openai";
+import { generateReviewResponseText, normalizeResponseTone } from "@/lib/review-response-generation";
 import {
   hasPlanCapability,
 } from "@/lib/plans";
@@ -21,13 +15,6 @@ import {
 } from "@/lib/ai-usage";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveBusinessBillingContext } from "@/lib/active-business-billing";
-
-const responseToneLabels: Record<string, string> = {
-  friendly: "przyjazny",
-  premium: "premium / elegancki",
-  professional: "profesjonalny",
-  short: "krótki",
-};
 
 export async function generateReviewResponseForReview(
   _previousState: GenerateReviewResponseState,
@@ -113,33 +100,15 @@ export async function generateReviewResponseForReview(
       console.warn("Response tone lookup skipped", responseSettingsError);
     }
 
-    const responseTone =
-      typeof responseSettings?.response_tone === "string" &&
-      responseSettings.response_tone in responseToneLabels
-        ? responseSettings.response_tone
-        : "professional";
-
-    const result = await generateStructuredOutput<{ response: string }>({
-      schemaName: "review_response",
-      schema: reviewResponseSchema,
-      system: reviewResponseSystemPrompt,
-      user: JSON.stringify({
-        business_name: business.name,
-        preferred_response_style: responseToneLabels[responseTone],
-        review: {
-          author_name: review.author_name,
-          rating: Number(review.rating),
-          content: review.content,
-        },
-      }),
+    const responseText = await generateReviewResponseText({
+      businessName: business.name,
+      responseTone: normalizeResponseTone(responseSettings?.response_tone),
+      review: {
+        author_name: review.author_name,
+        rating: Number(review.rating),
+        content: review.content,
+      },
     });
-
-    const responseText =
-      typeof result.response === "string" ? result.response.trim() : "";
-
-    if (!responseText) {
-      throw new Error("OpenAI zwróciło pustą odpowiedź.");
-    }
 
     const { error: saveError } = await supabase
       .from("ai_review_responses")

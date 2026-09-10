@@ -1,5 +1,6 @@
 import { getUserBusinessMemberships } from "@/lib/active-business";
 import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
+import type { ActiveBusinessBillingContext } from "@/lib/active-business-billing";
 import { normalizePlan } from "@/lib/plans";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -19,6 +20,7 @@ type DesktopBusinessSwitcherProps = {
   userId: string;
   activeBusiness: ActiveBusiness;
   plan: string;
+  billingContext?: ActiveBusinessBillingContext;
 };
 
 function includedLocationCount(plan: unknown) {
@@ -33,6 +35,7 @@ function includedLocationCount(plan: unknown) {
 export async function DesktopBusinessSwitcher({
   userId,
   activeBusiness,
+  billingContext: resolvedBillingContext,
   plan,
 }: DesktopBusinessSwitcherProps) {
   const supabase = await createClient();
@@ -73,11 +76,9 @@ export async function DesktopBusinessSwitcher({
   }
 
   try {
-    const billingContext = await getActiveBusinessBillingContext(
-      supabase,
-      userId,
-      "id, owner_id",
-    );
+    const billingContext =
+      resolvedBillingContext ??
+      (await getActiveBusinessBillingContext(supabase, userId, "id, owner_id"));
 
     if (billingContext) {
       activeLocationPlan = billingContext.plan;

@@ -20,6 +20,7 @@ import {
 } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
+import { getDashboardNotifications } from "@/lib/dashboard-notifications";
 import { signOut } from "@/app/dashboard/actions";
 
 export const metadata: Metadata = {
@@ -209,6 +210,7 @@ export default async function AuthorVerificationPage() {
   const plan = getPlanLabel(appPlan);
   const firstName = typeof profile.first_name === "string" ? profile.first_name.trim() : "";
   const displayName = firstName || user.email || "NU";
+  const dashboardNotifications = await getDashboardNotifications(supabase, business.id);
   const authorReviews: AuthorVerificationReview[] = ((reviewsResult.data ?? []) as ReviewRow[]).map(review => ({
     id: review.id, authorName: review.author_name, rating: Number(review.rating),
     content: review.content, createdAt: review.created_at,
@@ -219,6 +221,7 @@ export default async function AuthorVerificationPage() {
         <BrandLogo />
         <DesktopBusinessSwitcher
           activeBusiness={business}
+          billingContext={billingContext}
           plan={plan}
           userId={user.id}
         />
@@ -242,7 +245,7 @@ export default async function AuthorVerificationPage() {
                   }
                 />
                 {item.label === "Powiadomienia" ? (
-                  <NotificationSidebarBadge businessId={business.id} />
+                  <NotificationSidebarBadge unreadCount={dashboardNotifications.unreadCount} />
                 ) : null}
               </Link>
             );
@@ -288,7 +291,7 @@ export default async function AuthorVerificationPage() {
               </p>
             </div>
             <div className="flex min-w-0 items-center gap-2.5">
-              <NotificationBell businessId={business.id} />
+              <NotificationBell initialNotifications={dashboardNotifications.latest} />
               <div className="hidden items-center gap-3 rounded-xl border border-black/[0.08] bg-white py-1.5 pl-1.5 pr-3 sm:flex">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft text-xs font-bold uppercase text-brand">
                   {displayName.slice(0, 2)}
@@ -311,7 +314,7 @@ export default async function AuthorVerificationPage() {
           </div>
         </header>
 
-        <MobileBottomNavigation businessId={business.id} />
+        <MobileBottomNavigation unreadCount={dashboardNotifications.unreadCount} />
 
         <div className="min-w-0 px-4 py-5 min-[769px]:px-5 min-[769px]:py-8 sm:px-8 lg:px-9 lg:py-10">
           <div className="mx-auto min-w-0 max-w-[1450px]">

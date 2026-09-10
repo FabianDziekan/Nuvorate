@@ -14,7 +14,8 @@ NuvoRate to platforma SaaS do zarządzania opiniami i reputacją online. Główn
 ## Start tutaj
 
 1. [[Architektura]]
-2. [[Autoryzacja]]
+2. [[NuvoRate — Master Project Status]]
+3. [[Autoryzacja]]
 3. [[Supabase]]
 4. [[Stripe]]
 5. [[OpenAI]]
@@ -39,13 +40,13 @@ NuvoRate to platforma SaaS do zarządzania opiniami i reputacją online. Główn
 - Opinie są przechowywane w `public.reviews`; `/reviews` ma filtrowanie po ocenie i paginację.
 - Odpowiedzi są zarządzane w `/responses`; można generować, edytować, kopiować i oznaczać odpowiedzi jako użyte.
 - Dashboard pozwala skopiować wygenerowaną odpowiedź bez przechodzenia do `/responses`.
-- Weryfikacja autora jest osobną zakładką Business Feature z filtrami, wyszukiwarką, sortowaniem, paginacją i drawerem autora.
+- Weryfikacja autora jest obecnie ukryta przed użytkownikami na launch. Implementacja techniczna i diagnostyka Google Places są zachowane, ale funkcja nie należy do launch scope.
 - Powiadomienia działają tylko dla nowych opinii i mają opcję oznaczania jako przeczytane oraz czyszczenia historii.
-- Automatyczne odpowiedzi zapisują ustawienia i generują odpowiedzi dla pasujących ocen po zapisie ustawień.
+- Automatyczne odpowiedzi korzystają z trwałej kolejki, leasingu i rozliczania AI; automatyczna publikacja do Google jest niezależną fazą i wymaga jawnego `auto_publish`.
 - Analizy reputacji są generowane przez OpenAI i zapisywane w `public.ai_business_analyses`.
 - Limity odpowiedzi i analiz są liczone miesięcznie w `public.ai_usage`.
 - Ustawienia `/settings` pozwalają edytować imię właściciela, nazwę firmy, branżę, styl odpowiedzi `response_tone` oraz motyw light/dark.
-- Moduł NFC pokazuje Google review URL i instrukcję konfiguracji; tracking skanów jest jeszcze planowany.
+- Moduł NFC obsługuje wiele tagów, tracking skanów i publiczny redirect do Google review URL.
 - Stripe jest źródłem prawdy dla aktywacji, zmiany, anulowania i wygaszenia planu.
 - Deployment odbywa się przez GitHub i Vercel; projekt używa `pnpm-lock.yaml`.
 
@@ -64,7 +65,7 @@ NuvoRate to platforma SaaS do zarządzania opiniami i reputacją online. Główn
 
 - Funkcja oznaczona jako plan nie istnieje jeszcze w kodzie produkcyjnym.
 - NuvoRate nie ma własnego publicznego formularza opinii; kieruje do Google review URL.
-- Nie ma jeszcze Google Reviews API, wielu lokalizacji ani ról pracowników.
+- Google Business Profile jest zintegrowany z synchronizacją opinii i odpowiedzi. Multi-location oraz membership są zaimplementowane.
 - Przed publicznym wypuszczeniem SaaS wymagane są dokumenty: regulamin, polityka prywatności, polityka cookies i dane kontaktowe.
 - Dokumentacja techniczna ma pierwszeństwo przed starszymi notatkami koncepcyjnymi.
 

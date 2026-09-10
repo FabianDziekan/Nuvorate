@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const responsesPage = readFileSync(
-  join(process.cwd(), "app/responses/page.tsx"),
+  join(process.cwd(), "app/(dashboard)/responses/page.tsx"),
   "utf8",
 );
 const responseCard = readFileSync(

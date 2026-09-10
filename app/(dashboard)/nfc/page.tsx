@@ -4,42 +4,27 @@ import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand/logo";
 import { DesktopBusinessSwitcher } from "@/components/business/desktop-business-switcher";
 import { BusinessNavBadge } from "@/components/billing/business-nav-badge";
-import { NotificationBell } from "@/components/notifications/notification-bell";
-import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
-import { MobileReviewList } from "@/components/reviews/mobile-review-list";
+import { NfcTagManager } from "@/components/nfc/nfc-tag-manager";
+import { NfcAddTagButton } from "@/components/nfc/nfc-add-tag-button";
+import { NfcSetupInstructions } from "@/components/nfc/nfc-setup-instructions";
 import { MobileBottomNavigation } from "@/components/navigation/mobile-bottom-navigation";
 import { AppNavigationIcon } from "@/components/navigation/app-navigation-icon";
-import { Pagination } from "@/components/ui/pagination";
-import {
-  RatingFilter,
-  ratingFilterValues,
-} from "@/components/ui/rating-filter";
+import { NotificationBell } from "@/components/notifications/notification-bell";
+import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
 import {
   getPlanLabel,
   hasPlanCapability,
 } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
+import { getDashboardNotifications } from "@/lib/dashboard-notifications";
 import { signOut } from "@/app/dashboard/actions";
 
 export const metadata: Metadata = {
-  title: "Opinie | NuvoRate",
+  title: "NFC | NuvoRate",
 };
 
-type ReviewsPageProps = {
-  searchParams: Promise<{ highlight?: string; page?: string; rating?: string }>;
-};
-
-type Review = {
-  id: string;
-  author_name: string;
-  rating: number;
-  content: string;
-  source: string;
-  created_at: string;
-};
-
-type ReviewsIcon =
+type NfcIcon =
   | "analysis"
   | "bell"
   | "dashboard"
@@ -54,10 +39,10 @@ function Icon({
   name,
   className = "h-5 w-5",
 }: {
-  name: ReviewsIcon;
+  name: NfcIcon;
   className?: string;
 }) {
-  const paths: Record<ReviewsIcon, React.ReactNode> = {
+  const paths: Record<NfcIcon, React.ReactNode> = {
     analysis: (
       <>
         <path d="M4 19V5" />
@@ -150,81 +135,26 @@ const navigation = [
   { label: "Pomoc i kontakt", icon: "help" as const, href: "/support" },
 ];
 
-const reviewsPerPage = 10;
-
-function formatReviewDate(createdAt: string) {
-  return new Intl.DateTimeFormat("pl-PL", {
-    dateStyle: "long",
-    timeStyle: "short",
-  }).format(new Date(createdAt));
-}
-
-function formatRating(rating: number) {
-  return rating.toLocaleString("pl-PL", {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  });
-}
-
-function formatSource(source: string) {
-  if (source === "manual") {
-    return "Ręczna";
-  }
-
-  if (source === "demo") {
-    return "Demo";
-  }
-
-  return source;
-}
-
-function buildReviewsHref(rating: string, page: number) {
-  const params = new URLSearchParams();
-
-  if (rating !== "all") {
-    params.set("rating", rating);
-  }
-
-  if (page > 1) {
-    params.set("page", String(page));
-  }
-
-  const query = params.toString();
-  return query ? `/reviews?${query}` : "/reviews";
-}
-
-export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
-  const params = await searchParams;
-  const selectedRating = ratingFilterValues.includes(
-    params.rating as (typeof ratingFilterValues)[number],
-  )
-    ? params.rating!
-    : "all";
-  const requestedPage = Number(params.page ?? "1");
-  const highlightedReviewId =
-    typeof params.highlight === "string" && params.highlight
-      ? params.highlight
-      : null;
-
+export default async function NfcPage() {
   const supabase = await createClient();
   const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
 
   if (claimsError || !claimsData?.claims) {
-    redirect("/login?next=/reviews");
+    redirect("/login?next=/nfc");
   }
 
   const { data: userData } = await supabase.auth.getUser();
   const user = userData.user;
 
   if (!user) {
-    redirect("/login?next=/reviews");
+    redirect("/login?next=/nfc");
   }
 
   const [
     billingContext,
     { data: profile, error: profileError },
   ] = await Promise.all([
-    getActiveBusinessBillingContext(supabase, user.id, "id, name, industry, city"),
+    getActiveBusinessBillingContext(supabase, user.id, "id, name, industry, city, google_review_url"),
     supabase
       .from("profiles")
       .select("first_name")
@@ -235,9 +165,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
   const business = billingContext?.activeBusiness.business;
 
   if (profileError) {
-    throw new Error(
-      "Nie udało się odczytać danych firmy lub profilu. Sprawdź konfigurację Supabase.",
-    );
+    throw new Error("Nie udało się odczytać danych modułu NFC.");
   }
 
   if (!billingContext || !business) {
@@ -245,9 +173,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
   }
 
   if (!profile) {
-    throw new Error(
-      "Nie znaleziono profilu użytkownika. Sprawdź konfigurację Supabase.",
-    );
+    throw new Error("Nie znaleziono profilu użytkownika.");
   }
 
   const appPlan = billingContext.plan;
@@ -255,8 +181,9 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
   const firstName =
     typeof profile.first_name === "string" ? profile.first_name.trim() : "";
   const displayName = firstName || user.email || "NU";
-
-  if (!hasPlanCapability(appPlan, "reviews")) {
+  const dashboardNotifications = await getDashboardNotifications(supabase, business.id);
+  const businessName = business.name ?? "Twoja firma";
+  if (!hasPlanCapability(appPlan, "nfcBasicStats")) {
     return (
       <main className="min-h-screen bg-[#F7F7FA] text-ink">
         <div className="flex min-h-screen items-center justify-center px-5 py-12">
@@ -265,13 +192,13 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
               <BrandLogo />
             </div>
             <p className="mt-8 text-xs font-semibold uppercase tracking-[0.14em] text-brand">
-              Opinie klientów
+              NFC
             </p>
             <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-              Wybierz plan, aby zobaczyć opinie
+              Wybierz plan, aby korzystać z modułu NFC
             </h1>
             <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-black/50">
-              Lista opinii i pełny dashboard są dostępne po aktywacji planu
+              Link do opinii i statystyki skanów są dostępne po aktywacji planu
               Starter albo Business.
             </p>
             <div className="mt-8 grid gap-3 sm:grid-cols-2">
@@ -293,41 +220,54 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
     );
   }
 
-  const { data: reviews, error: reviewsError } = await supabase
-    .from("reviews")
-    .select("id, author_name, rating, content, source, created_at")
-    .eq("business_id", business.id)
-    .order("created_at", { ascending: false });
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const [
+    { data: nfcTags, error: nfcTagsError },
+    { data: nfcScanRows, error: nfcScansError },
+  ] = await Promise.all([
+    supabase
+      .from("nfc_tags")
+      .select("id, name, public_token, destination_url, is_active")
+      .eq("business_id", business.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("nfc_scans")
+      .select("tag_id, scanned_at")
+      .eq("business_id", business.id)
+      .order("scanned_at", { ascending: false }),
+  ]);
 
-  if (reviewsError) {
-    throw new Error(
-      "Nie udało się odczytać opinii. Sprawdź konfigurację Supabase.",
-    );
+  if (nfcTagsError || nfcScansError) {
+    throw new Error("Nie udało się odczytać danych NFC. Uruchom migracje 016_nfc_tags_and_scans.sql oraz 017_multiple_nfc_tags.sql w Supabase.");
   }
 
-  const allReviews = reviews as Review[];
-  const filteredReviews =
-    selectedRating === "all"
-      ? allReviews
-      : allReviews.filter(
-          (review) => review.rating === Number(selectedRating),
-        );
-  const totalPages = Math.max(1, Math.ceil(filteredReviews.length / reviewsPerPage));
-  const highlightedReviewIndex = highlightedReviewId
-    ? filteredReviews.findIndex((review) => review.id === highlightedReviewId)
-    : -1;
-  const highlightedReviewPage =
-    highlightedReviewIndex >= 0
-      ? Math.floor(highlightedReviewIndex / reviewsPerPage) + 1
-      : null;
-  const currentPage = highlightedReviewPage
-    ? highlightedReviewPage
-    : Number.isInteger(requestedPage)
-      ? Math.min(Math.max(requestedPage, 1), totalPages)
-      : 1;
-  const pageStart = (currentPage - 1) * reviewsPerPage;
-  const pageEnd = pageStart + reviewsPerPage;
-  const paginatedReviews = filteredReviews.slice(pageStart, pageEnd);
+  const nfcBaseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const scans = nfcScanRows ?? [];
+  const formatScan = (scannedAt?: string) => {
+    if (!scannedAt) return "Brak skanów";
+    const date = new Date(scannedAt);
+    const now = new Date();
+    const time = new Intl.DateTimeFormat("pl-PL", { hour: "2-digit", minute: "2-digit" }).format(date);
+    const dayDifference = Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()) / 86_400_000);
+    if (dayDifference === 0) return `Dzisiaj, ${time}`;
+    if (dayDifference === 1) return `Wczoraj, ${time}`;
+    return new Intl.DateTimeFormat("pl-PL", { dateStyle: "medium", timeStyle: "short" }).format(date);
+  };
+  const scansTotal = scans.length;
+  const scansLast30Days = scans.filter((scan) => new Date(scan.scanned_at) >= thirtyDaysAgo).length;
+  const lastScanLabel = formatScan(scans[0]?.scanned_at);
+  const tags = (nfcTags ?? []).map((tag) => {
+    const tagScans = scans.filter((scan) => scan.tag_id === tag.id);
+    return {
+      id: tag.id, name: tag.name, destinationUrl: tag.destination_url,
+      publicUrl: `${nfcBaseUrl}/r/${tag.public_token}`, isActive: tag.is_active,
+      scansTotal: tagScans.length,
+      scansLast30Days: tagScans.filter((scan) => new Date(scan.scanned_at) >= thirtyDaysAgo).length,
+      lastScanLabel: formatScan(tagScans[0]?.scanned_at),
+    };
+  });
+  const activeTags = tags.filter((tag) => tag.isActive).length;
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#F7F7FA] text-ink">
@@ -335,12 +275,13 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
         <BrandLogo />
         <DesktopBusinessSwitcher
           activeBusiness={business}
+          billingContext={billingContext}
           plan={plan}
           userId={user.id}
         />
         <nav className="mt-7 space-y-1.5" aria-label="Nawigacja dashboardu">
           {navigation.map((item) => {
-            const active = item.label === "Opinie";
+            const active = item.label === "NFC";
             const className = `sidebar-nav-item flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition ${
               active
                 ? "bg-brand-soft text-brand"
@@ -359,7 +300,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                     }
                   />
                   {item.label === "Powiadomienia" ? (
-                    <NotificationSidebarBadge businessId={business.id} />
+                    <NotificationSidebarBadge unreadCount={dashboardNotifications.unreadCount} />
                   ) : null}
                 </Link>
               );
@@ -376,7 +317,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                   }
                 />
                 {item.label === "Powiadomienia" ? (
-                  <NotificationSidebarBadge businessId={business.id} />
+                  <NotificationSidebarBadge unreadCount={dashboardNotifications.unreadCount} />
                 ) : null}
               </button>
             );
@@ -416,11 +357,11 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
               <BrandLogo />
             </div>
             <div className="hidden min-w-0 lg:block">
-              <p className="truncate text-xs text-black/35">{business.name}</p>
-              <p className="mt-0.5 text-sm font-semibold">Opinie</p>
+              <p className="truncate text-xs text-black/35">{businessName}</p>
+              <p className="mt-0.5 text-sm font-semibold">NFC</p>
             </div>
             <div className="flex min-w-0 items-center gap-2.5">
-              <NotificationBell businessId={business.id} />
+              <NotificationBell initialNotifications={dashboardNotifications.latest} />
               <div className="hidden items-center gap-3 rounded-xl border border-black/[0.08] bg-white py-1.5 pl-1.5 pr-3 sm:flex">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft text-xs font-bold uppercase text-brand">
                   {displayName.slice(0, 2)}
@@ -443,121 +384,56 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
           </div>
         </header>
 
-        <MobileBottomNavigation businessId={business.id} />
+        <MobileBottomNavigation unreadCount={dashboardNotifications.unreadCount} />
 
-        <div className="min-w-0 px-5 py-8 max-[768px]:px-4 max-[768px]:py-5 sm:px-8 lg:px-9 lg:py-10">
+        <div className="min-w-0 px-4 py-5 min-[769px]:px-5 min-[769px]:py-8 sm:px-8 lg:px-9 lg:py-10">
           <div className="mx-auto min-w-0 max-w-[1450px]">
-            <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+            <div className="max-[768px]:flex max-[768px]:flex-wrap max-[768px]:items-end max-[768px]:justify-between max-[768px]:gap-3">
               <div>
-                <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] max-[768px]:mt-0 max-[768px]:text-2xl sm:text-4xl">
-                  Opinie klientów
-                </h1>
-                <p className="mt-2 text-sm leading-6 text-black/45 max-[768px]:mt-1 max-[768px]:leading-5">
-                  Wszystkie opinie firmy {business.name} w jednym miejscu.
-                </p>
+              <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+                NFC
+              </h1>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-black/45 min-[769px]:mt-2">
+                <span className="min-[769px]:hidden">Zarządzaj plakietkami i śledź ich skuteczność.</span>
+                <span className="max-[768px]:hidden">Zarządzaj linkiem do opinii i śledź skany z plakietek NFC.</span>
+              </p>
               </div>
+              <NfcAddTagButton className="button-primary shrink-0 px-3 py-2 text-xs min-[769px]:hidden" />
             </div>
 
-            <section className="mt-8 min-w-0 overflow-hidden rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card max-[768px]:mt-5 max-[768px]:p-4 sm:p-6">
-              <div className="flex flex-col justify-between gap-4 max-[768px]:gap-3 sm:flex-row sm:items-center">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.12em] text-black/35">
-                    Lista opinii
-                  </p>
-                  <div className="mt-1 flex items-center gap-2">
-                    <h2 className="text-xl font-semibold tracking-tight">
-                      {filteredReviews.length}{" "}
-                      {filteredReviews.length === 1 ? "opinia" : "opinii"}
-                    </h2>
-                  </div>
-                </div>
-                <RatingFilter
-                  selectedRating={selectedRating}
-                  buildHref={(rating) =>
-                    rating === "all" ? "/reviews" : `/reviews?rating=${rating}`
-                  }
-                />
-              </div>
-
-              {filteredReviews.length > 0 ? (
-                <>
-                <MobileReviewList
-                  key={selectedRating}
-                  reviews={filteredReviews.map((review) => ({
-                    id: review.id,
-                    authorName: review.author_name,
-                    content: review.content,
-                    createdAtLabel: formatReviewDate(review.created_at),
-                    rating: review.rating,
-                    sourceLabel: formatSource(review.source),
-                  }))}
-                />
-                <div className="mt-6 hidden space-y-3 min-[769px]:block">
-                  {paginatedReviews.map((review) => (
-                    <article
-                      key={review.id}
-                      id={`review-${review.id}`}
-                      className={`min-w-0 scroll-mt-28 overflow-hidden rounded-2xl border bg-[#FAFAFC] p-5 transition max-[768px]:p-3 ${
-                        highlightedReviewId === review.id
-                          ? "review-highlight border-brand/45 bg-brand/[0.04]"
-                          : "border-black/[0.06]"
-                      }`}
-                    >
-                      <div className="flex min-w-0 flex-col justify-between gap-4 max-[768px]:flex-row max-[768px]:items-start max-[768px]:gap-2 sm:flex-row sm:items-start">
-                        <div className="flex min-w-0 items-center gap-3 max-[768px]:gap-2">
-                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-sm font-bold text-brand shadow-sm max-[768px]:h-8 max-[768px]:w-8 max-[768px]:rounded-lg max-[768px]:text-xs">
-                            {review.author_name.slice(0, 1).toUpperCase()}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold">
-                              {review.author_name}
-                            </p>
-                            <p className="mt-0.5 text-[11px] text-black/35">
-                              {formatReviewDate(review.created_at)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2 max-[768px]:gap-1.5">
-                          <span className="rounded-full border border-black/[0.06] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-black/40 max-[768px]:px-2">
-                            {formatSource(review.source)}
-                          </span>
-                          <span
-                            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                              review.rating <= 2
-                                ? "bg-red-50 text-red-600"
-                              : "bg-brand-soft text-brand"
-                            }`}
-                          >
-                            {formatRating(review.rating)} ★
-                          </span>
-                        </div>
-                      </div>
-                      <p className="mt-5 break-words text-sm leading-6 text-black/60 max-[768px]:mt-3 max-[768px]:leading-5">
-                        {review.content}
-                      </p>
-                    </article>
-                  ))}
-                  <Pagination
-                    buildHref={(page) => buildReviewsHref(selectedRating, page)}
-                    currentPage={currentPage}
-                    pageSize={reviewsPerPage}
-                    totalItems={filteredReviews.length}
-                  />
-                </div>
-                </>
-              ) : (
-                <div className="mt-6 rounded-2xl border border-dashed border-black/[0.08] bg-[#FAFAFC] px-5 py-14 text-center">
-                  <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft text-brand">
-                    <Icon name="reviews" className="h-5 w-5" />
-                  </span>
-                  <p className="mt-4 text-sm font-semibold">
-                    {allReviews.length === 0
-                      ? "Brak opinii. Pierwsze opinie pojawią się tutaj."
-                      : "Brak opinii dla wybranej oceny."}
-                  </p>
-                </div>
-              )}
+            <section className="mt-5 grid grid-cols-2 gap-3 min-[769px]:hidden" aria-label="Statystyki NFC">
+              {[
+                ["Skany · 30 dni", scansLast30Days],
+                ["Skany łącznie", scansTotal],
+                ["Aktywne plakietki", activeTags],
+                ["Ostatni skan", lastScanLabel],
+              ].map(([label, value]) => (
+                <article key={label as string} className="min-h-[102px] rounded-2xl border border-black/[0.06] bg-white p-4 shadow-card">
+                  <p className="text-[11px] font-medium leading-4 text-black/45">{label as string}</p>
+                  <p className={`mt-2 font-semibold tracking-[-0.04em] ${label === "Ostatni skan" ? "text-base leading-6" : "text-2xl"}`}>{value as string | number}</p>
+                </article>
+              ))}
             </section>
+
+            <section className="mt-8 hidden gap-4 min-[769px]:grid sm:grid-cols-2 xl:grid-cols-4" aria-label="Statystyki NFC">
+              {[
+                ["Skany w ostatnich 30 dniach", scansLast30Days, "ze wszystkich aktywnych plakietek"],
+                ["Skany łącznie", scansTotal, "od uruchomienia NFC"],
+                ["Aktywne plakietki", activeTags, "gotowe do zbierania opinii"],
+                ["Ostatni skan", lastScanLabel, "ostatnia aktywność klienta"],
+              ].map(([label, value, detail]) => (
+                <article key={label as string} className="min-h-[172px] rounded-[24px] border border-black/[0.06] bg-white p-5 shadow-card sm:p-6">
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-soft text-brand">
+                    <Icon name="nfc" className="h-5 w-5" />
+                  </span>
+                  <p className="mt-5 text-xs font-medium text-black/40">{label as string}</p>
+                  <p className={`mt-2 font-semibold tracking-[-0.04em] ${label === "Ostatni skan" ? "text-xl leading-7" : "text-3xl"}`}>{value as string | number}</p>
+                  <p className="mt-2 text-xs leading-5 text-black/40">{detail as string}</p>
+                </article>
+              ))}
+            </section>
+            <NfcTagManager tags={tags} />
+            <NfcSetupInstructions />
           </div>
         </div>
       </div>

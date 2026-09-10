@@ -142,14 +142,14 @@ test("response endpoints reject a request after its active location becomes stal
 
 test("Active location pages resolve their displayed plan through the billing context", () => {
   for (const path of [
-    "app/dashboard/page.tsx",
-    "app/reviews/page.tsx",
-    "app/analysis/page.tsx",
-    "app/responses/page.tsx",
+    "app/(dashboard)/dashboard/page.tsx",
+    "app/(dashboard)/reviews/page.tsx",
+    "app/(dashboard)/analysis/page.tsx",
+    "app/(dashboard)/responses/page.tsx",
     "app/author-verification/page.tsx",
-    "app/nfc/page.tsx",
-    "app/notifications/page.tsx",
-    "app/settings/page.tsx",
+    "app/(dashboard)/nfc/page.tsx",
+    "app/(dashboard)/notifications/page.tsx",
+    "app/(dashboard)/settings/page.tsx",
   ]) {
     assert.match(source(path), /getActiveBusinessBillingContext/);
   }

@@ -9,6 +9,7 @@ import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
 import { SupportForm } from "@/components/support/support-form";
 import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
+import { getDashboardNotifications } from "@/lib/dashboard-notifications";
 import { getPlanLabel, hasPlanCapability } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/dashboard/actions";
@@ -43,12 +44,13 @@ export default async function SupportPage() {
 
   const plan = getPlanLabel(billingContext.plan);
   const displayName = (typeof profile?.first_name === "string" && profile.first_name.trim()) || user.email || "NU";
+  const dashboardNotifications = await getDashboardNotifications(supabase, business.id);
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#F7F7FA] text-ink">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col border-r border-black/[0.06] bg-white px-5 py-6 lg:flex">
         <BrandLogo />
-        <DesktopBusinessSwitcher activeBusiness={business} plan={plan} userId={user.id} />
+        <DesktopBusinessSwitcher activeBusiness={business} billingContext={billingContext} plan={plan} userId={user.id} />
         <nav className="mt-7 space-y-1.5" aria-label="Nawigacja dashboardu">
           {navigation.map((item) => {
             const active = item.href === "/support";
@@ -56,7 +58,7 @@ export default async function SupportPage() {
               <Link key={item.href} href={item.href} className={`sidebar-nav-item flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition ${active ? "bg-brand-soft text-brand" : "text-black/45 hover:bg-black/[0.035] hover:text-ink"}`}>
                 <AppNavigationIcon name={item.icon} className="h-[18px] w-[18px]" />
                 <span className="min-w-0 flex-1">{item.label}</span>
-                {item.href === "/notifications" ? <NotificationSidebarBadge businessId={business.id} /> : null}
+                {item.href === "/notifications" ? <NotificationSidebarBadge unreadCount={dashboardNotifications.unreadCount} /> : null}
               </Link>
             );
           })}
@@ -77,13 +79,13 @@ export default async function SupportPage() {
             <div className="shrink-0 lg:hidden"><BrandLogo /></div>
             <div className="hidden min-w-0 lg:block"><p className="truncate text-xs text-black/35">{business.name}</p><p className="mt-0.5 text-sm font-semibold">Pomoc i kontakt</p></div>
             <div className="flex min-w-0 items-center gap-2.5">
-              <NotificationBell businessId={business.id} />
+              <NotificationBell initialNotifications={dashboardNotifications.latest} />
               <div className="hidden items-center gap-3 rounded-xl border border-black/[0.08] bg-white py-1.5 pl-1.5 pr-3 sm:flex"><span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft text-xs font-bold uppercase text-brand">{displayName.slice(0, 2)}</span><div className="max-w-[150px]"><p className="truncate text-xs font-semibold">{user.email}</p><p className="text-[10px] text-black/35">Plan {plan}</p></div></div>
               <form action={signOut} className="lg:hidden"><button type="submit" className="grid h-11 w-11 place-items-center rounded-xl border border-black/[0.08] bg-white text-black/50" aria-label="Wyloguj się"><AppNavigationIcon name="logout" className="h-[18px] w-[18px]" /></button></form>
             </div>
           </div>
         </header>
-        <MobileBottomNavigation businessId={business.id} />
+        <MobileBottomNavigation unreadCount={dashboardNotifications.unreadCount} />
         <div className="min-w-0 px-4 py-5 min-[769px]:px-5 min-[769px]:py-8 sm:px-8 lg:px-9 lg:py-10">
           <div className="mx-auto min-w-0 max-w-[860px]">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">Wsparcie</p>

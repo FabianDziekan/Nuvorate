@@ -45,7 +45,8 @@ import { getReviewTrendBarHeight } from "@/lib/review-trend-bar-height";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
-import { signOut } from "./actions";
+import { getDashboardNotifications } from "@/lib/dashboard-notifications";
+import { signOut } from "@/app/dashboard/actions";
 
 export const metadata: Metadata = {
   title: "Dashboard | NuvoRate",
@@ -886,6 +887,8 @@ export default async function DashboardPage({
     );
   }
 
+  const dashboardNotifications = await getDashboardNotifications(supabase, business.id);
+
   const { data: googleConnection, error: googleConnectionError } =
     await supabase
       .from("google_business_connections")
@@ -1215,6 +1218,7 @@ export default async function DashboardPage({
         <BrandLogo />
         <DesktopBusinessSwitcher
           activeBusiness={business}
+          billingContext={billingContext}
           plan={plan}
           userId={user.id}
         />
@@ -1242,7 +1246,7 @@ export default async function DashboardPage({
                     }
                   />
                   {item.label === "Powiadomienia" ? (
-                    <NotificationSidebarBadge businessId={business.id} />
+                    <NotificationSidebarBadge unreadCount={dashboardNotifications.unreadCount} />
                   ) : null}
                 </Link>
               );
@@ -1259,7 +1263,7 @@ export default async function DashboardPage({
                   }
                 />
                 {item.label === "Powiadomienia" ? (
-                  <NotificationSidebarBadge businessId={business.id} />
+                  <NotificationSidebarBadge unreadCount={dashboardNotifications.unreadCount} />
                 ) : null}
               </button>
             );
@@ -1307,7 +1311,7 @@ export default async function DashboardPage({
               <p className="mt-0.5 text-sm font-semibold">Pulpit główny</p>
             </div>
             <div className="flex items-center gap-2.5">
-              <MobileBusinessSwitcher userId={user.id} />
+              <MobileBusinessSwitcher billingContext={billingContext} userId={user.id} />
               <TrendRangeSelect
                 from={selectedRange.from}
                 isCustom={selectedRange.isCustom}
@@ -1315,7 +1319,7 @@ export default async function DashboardPage({
                 to={selectedRange.to}
                 value={trendRange}
               />
-              <NotificationBell businessId={business.id} />
+              <NotificationBell initialNotifications={dashboardNotifications.latest} />
               <div className="hidden items-center gap-3 rounded-xl border border-black/[0.08] bg-white py-1.5 pl-1.5 pr-3 sm:flex">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft text-xs font-bold uppercase text-brand">
                   {accountDisplayName.slice(0, 2)}
@@ -1338,7 +1342,7 @@ export default async function DashboardPage({
           </div>
         </header>
 
-        <MobileBottomNavigation businessId={business.id} />
+        <MobileBottomNavigation unreadCount={dashboardNotifications.unreadCount} />
 
         <div className="px-5 py-8 max-[768px]:px-4 max-[768px]:py-5 sm:px-8 lg:px-9 lg:py-10">
           <div className="mx-auto max-w-[1450px]">

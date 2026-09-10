@@ -22,6 +22,7 @@ import {
 } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
+import { getDashboardNotifications } from "@/lib/dashboard-notifications";
 import { signOut } from "@/app/dashboard/actions";
 
 export const metadata: Metadata = {
@@ -213,6 +214,7 @@ export default async function NotificationsPage({
   const firstName =
     typeof profile.first_name === "string" ? profile.first_name.trim() : "";
   const displayName = firstName || user.email || "NU";
+  const dashboardNotifications = await getDashboardNotifications(supabase, business.id);
   let notificationsQuery = supabase
     .from("notifications")
     .select("id, type, title, message, is_read, created_at")
@@ -266,6 +268,7 @@ export default async function NotificationsPage({
         </div>
         <DesktopBusinessSwitcher
           activeBusiness={business}
+          billingContext={billingContext}
           plan={plan}
           userId={user.id}
         />
@@ -289,7 +292,7 @@ export default async function NotificationsPage({
                   }
                 />
                 {item.label === "Powiadomienia" ? (
-                  <NotificationSidebarBadge businessId={business.id} />
+                  <NotificationSidebarBadge unreadCount={dashboardNotifications.unreadCount} />
                 ) : null}
               </Link>
             );
@@ -319,7 +322,7 @@ export default async function NotificationsPage({
               <p className="mt-0.5 text-sm font-semibold">Powiadomienia</p>
             </div>
             <div className="flex min-w-0 items-center gap-2.5">
-              <NotificationBell businessId={business.id} />
+              <NotificationBell initialNotifications={dashboardNotifications.latest} />
               <div className="hidden items-center gap-3 rounded-xl border border-black/[0.08] bg-white py-1.5 pl-1.5 pr-3 sm:flex">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft text-xs font-bold uppercase text-brand">
                   {displayName.slice(0, 2)}
@@ -342,7 +345,7 @@ export default async function NotificationsPage({
           </div>
         </header>
 
-        <MobileBottomNavigation businessId={business.id} />
+        <MobileBottomNavigation unreadCount={dashboardNotifications.unreadCount} />
 
         <section className="px-4 py-5 min-[769px]:px-5 min-[769px]:py-7 sm:px-8 lg:px-9">
           <div className="mb-5 flex flex-col justify-between gap-3 min-[769px]:mb-6 min-[769px]:gap-4 md:flex-row md:items-end">
