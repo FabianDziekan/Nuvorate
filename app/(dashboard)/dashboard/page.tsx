@@ -13,6 +13,7 @@ import { AnalysisPreviewCard } from "@/components/dashboard/analysis-preview-car
 import { AnalysisContextAlert } from "@/components/dashboard/analysis-context-alert";
 import { GoogleSyncButton } from "@/components/dashboard/google-sync-button";
 import { MobileMetricCards } from "@/components/dashboard/mobile-metric-cards";
+import { DashboardHeaderAction } from "@/components/dashboard/dashboard-header-action";
 import { MobileBottomNavigation } from "@/components/navigation/mobile-bottom-navigation";
 import { AppNavigationIcon } from "@/components/navigation/app-navigation-icon";
 import { MobileBusinessInsightsCarousel } from "@/components/dashboard/mobile-business-insights-carousel";
@@ -43,8 +44,7 @@ import {
 } from "@/lib/analysis-projection";
 import { getReviewTrendBarHeight } from "@/lib/review-trend-bar-height";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
-import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
+import { getDashboardRequestClient as createClient, getDashboardUser, getDashboardRequestContext } from "@/lib/dashboard-request-context";
 import { getDashboardNotifications } from "@/lib/dashboard-notifications";
 import { signOut } from "@/app/dashboard/actions";
 
@@ -850,24 +850,15 @@ export default async function DashboardPage({
     redirect("/login?next=/dashboard");
   }
 
-  const { data: userData } = await supabase.auth.getUser();
+  const { data: userData } = await getDashboardUser();
   const user = userData.user;
 
   if (!user) {
     redirect("/login?next=/dashboard");
   }
 
-  const [
-    billingContext,
-    { data: profile, error: profileError },
-  ] = await Promise.all([
-    getActiveBusinessBillingContext(supabase, user.id, "id, name, industry, city, monthly_review_goal"),
-    supabase
-      .from("profiles")
-      .select("first_name")
-      .eq("user_id", user.id)
-      .maybeSingle(),
-  ]);
+  const dashboardContext = await getDashboardRequestContext(user.id);
+  const { billingContext, profileResult: { data: profile, error: profileError } } = dashboardContext;
 
   const business = billingContext?.activeBusiness.business;
 
@@ -887,18 +878,33 @@ export default async function DashboardPage({
     );
   }
 
-  const dashboardNotifications = await getDashboardNotifications(supabase, business.id);
+  const periodMonth = currentPeriodMonth();
+  const loadOverview = async () => {
+    const [
+      { data: googleConnection, error: googleConnectionError },
+      { data: aiUsage, error: aiUsageError },
+    ] = await Promise.all([
+      supabase
+        .from("google_business_connections")
+        .select("id")
+        .eq("business_id", business.id)
+        .maybeSingle(),
+      supabase
+        .from("ai_usage")
+        .select("ai_replies_used, ai_analyses_used")
+        .eq("user_id", billingContext.billingOwnerId)
+        .eq("period_month", periodMonth)
+        .maybeSingle(),
+    ]);
 
-  const { data: googleConnection, error: googleConnectionError } =
-    await supabase
-      .from("google_business_connections")
-      .select("id")
-      .eq("business_id", business.id)
-      .maybeSingle();
-
-  if (googleConnectionError) {
-    console.warn("Google connection lookup failed", googleConnectionError);
-  }
+    if (googleConnectionError) {
+      console.warn("Google connection lookup failed", googleConnectionError);
+    }
+    if (aiUsageError) {
+      console.warn("AI usage lookup failed", aiUsageError);
+    }
+    return { googleConnection, aiUsage, aiUsageError };
+  };
 
   const appPlan = billingContext.plan;
   const isPaid = hasPlanCapability(appPlan, "basicDashboard");
@@ -912,31 +918,6 @@ export default async function DashboardPage({
   const hasActiveSubscription = ["active", "trialing"].includes(
     billingContext.subscriptionStatus ?? "",
   );
-  const isGoogleConnected = Boolean(googleConnection);
-  const periodMonth = currentPeriodMonth();
-  const { data: aiUsage, error: aiUsageError } = await supabase
-    .from("ai_usage")
-    .select("ai_replies_used, ai_analyses_used")
-    .eq("user_id", billingContext.billingOwnerId)
-    .eq("period_month", periodMonth)
-    .maybeSingle();
-
-  if (aiUsageError) {
-    console.warn("AI usage lookup failed", aiUsageError);
-  }
-
-  const currentAiUsage = aiUsageError ? null : (aiUsage as AiUsage | null);
-  const aiRepliesUsedRaw = Number(currentAiUsage?.ai_replies_used ?? 0);
-  const aiAnalysesUsedRaw = Number(currentAiUsage?.ai_analyses_used ?? 0);
-  const aiRepliesUsed = Number.isFinite(aiRepliesUsedRaw)
-    ? aiRepliesUsedRaw
-    : 0;
-  const aiAnalysesUsed = Number.isFinite(aiAnalysesUsedRaw)
-    ? aiAnalysesUsedRaw
-    : 0;
-  const aiRepliesLimit = getAiLimit(appPlan, "reply");
-  const aiAnalysesLimit = getAiLimit(appPlan, "analysis");
-  const remainingReplies = Math.max(aiRepliesLimit - aiRepliesUsed, 0);
   const checkoutAvailability = {
     monthly: {
       business: hasPriceIdForPlan("business", "monthly"),
@@ -948,9 +929,13 @@ export default async function DashboardPage({
     },
   };
 
+  if (!isPaid) {
+    await loadOverview();
+  }
+
   if (!isPaid && isCheckoutSuccess) {
     return (
-      <main className="min-h-screen bg-[#F7F7FA] text-ink">
+<>
         <div className="flex min-h-screen items-center justify-center px-5 py-12">
           <section className="w-full max-w-3xl rounded-[32px] border border-black/[0.06] bg-white p-7 text-center shadow-card sm:p-10">
             <div className="mx-auto flex justify-center">
@@ -964,7 +949,7 @@ export default async function DashboardPage({
             </form>
           </section>
         </div>
-      </main>
+      </>
     );
   }
 
@@ -1012,6 +997,7 @@ export default async function DashboardPage({
   const previousMonthEnd = endOfPreviousMonth(now);
 
   const [
+    { googleConnection, aiUsage, aiUsageError },
     { data: reviews, error: reviewsError },
     {
       data: reviewRatings,
@@ -1021,7 +1007,11 @@ export default async function DashboardPage({
     { data: insightReviews, error: insightReviewsError },
     { data: currentMonthReviews, error: currentMonthReviewsError },
     { data: previousMonthReviews, error: previousMonthReviewsError },
+    { data: reviewResponses, error: reviewResponsesError },
+    { data: businessAnalysis, error: businessAnalysisError },
+    { count: nfcScans, error: nfcScansError },
   ] = await Promise.all([
+    loadOverview(),
     supabase
       .from("reviews")
       .select("id, author_name, rating, content, created_at")
@@ -1061,25 +1051,6 @@ export default async function DashboardPage({
           .gte("created_at", previousMonthStart.toISOString())
           .lte("created_at", previousMonthEnd.toISOString())
       : Promise.resolve({ data: [], error: null }),
-  ]);
-
-  if (
-    reviewsError ||
-    reviewStatsError ||
-    insightReviewsError ||
-    currentMonthReviewsError ||
-    previousMonthReviewsError
-  ) {
-    throw new Error(
-      "Nie udało się odczytać opinii. Uruchom migrację reviews w Supabase.",
-    );
-  }
-
-  const [
-    { data: reviewResponses, error: reviewResponsesError },
-    { data: businessAnalysis, error: businessAnalysisError },
-    { count: nfcScans, error: nfcScansError },
-  ] = await Promise.all([
     supabase
       .from("ai_review_responses")
       .select("review_id, response_text")
@@ -1101,11 +1072,37 @@ export default async function DashboardPage({
       .lte("scanned_at", selectedRange.end.toISOString()),
   ]);
 
+  if (
+    reviewsError ||
+    reviewStatsError ||
+    insightReviewsError ||
+    currentMonthReviewsError ||
+    previousMonthReviewsError
+  ) {
+    throw new Error(
+      "Nie udało się odczytać opinii. Uruchom migrację reviews w Supabase.",
+    );
+  }
+
   if (reviewResponsesError || businessAnalysisError || nfcScansError) {
     throw new Error(
       "Nie udało się odczytać danych dashboardu. Uruchom wymagane migracje Supabase.",
     );
   }
+
+  const isGoogleConnected = Boolean(googleConnection);
+  const currentAiUsage = aiUsageError ? null : (aiUsage as AiUsage | null);
+  const aiRepliesUsedRaw = Number(currentAiUsage?.ai_replies_used ?? 0);
+  const aiAnalysesUsedRaw = Number(currentAiUsage?.ai_analyses_used ?? 0);
+  const aiRepliesUsed = Number.isFinite(aiRepliesUsedRaw)
+    ? aiRepliesUsedRaw
+    : 0;
+  const aiAnalysesUsed = Number.isFinite(aiAnalysesUsedRaw)
+    ? aiAnalysesUsedRaw
+    : 0;
+  const aiRepliesLimit = getAiLimit(appPlan, "reply");
+  const aiAnalysesLimit = getAiLimit(appPlan, "analysis");
+  const remainingReplies = Math.max(aiRepliesLimit - aiRepliesUsed, 0);
 
   const ratings = (reviewRatings ?? [])
     .map((review) => Number(review.rating))
@@ -1212,137 +1209,12 @@ export default async function DashboardPage({
   });
 
   return (
-    <main className="min-h-screen bg-[#F7F7FA] text-ink">
+    <>
       <AnalysisContextAlert feedback={analysisFeedback} />
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col border-r border-black/[0.06] bg-white px-5 py-6 lg:flex">
-        <BrandLogo />
-        <DesktopBusinessSwitcher
-          activeBusiness={business}
-          billingContext={billingContext}
-          plan={plan}
-          userId={user.id}
-        />
-        <nav className="mt-7 space-y-1.5" aria-label="Nawigacja dashboardu">
-          {navigation.map((item) => {
-            const className = `sidebar-nav-item flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition ${
-                item.active
-                  ? "bg-brand-soft text-brand"
-                  : "text-black/45 hover:bg-black/[0.035] hover:text-ink"
-              }`;
 
-            if (item.label === "Opinie" || item.href) {
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href ?? "/reviews"}
-                  className={className}
-                >
-                  <AppNavigationIcon name={item.icon} className="h-[18px] w-[18px]" />
-                  <span className="min-w-0 flex-1">{item.label}</span>
-                  <BusinessNavBadge
-                    show={
-                      item.label === "Autorzy opinii" &&
-                      !hasPlanCapability(appPlan, "authorVerification")
-                    }
-                  />
-                  {item.label === "Powiadomienia" ? (
-                    <NotificationSidebarBadge unreadCount={dashboardNotifications.unreadCount} />
-                  ) : null}
-                </Link>
-              );
-            }
-
-            return (
-              <button key={item.label} type="button" className={className}>
-                <AppNavigationIcon name={item.icon} className="h-[18px] w-[18px]" />
-                <span className="min-w-0 flex-1">{item.label}</span>
-                <BusinessNavBadge
-                  show={
-                    item.label === "Autorzy opinii" &&
-                    !hasPlanCapability(appPlan, "authorVerification")
-                  }
-                />
-                {item.label === "Powiadomienia" ? (
-                  <NotificationSidebarBadge unreadCount={dashboardNotifications.unreadCount} />
-                ) : null}
-              </button>
-            );
-          })}
-        </nav>
-        <div className="mt-auto">
-          <div className="rounded-2xl bg-ink p-4 text-white">
-            <p className="text-[11px] text-white/45">Aktywny plan</p>
-            <div className="mt-1 flex items-center justify-between">
-              <p className="font-semibold">{plan}</p>
-              <span className="rounded-full bg-brand px-2 py-1 text-[9px] font-semibold uppercase tracking-wider">
-                aktywny
-              </span>
-            </div>
-            {hasActiveSubscription ? (
-              <form method="post" action="/billing/portal"><button type="submit" className="mt-4 block w-full rounded-xl bg-white/10 px-3 py-2.5 text-center text-xs font-semibold text-white transition hover:bg-white/15">
-                Zarządzaj subskrypcją
-              </button></form>
-            ) : plan === "Starter" ? (
-              <Link href="/checkout?plan=business" className="mt-4 block w-full rounded-xl bg-white/10 px-3 py-2.5 text-center text-xs font-semibold text-white transition hover:bg-white/15">
-                Przejdź na Business
-              </Link>
-            ) : null}
-          </div>
-          <form action={signOut} className="mt-3">
-            <button
-              type="submit"
-              className="flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium text-black/45 transition hover:bg-red-50 hover:text-red-600"
-            >
-              <Icon name="logout" className="h-[18px] w-[18px]" />
-              Wyloguj się
-            </button>
-          </form>
-        </div>
-      </aside>
-
-      <div className="lg:pl-[252px]">
-        <header className="dashboard-topbar sticky top-0 z-20 border-b border-black/[0.06] bg-white/90 backdrop-blur-xl">
-          <div className="flex h-[74px] items-center justify-between gap-4 px-5 sm:px-8 lg:px-9">
-            <div className="lg:hidden">
-              <BrandLogo />
-            </div>
-            <div className="hidden lg:block">
-              <p className="text-xs text-black/35">{businessName}</p>
-              <p className="mt-0.5 text-sm font-semibold">Pulpit główny</p>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <MobileBusinessSwitcher billingContext={billingContext} userId={user.id} />
-              <TrendRangeSelect
-                from={selectedRange.from}
-                isCustom={selectedRange.isCustom}
-                label={selectedRange.displayLabel}
-                to={selectedRange.to}
-                value={trendRange}
-              />
-              <NotificationBell initialNotifications={dashboardNotifications.latest} />
-              <div className="hidden items-center gap-3 rounded-xl border border-black/[0.08] bg-white py-1.5 pl-1.5 pr-3 sm:flex">
-                <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft text-xs font-bold uppercase text-brand">
-                  {accountDisplayName.slice(0, 2)}
-                </span>
-                <div className="max-w-[150px]">
-                  <p className="truncate text-xs font-semibold">{user.email}</p>
-                  <p className="text-[10px] text-black/35">Plan {plan}</p>
-                </div>
-              </div>
-              <form action={signOut} className="lg:hidden">
-                <button
-                  type="submit"
-                  className="grid h-11 w-11 place-items-center rounded-xl border border-black/[0.08] bg-white text-black/50"
-                  aria-label="Wyloguj się"
-                >
-                  <Icon name="logout" className="h-[18px] w-[18px]" />
-                </button>
-              </form>
-            </div>
-          </div>
-        </header>
-
-        <MobileBottomNavigation unreadCount={dashboardNotifications.unreadCount} />
+      <DashboardHeaderAction>
+        <TrendRangeSelect from={selectedRange.from} isCustom={selectedRange.isCustom} label={selectedRange.displayLabel} to={selectedRange.to} value={trendRange} />
+      </DashboardHeaderAction>
 
         <div className="px-5 py-8 max-[768px]:px-4 max-[768px]:py-5 sm:px-8 lg:px-9 lg:py-10">
           <div className="mx-auto max-w-[1450px]">
@@ -1650,7 +1522,6 @@ export default async function DashboardPage({
             </section>
           </div>
         </div>
-      </div>
-    </main>
+    </>
   );
 }

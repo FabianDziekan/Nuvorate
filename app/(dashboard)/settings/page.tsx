@@ -19,8 +19,7 @@ import {
   getPlanLabel,
   hasPlanCapability,
 } from "@/lib/plans";
-import { createClient } from "@/lib/supabase/server";
-import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
+import { getDashboardRequestClient as createClient, getDashboardUser, getDashboardRequestContext } from "@/lib/dashboard-request-context";
 import { getDashboardNotifications } from "@/lib/dashboard-notifications";
 import { signOut } from "@/app/dashboard/actions";
 
@@ -171,24 +170,15 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     redirect("/login?next=/settings");
   }
 
-  const { data: userData } = await supabase.auth.getUser();
+  const { data: userData } = await getDashboardUser();
   const user = userData.user;
 
   if (!user) {
     redirect("/login?next=/settings");
   }
 
-  const [
-    billingContext,
-    { data: profile, error: profileError },
-  ] = await Promise.all([
-    getActiveBusinessBillingContext(supabase, user.id, "id, name, industry, city"),
-    supabase
-      .from("profiles")
-      .select("first_name")
-      .eq("user_id", user.id)
-      .maybeSingle(),
-  ]);
+  const dashboardContext = await getDashboardRequestContext(user.id);
+  const { billingContext, profileResult: { data: profile, error: profileError } } = dashboardContext;
 
   const business = billingContext?.activeBusiness.business;
 
@@ -204,11 +194,24 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     throw new Error("Nie znaleziono profilu użytkownika.");
   }
 
-  const { data: responseSettings, error: responseSettingsError } = await supabase
-    .from("business_response_settings")
-    .select("response_tone")
-    .eq("business_id", business.id)
-    .maybeSingle();
+  const [
+    { data: responseSettings, error: responseSettingsError },
+    { data: aiUsage, error: aiUsageError },
+    { data: googleConnection },
+  ] = await Promise.all([
+    supabase
+      .from("business_response_settings")
+      .select("response_tone")
+      .eq("business_id", business.id)
+      .maybeSingle(),
+    supabase
+      .from("ai_usage")
+      .select("ai_replies_used, ai_analyses_used")
+      .eq("user_id", billingContext.billingOwnerId)
+      .eq("period_month", currentPeriodMonth())
+      .maybeSingle(),
+    supabase.from("google_business_connections").select("google_location_title, google_email").eq("business_id", business.id).maybeSingle(),
+  ]);
 
   if (responseSettingsError) {
     console.warn(
@@ -223,17 +226,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const firstName =
     typeof profile.first_name === "string" ? profile.first_name.trim() : "";
   const displayName = firstName || user.email || "NU";
-  const dashboardNotifications = await getDashboardNotifications(supabase, business.id);
   const responseTone =
     typeof responseSettings?.response_tone === "string"
       ? responseSettings.response_tone
       : "professional";
-  const { data: aiUsage, error: aiUsageError } = await supabase
-    .from("ai_usage")
-    .select("ai_replies_used, ai_analyses_used")
-    .eq("user_id", billingContext.billingOwnerId)
-    .eq("period_month", currentPeriodMonth())
-    .maybeSingle();
 
   if (aiUsageError) {
     console.warn("AI usage lookup failed", aiUsageError);
@@ -244,131 +240,13 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const aiAnalysesUsed = Number(currentAiUsage?.ai_analyses_used ?? 0) || 0;
   const aiRepliesLimit = getAiLimit(appPlan, "reply");
   const aiAnalysesLimit = getAiLimit(appPlan, "analysis");
-  const { data: googleConnection } = await supabase.from("google_business_connections").select("google_location_title, google_email").eq("business_id", business.id).maybeSingle();
   const pendingRaw = (await cookies()).get("google_pending_connection")?.value;
   let pendingLocations: Array<{ locationName: string; locationTitle: string }> = [];
   try { const pending = pendingRaw ? JSON.parse(Buffer.from(pendingRaw, "base64url").toString("utf8")) : null; if (pending?.businessId === business.id && Array.isArray(pending.locations)) pendingLocations = pending.locations.map((location: { locationName: string; locationTitle: string }) => ({ locationName: location.locationName, locationTitle: location.locationTitle })); } catch {}
   const googleMessage = params.google === "connected" ? "Profil Google został połączony." : params.google_error === "no_locations" ? "Nie znaleźliśmy lokalizacji Google Business Profile na tym koncie." : params.google_error ? "Nie udało się dokończyć połączenia z Google. Spróbuj ponownie." : undefined;
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#F7F7FA] text-ink">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col border-r border-black/[0.06] bg-white px-5 py-6 lg:flex">
-        <BrandLogo />
-        <DesktopBusinessSwitcher
-          activeBusiness={business}
-          billingContext={billingContext}
-          plan={plan}
-          userId={user.id}
-        />
-        <nav className="mt-7 space-y-1.5" aria-label="Nawigacja dashboardu">
-          {navigation.map((item) => {
-            const active = item.label === "Ustawienia";
-            const className = `sidebar-nav-item flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition ${
-              active
-                ? "bg-brand-soft text-brand"
-                : "text-black/45 hover:bg-black/[0.035] hover:text-ink"
-            }`;
-
-            if (item.href) {
-              return (
-                <Link key={item.label} href={item.href} className={className}>
-                  <AppNavigationIcon name={item.icon} className="h-[18px] w-[18px]" />
-                  <span className="min-w-0 flex-1">{item.label}</span>
-                  <BusinessNavBadge
-                    show={
-                      item.label === "Autorzy opinii" &&
-                      !hasPlanCapability(appPlan, "authorVerification")
-                    }
-                  />
-                  {item.label === "Powiadomienia" ? (
-                    <NotificationSidebarBadge unreadCount={dashboardNotifications.unreadCount} />
-                  ) : null}
-                </Link>
-              );
-            }
-
-            return (
-              <button key={item.label} type="button" className={className}>
-                <AppNavigationIcon name={item.icon} className="h-[18px] w-[18px]" />
-                <span className="min-w-0 flex-1">{item.label}</span>
-                <BusinessNavBadge
-                  show={
-                    item.label === "Autorzy opinii" &&
-                    !hasPlanCapability(appPlan, "authorVerification")
-                  }
-                />
-                {item.label === "Powiadomienia" ? (
-                  <NotificationSidebarBadge unreadCount={dashboardNotifications.unreadCount} />
-                ) : null}
-              </button>
-            );
-          })}
-        </nav>
-        <div className="mt-auto">
-          <div className="rounded-2xl bg-ink p-4 text-white">
-            <p className="text-[11px] text-white/45">Aktywny plan</p>
-            <div className="mt-1 flex items-center justify-between">
-              <p className="font-semibold">{plan}</p>
-              <span className="rounded-full bg-brand px-2 py-1 text-[9px] font-semibold uppercase tracking-wider">
-                aktywny
-              </span>
-            </div>
-            <form method="post" action="/billing/portal"><button type="submit" className="mt-4 block w-full rounded-xl bg-white/10 px-3 py-2.5 text-center text-xs font-semibold text-white transition hover:bg-white/15">
-              Zarządzaj subskrypcją
-            </button></form>
-          </div>
-          <form action={signOut} className="mt-3">
-            <button
-              type="submit"
-              className="flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium text-black/45 transition hover:bg-red-50 hover:text-red-600"
-            >
-              <Icon name="logout" className="h-[18px] w-[18px]" />
-              Wyloguj się
-            </button>
-          </form>
-        </div>
-      </aside>
-
-      <div className="min-w-0 lg:pl-[252px]">
-        <header className="dashboard-topbar sticky top-0 z-20 border-b border-black/[0.06] bg-white/90 backdrop-blur-xl">
-          <div className="flex h-[74px] min-w-0 items-center justify-between gap-4 px-5 sm:px-8 lg:px-9">
-            <div className="shrink-0 lg:hidden">
-              <BrandLogo />
-            </div>
-            <div className="hidden min-w-0 lg:block">
-              <p className="truncate text-xs text-black/35">{business.name}</p>
-              <p className="mt-0.5 text-sm font-semibold">Ustawienia</p>
-            </div>
-            <div className="flex min-w-0 items-center gap-2.5">
-              <form method="post" action="/billing/portal"><button type="submit"
-                className="hidden rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-sm font-medium text-black/55 transition hover:border-brand/30 hover:text-brand sm:block"
-              >
-                Billing
-              </button></form>
-              <NotificationBell initialNotifications={dashboardNotifications.latest} />
-              <div className="hidden items-center gap-3 rounded-xl border border-black/[0.08] bg-white py-1.5 pl-1.5 pr-3 sm:flex">
-                <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft text-xs font-bold uppercase text-brand">
-                  {displayName.slice(0, 2)}
-                </span>
-                <div className="max-w-[150px]">
-                  <p className="truncate text-xs font-semibold">{user.email}</p>
-                  <p className="text-[10px] text-black/35">Plan {plan}</p>
-                </div>
-              </div>
-              <form action={signOut} className="lg:hidden">
-                <button
-                  type="submit"
-                  className="grid h-11 w-11 place-items-center rounded-xl border border-black/[0.08] bg-white text-black/50"
-                  aria-label="Wyloguj się"
-                >
-                  <Icon name="logout" className="h-[18px] w-[18px]" />
-                </button>
-              </form>
-            </div>
-          </div>
-        </header>
-
-        <MobileBottomNavigation unreadCount={dashboardNotifications.unreadCount} />
+<>
 
         <div className="min-w-0 px-4 py-5 min-[769px]:px-5 min-[769px]:py-8 sm:px-8 lg:px-9 lg:py-10">
           <div className="mx-auto min-w-0 max-w-[1180px]">
@@ -465,7 +343,6 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             </form>
           </div>
         </div>
-      </div>
-    </main>
+    </>
   );
 }

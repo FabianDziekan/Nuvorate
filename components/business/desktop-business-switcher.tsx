@@ -1,4 +1,5 @@
 import { getUserBusinessMemberships } from "@/lib/active-business";
+import type { DashboardRequestContext } from "@/lib/dashboard-request-context-loader";
 import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
 import type { ActiveBusinessBillingContext } from "@/lib/active-business-billing";
 import { normalizePlan } from "@/lib/plans";
@@ -21,6 +22,7 @@ type DesktopBusinessSwitcherProps = {
   activeBusiness: ActiveBusiness;
   plan: string;
   billingContext?: ActiveBusinessBillingContext;
+  dashboardContext?: DashboardRequestContext;
 };
 
 function includedLocationCount(plan: unknown) {
@@ -36,70 +38,86 @@ export async function DesktopBusinessSwitcher({
   userId,
   activeBusiness,
   billingContext: resolvedBillingContext,
+  dashboardContext,
   plan,
 }: DesktopBusinessSwitcherProps) {
-  const supabase = await createClient();
   let businesses: SwitcherBusiness[] = [];
   let ownerLocationCount = 0;
   let allowedLocationCount = 0;
   let isBillingOwner = false;
   let activeLocationPlan = plan;
 
-  try {
-    const memberships = await getUserBusinessMemberships(supabase, userId);
-    const businessIds = memberships.map((membership) => membership.business_id);
-
-    if (businessIds.length > 0) {
-      const { data } = await supabase
-        .from("businesses")
-        .select("id, name, industry, city")
-        .in("id", businessIds);
-
-      const byId = new Map(
-        ((data ?? []) as SwitcherBusiness[]).map((business) => [
-          business.id,
-          business,
-        ]),
-      );
-
-      // Preserve the membership order and never include a business that did
-      // not originate from the caller's memberships.
-      businesses = businessIds
-        .map((businessId) => byId.get(businessId))
-        .filter((business): business is SwitcherBusiness => Boolean(business));
-    }
-  } catch {
-    // The enclosing page already resolved an authorized active business. If
-    // the optional list cannot be read, keep the sidebar usable without a
-    // misleading switch affordance.
-    businesses = [];
-  }
-
-  try {
-    const billingContext =
-      resolvedBillingContext ??
-      (await getActiveBusinessBillingContext(supabase, userId, "id, owner_id"));
-
-    if (billingContext) {
+  if (dashboardContext) {
+    const billingContext = dashboardContext.billingContext;
+    businesses = dashboardContext.accessibleBusinesses;
+    if (billingContext && billingContext.operatorUserId === userId &&
+        billingContext.activeBusiness.business.id === activeBusiness.id) {
       activeLocationPlan = billingContext.plan;
-      isBillingOwner = billingContext.billingOwnerId === userId;
-      allowedLocationCount =
-        includedLocationCount(billingContext.plan) + billingContext.extraLocationCount;
-
-      if (isBillingOwner) {
-        const admin = createAdminClient();
-        const { count, error: ownerLocationsError } = await admin
-          .from("businesses")
-          .select("id", { count: "exact", head: true })
-          .eq("owner_id", billingContext.billingOwnerId);
-
-        if (!ownerLocationsError) ownerLocationCount = count ?? 0;
-      }
+      isBillingOwner = billingContext.billingOwnerId === userId && dashboardContext.ownerLocationCountAvailable;
+      ownerLocationCount = dashboardContext.ownerLocationCount;
+      allowedLocationCount = includedLocationCount(billingContext.plan) + billingContext.extraLocationCount;
+    } else {
+      businesses = [];
     }
-  } catch {
-    // The creation action remains protected by the RPC. If optional entitlement
-    // display data cannot be read, hide the affordance rather than guessing.
-    isBillingOwner = false;
+  } else {
+    const supabase = await createClient();
+    try {
+      const memberships = await getUserBusinessMemberships(supabase, userId);
+      const businessIds = memberships.map((membership) => membership.business_id);
+
+      if (businessIds.length > 0) {
+        const { data } = await supabase
+          .from("businesses")
+          .select("id, name, industry, city")
+          .in("id", businessIds);
+
+        const byId = new Map(
+          ((data ?? []) as SwitcherBusiness[]).map((business) => [
+            business.id,
+            business,
+          ]),
+        );
+
+        // Preserve the membership order and never include a business that did
+        // not originate from the caller's memberships.
+        businesses = businessIds
+          .map((businessId) => byId.get(businessId))
+          .filter((business): business is SwitcherBusiness => Boolean(business));
+      }
+    } catch {
+      // The enclosing page already resolved an authorized active business. If
+      // the optional list cannot be read, keep the sidebar usable without a
+      // misleading switch affordance.
+      businesses = [];
+    }
+
+    try {
+      const billingContext =
+        resolvedBillingContext ??
+        (await getActiveBusinessBillingContext(supabase, userId, "id, owner_id"));
+
+      if (billingContext) {
+        activeLocationPlan = billingContext.plan;
+        isBillingOwner = billingContext.billingOwnerId === userId;
+        allowedLocationCount =
+          includedLocationCount(billingContext.plan) + billingContext.extraLocationCount;
+
+        if (isBillingOwner) {
+          const admin = createAdminClient();
+          const { count, error: ownerLocationsError } = await admin
+            .from("businesses")
+            .select("id", { count: "exact", head: true })
+            .eq("owner_id", billingContext.billingOwnerId);
+
+          if (!ownerLocationsError) ownerLocationCount = count ?? 0;
+        }
+      }
+    } catch {
+      // The creation action remains protected by the RPC. If optional entitlement
+      // display data cannot be read, hide the affordance rather than guessing.
+      isBillingOwner = false;
+    }
+
   }
 
   const activeAsSwitcherBusiness: SwitcherBusiness = {

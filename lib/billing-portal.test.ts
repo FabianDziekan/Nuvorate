@@ -93,14 +93,11 @@ test("route uses canonical business resolver and server-scoped customer lookup",
   assert.match(route, /\.eq\("user_id", userId\)/);
   assert.doesNotMatch(route, /request\.(json|formData)|console\.error/);
 });
-test("all six entry points submit native POST instead of Next Link", () => {
-  let count = 0;
+test("persistent shell keeps the Billing Portal entry native POST without duplicating it per page", () => {
+  const shell = source("components/dashboard/dashboard-shell-client.tsx");
+  assert.match(shell, /<form method="post" action="\/billing\/portal">/);
   for (const path of ["dashboard", "settings", "support"]) {
     const ui = source("app/(dashboard)/" + path + "/page.tsx");
     assert.doesNotMatch(ui, /href=["']\/billing\/portal/);
-    const forms = ui.match(/<form method="post" action="\/billing\/portal"><button type="submit"/g) ?? [];
-    assert.equal(forms.length, path === "settings" ? 4 : 1);
-    count += forms.length;
   }
-  assert.equal(count, 6);
 });

@@ -94,11 +94,14 @@ export async function getActiveBusinessForUser<TBusiness = Record<string, any>>(
   supabase: SupabaseLike,
   userId: string,
   fields = "*",
+  resolved?: { memberships: BusinessMembership[]; activeBusinessId: string | null },
 ): Promise<ActiveBusiness<TBusiness> | null> {
-  const memberships = await getUserBusinessMemberships(supabase, userId);
+  const memberships = resolved?.memberships ?? await getUserBusinessMemberships(supabase, userId);
   if (memberships.length === 0) return null;
 
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile, error: profileError } = resolved
+    ? { data: { active_business_id: resolved.activeBusinessId }, error: null }
+    : await supabase
     .from("profiles")
     .select("active_business_id")
     .eq("user_id", userId)

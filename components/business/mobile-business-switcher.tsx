@@ -1,4 +1,5 @@
 import { getUserBusinessMemberships } from "@/lib/active-business";
+import type { DashboardRequestContext } from "@/lib/dashboard-request-context-loader";
 import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
 import type { ActiveBusinessBillingContext } from "@/lib/active-business-billing";
 import { createClient } from "@/lib/supabase/server";
@@ -13,13 +14,32 @@ import {
  */
 export async function MobileBusinessSwitcher({
   billingContext: resolvedBillingContext,
+  dashboardContext,
   userId,
 }: {
   billingContext?: ActiveBusinessBillingContext;
+  dashboardContext?: DashboardRequestContext;
   userId: string;
 }) {
-  const supabase = await createClient();
+  if (dashboardContext) {
+    const billingContext = dashboardContext.billingContext;
+    if (!billingContext || billingContext.operatorUserId !== userId ||
+        !dashboardContext.businessListAvailable || dashboardContext.accessibleBusinesses.length < 2) return null;
+    const activeBusiness = billingContext.activeBusiness.business;
+    return (
+      <MobileBusinessSwitcherClient
+        activeBusiness={{
+          id: activeBusiness.id,
+          name: activeBusiness.name ?? null,
+          industry: activeBusiness.industry ?? null,
+          city: activeBusiness.city ?? null,
+        }}
+        businesses={dashboardContext.accessibleBusinesses}
+      />
+    );
+  }
 
+  const supabase = await createClient();
   try {
     const [billingContext, memberships] = await Promise.all([
       resolvedBillingContext

@@ -20,8 +20,7 @@ import {
   getPlanLabel,
   hasPlanCapability,
 } from "@/lib/plans";
-import { createClient } from "@/lib/supabase/server";
-import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
+import { getDashboardRequestClient as createClient, getDashboardUser, getDashboardRequestContext } from "@/lib/dashboard-request-context";
 import { getDashboardNotifications } from "@/lib/dashboard-notifications";
 import { signOut } from "@/app/dashboard/actions";
 
@@ -176,24 +175,15 @@ export default async function NotificationsPage({
     redirect("/login?next=/notifications");
   }
 
-  const { data: userData } = await supabase.auth.getUser();
+  const { data: userData } = await getDashboardUser();
   const user = userData.user;
 
   if (!user) {
     redirect("/login?next=/notifications");
   }
 
-  const [
-    billingContext,
-    { data: profile, error: profileError },
-  ] = await Promise.all([
-    getActiveBusinessBillingContext(supabase, user.id, "id, name, industry, city"),
-    supabase
-      .from("profiles")
-      .select("first_name")
-      .eq("user_id", user.id)
-      .maybeSingle(),
-  ]);
+  const dashboardContext = await getDashboardRequestContext(user.id);
+  const { billingContext, profileResult: { data: profile, error: profileError } } = dashboardContext;
 
   const business = billingContext?.activeBusiness.business;
 
@@ -214,7 +204,6 @@ export default async function NotificationsPage({
   const firstName =
     typeof profile.first_name === "string" ? profile.first_name.trim() : "";
   const displayName = firstName || user.email || "NU";
-  const dashboardNotifications = await getDashboardNotifications(supabase, business.id);
   let notificationsQuery = supabase
     .from("notifications")
     .select("id, type, title, message, is_read, created_at")
@@ -226,8 +215,7 @@ export default async function NotificationsPage({
     notificationsQuery = notificationsQuery.eq("is_read", false);
   }
 
-  const { data: notifications, error: notificationsError } =
-    await notificationsQuery;
+  const { data: notifications, error: notificationsError } = await notificationsQuery;
 
   if (notificationsError) {
     throw new Error("Nie udało się pobrać powiadomień.");
@@ -261,91 +249,7 @@ export default async function NotificationsPage({
   };
 
   return (
-    <main className="min-h-screen bg-[#F7F7FA] text-ink">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col border-r border-black/[0.06] bg-white px-4 py-5 lg:flex">
-        <div className="px-2">
-          <BrandLogo />
-        </div>
-        <DesktopBusinessSwitcher
-          activeBusiness={business}
-          billingContext={billingContext}
-          plan={plan}
-          userId={user.id}
-        />
-        <nav className="mt-7 space-y-1.5" aria-label="Nawigacja dashboardu">
-          {navigation.map((item) => {
-            const active = item.label === "Powiadomienia";
-            const className = `sidebar-nav-item flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition ${
-              active
-                ? "bg-brand-soft text-brand"
-                : "text-black/45 hover:bg-black/[0.035] hover:text-ink"
-            }`;
-
-            return (
-              <Link key={item.label} href={item.href} className={className}>
-                <AppNavigationIcon name={item.icon} className="h-[18px] w-[18px]" />
-                <span className="min-w-0 flex-1">{item.label}</span>
-                <BusinessNavBadge
-                  show={
-                    item.label === "Autorzy opinii" &&
-                    !hasPlanCapability(appPlan, "authorVerification")
-                  }
-                />
-                {item.label === "Powiadomienia" ? (
-                  <NotificationSidebarBadge unreadCount={dashboardNotifications.unreadCount} />
-                ) : null}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="mt-auto">
-          <form action={signOut} className="mt-3">
-            <button
-              type="submit"
-              className="flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium text-black/45 transition hover:bg-red-50 hover:text-red-600"
-            >
-              <Icon name="logout" className="h-[18px] w-[18px]" />
-              Wyloguj się
-            </button>
-          </form>
-        </div>
-      </aside>
-
-      <div className="min-w-0 lg:pl-[252px]">
-        <header className="dashboard-topbar sticky top-0 z-20 border-b border-black/[0.06] bg-white/90 backdrop-blur-xl">
-          <div className="flex h-[74px] min-w-0 items-center justify-between gap-4 px-5 sm:px-8 lg:px-9">
-            <div className="shrink-0 lg:hidden">
-              <BrandLogo />
-            </div>
-            <div className="hidden min-w-0 lg:block">
-              <p className="truncate text-xs text-black/35">{business.name}</p>
-              <p className="mt-0.5 text-sm font-semibold">Powiadomienia</p>
-            </div>
-            <div className="flex min-w-0 items-center gap-2.5">
-              <NotificationBell initialNotifications={dashboardNotifications.latest} />
-              <div className="hidden items-center gap-3 rounded-xl border border-black/[0.08] bg-white py-1.5 pl-1.5 pr-3 sm:flex">
-                <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft text-xs font-bold uppercase text-brand">
-                  {displayName.slice(0, 2)}
-                </span>
-                <div className="max-w-[150px]">
-                  <p className="truncate text-xs font-semibold">{user.email}</p>
-                  <p className="text-[10px] text-black/35">Plan {plan}</p>
-                </div>
-              </div>
-              <form action={signOut} className="lg:hidden">
-                <button
-                  type="submit"
-                  className="grid h-11 w-11 place-items-center rounded-xl border border-black/[0.08] bg-white text-black/50"
-                  aria-label="Wyloguj się"
-                >
-                  <Icon name="logout" className="h-[18px] w-[18px]" />
-                </button>
-              </form>
-            </div>
-          </div>
-        </header>
-
-        <MobileBottomNavigation unreadCount={dashboardNotifications.unreadCount} />
+<>
 
         <section className="px-4 py-5 min-[769px]:px-5 min-[769px]:py-7 sm:px-8 lg:px-9">
           <div className="mb-5 flex flex-col justify-between gap-3 min-[769px]:mb-6 min-[769px]:gap-4 md:flex-row md:items-end">
@@ -476,7 +380,6 @@ export default async function NotificationsPage({
             ) : null}
           </div>
         </section>
-      </div>
-    </main>
+    </>
   );
 }

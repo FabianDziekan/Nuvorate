@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 
 /**
  * Route-group boundary for authenticated product routes. It preserves the
@@ -6,5 +7,5 @@ import type { ReactNode } from "react";
  * Page-specific chrome is migrated into this boundary incrementally.
  */
 export default function DashboardLayout({ children }: { children: ReactNode }) {
-  return children;
+  return <DashboardShell>{children}</DashboardShell>;
 }

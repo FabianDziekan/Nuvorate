@@ -18,8 +18,7 @@ import {
   getPlanLabel,
   hasPlanCapability,
 } from "@/lib/plans";
-import { createClient } from "@/lib/supabase/server";
-import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
+import { getDashboardRequestClient as createClient, getDashboardUser, getDashboardRequestContext } from "@/lib/dashboard-request-context";
 import { getDashboardNotifications } from "@/lib/dashboard-notifications";
 import { signOut } from "@/app/dashboard/actions";
 
@@ -214,24 +213,15 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
     redirect("/login?next=/reviews");
   }
 
-  const { data: userData } = await supabase.auth.getUser();
+  const { data: userData } = await getDashboardUser();
   const user = userData.user;
 
   if (!user) {
     redirect("/login?next=/reviews");
   }
 
-  const [
-    billingContext,
-    { data: profile, error: profileError },
-  ] = await Promise.all([
-    getActiveBusinessBillingContext(supabase, user.id, "id, name, industry, city"),
-    supabase
-      .from("profiles")
-      .select("first_name")
-      .eq("user_id", user.id)
-      .maybeSingle(),
-  ]);
+  const dashboardContext = await getDashboardRequestContext(user.id);
+  const { billingContext, profileResult: { data: profile, error: profileError } } = dashboardContext;
 
   const business = billingContext?.activeBusiness.business;
 
@@ -256,11 +246,10 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
   const firstName =
     typeof profile.first_name === "string" ? profile.first_name.trim() : "";
   const displayName = firstName || user.email || "NU";
-  const dashboardNotifications = await getDashboardNotifications(supabase, business.id);
 
   if (!hasPlanCapability(appPlan, "reviews")) {
     return (
-      <main className="min-h-screen bg-[#F7F7FA] text-ink">
+<>
         <div className="flex min-h-screen items-center justify-center px-5 py-12">
           <section className="w-full max-w-3xl rounded-[32px] border border-black/[0.06] bg-white p-7 text-center shadow-card sm:p-10">
             <div className="mx-auto flex justify-center">
@@ -291,15 +280,15 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
             </form>
           </section>
         </div>
-      </main>
+      </>
     );
   }
 
   const { data: reviews, error: reviewsError } = await supabase
-    .from("reviews")
-    .select("id, author_name, rating, content, source, created_at")
-    .eq("business_id", business.id)
-    .order("created_at", { ascending: false });
+      .from("reviews")
+      .select("id, author_name, rating, content, source, created_at")
+      .eq("business_id", business.id)
+      .order("created_at", { ascending: false });
 
   if (reviewsError) {
     throw new Error(
@@ -332,121 +321,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
   const paginatedReviews = filteredReviews.slice(pageStart, pageEnd);
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#F7F7FA] text-ink">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col border-r border-black/[0.06] bg-white px-5 py-6 lg:flex">
-        <BrandLogo />
-        <DesktopBusinessSwitcher
-          activeBusiness={business}
-          billingContext={billingContext}
-          plan={plan}
-          userId={user.id}
-        />
-        <nav className="mt-7 space-y-1.5" aria-label="Nawigacja dashboardu">
-          {navigation.map((item) => {
-            const active = item.label === "Opinie";
-            const className = `sidebar-nav-item flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition ${
-              active
-                ? "bg-brand-soft text-brand"
-                : "text-black/45 hover:bg-black/[0.035] hover:text-ink"
-            }`;
-
-            if (item.href) {
-              return (
-                <Link key={item.label} href={item.href} className={className}>
-                  <AppNavigationIcon name={item.icon} className="h-[18px] w-[18px]" />
-                  <span className="min-w-0 flex-1">{item.label}</span>
-                  <BusinessNavBadge
-                    show={
-                      item.label === "Autorzy opinii" &&
-                      !hasPlanCapability(appPlan, "authorVerification")
-                    }
-                  />
-                  {item.label === "Powiadomienia" ? (
-                    <NotificationSidebarBadge unreadCount={dashboardNotifications.unreadCount} />
-                  ) : null}
-                </Link>
-              );
-            }
-
-            return (
-              <button key={item.label} type="button" className={className}>
-                <AppNavigationIcon name={item.icon} className="h-[18px] w-[18px]" />
-                <span className="min-w-0 flex-1">{item.label}</span>
-                <BusinessNavBadge
-                  show={
-                    item.label === "Autorzy opinii" &&
-                    !hasPlanCapability(appPlan, "authorVerification")
-                  }
-                />
-                {item.label === "Powiadomienia" ? (
-                  <NotificationSidebarBadge unreadCount={dashboardNotifications.unreadCount} />
-                ) : null}
-              </button>
-            );
-          })}
-        </nav>
-        <div className="mt-auto">
-          <div className="rounded-2xl bg-ink p-4 text-white">
-            <p className="text-[11px] text-white/45">Aktywny plan</p>
-            <div className="mt-1 flex items-center justify-between">
-              <p className="font-semibold">{plan}</p>
-              <span className="rounded-full bg-brand px-2 py-1 text-[9px] font-semibold uppercase tracking-wider">
-                aktywny
-              </span>
-            </div>
-            {plan === "Starter" && (
-              <Link href="/checkout?plan=business" className="mt-4 block w-full rounded-xl bg-white/10 px-3 py-2.5 text-center text-xs font-semibold text-white transition hover:bg-white/15">
-                Przejdź na Business
-              </Link>
-            )}
-          </div>
-          <form action={signOut} className="mt-3">
-            <button
-              type="submit"
-              className="flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium text-black/45 transition hover:bg-red-50 hover:text-red-600"
-            >
-              <Icon name="logout" className="h-[18px] w-[18px]" />
-              Wyloguj się
-            </button>
-          </form>
-        </div>
-      </aside>
-
-      <div className="min-w-0 lg:pl-[252px]">
-        <header className="dashboard-topbar sticky top-0 z-20 border-b border-black/[0.06] bg-white/90 backdrop-blur-xl">
-          <div className="flex h-[74px] min-w-0 items-center justify-between gap-4 px-5 sm:px-8 lg:px-9">
-            <div className="shrink-0 lg:hidden">
-              <BrandLogo />
-            </div>
-            <div className="hidden min-w-0 lg:block">
-              <p className="truncate text-xs text-black/35">{business.name}</p>
-              <p className="mt-0.5 text-sm font-semibold">Opinie</p>
-            </div>
-            <div className="flex min-w-0 items-center gap-2.5">
-              <NotificationBell initialNotifications={dashboardNotifications.latest} />
-              <div className="hidden items-center gap-3 rounded-xl border border-black/[0.08] bg-white py-1.5 pl-1.5 pr-3 sm:flex">
-                <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft text-xs font-bold uppercase text-brand">
-                  {displayName.slice(0, 2)}
-                </span>
-                <div className="max-w-[150px]">
-                  <p className="truncate text-xs font-semibold">{user.email}</p>
-                  <p className="text-[10px] text-black/35">Plan {plan}</p>
-                </div>
-              </div>
-              <form action={signOut} className="lg:hidden">
-                <button
-                  type="submit"
-                  className="grid h-11 w-11 place-items-center rounded-xl border border-black/[0.08] bg-white text-black/50"
-                  aria-label="Wyloguj się"
-                >
-                  <Icon name="logout" className="h-[18px] w-[18px]" />
-                </button>
-              </form>
-            </div>
-          </div>
-        </header>
-
-        <MobileBottomNavigation unreadCount={dashboardNotifications.unreadCount} />
+    <>
 
         <div className="min-w-0 px-5 py-8 max-[768px]:px-4 max-[768px]:py-5 sm:px-8 lg:px-9 lg:py-10">
           <div className="mx-auto min-w-0 max-w-[1450px]">
@@ -563,7 +438,6 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
             </section>
           </div>
         </div>
-      </div>
-    </main>
+    </>
   );
 }

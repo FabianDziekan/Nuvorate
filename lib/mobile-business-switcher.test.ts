@@ -38,10 +38,11 @@ test("mobile switcher renders a fixed, centered dropdown below the dashboard hea
   assert.doesNotMatch(clientSource, /bottom-0 max-h-\[70vh\]/);
 });
 
-test("dashboard renders the mobile switcher only in its mobile header", () => {
-  assert.match(dashboardSource, /import \{ MobileBusinessSwitcher \} from "@\/components\/business\/mobile-business-switcher"/);
+test("persistent dashboard shell renders the mobile switcher only once", () => {
+  const shellSource = readFileSync(join(process.cwd(), "components/dashboard/dashboard-shell.tsx"), "utf8");
+  assert.doesNotMatch(dashboardSource, /<MobileBusinessSwitcher/);
   assert.match(
-    dashboardSource,
-    /<MobileBusinessSwitcher billingContext=\{billingContext\} userId=\{user\.id\} \/>/,
+    shellSource,
+    /<MobileBottomNavigation key=\{business.id\} unreadCount=\{notifications.unreadCount\} \/>/,
   );
 });

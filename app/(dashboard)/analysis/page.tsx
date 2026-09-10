@@ -30,8 +30,7 @@ import {
   normalizeAnalysisErrorCode,
 } from "@/lib/analysis-feedback";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
-import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
+import { getDashboardRequestClient as createClient, getDashboardUser, getDashboardRequestContext } from "@/lib/dashboard-request-context";
 import { getDashboardNotifications } from "@/lib/dashboard-notifications";
 import { signOut } from "@/app/dashboard/actions";
 import { compareAnalysisSnapshots } from "@/lib/analysis-snapshot";
@@ -234,24 +233,15 @@ export default async function AnalysisPage({
     redirect("/login?next=/analysis");
   }
 
-  const { data: userData } = await supabase.auth.getUser();
+  const { data: userData } = await getDashboardUser();
   const user = userData.user;
 
   if (!user) {
     redirect("/login?next=/analysis");
   }
 
-  const [
-    billingContext,
-    { data: profile, error: profileError },
-  ] = await Promise.all([
-    getActiveBusinessBillingContext(supabase, user.id, "id, name, industry, city"),
-    supabase
-      .from("profiles")
-      .select("first_name")
-      .eq("user_id", user.id)
-      .maybeSingle(),
-  ]);
+  const dashboardContext = await getDashboardRequestContext(user.id);
+  const { billingContext, profileResult: { data: profile, error: profileError } } = dashboardContext;
 
   const business = billingContext?.activeBusiness.business;
 
@@ -272,31 +262,8 @@ export default async function AnalysisPage({
   const canUseAutomaticAnalysis = hasPlanCapability(appPlan, "automaticAnalysis");
   const isPaid = hasPlanCapability(appPlan, "basicAnalysis");
   const analysesLimit = getAiLimit(appPlan, "analysis");
-  const { data: aiUsage, error: aiUsageError } = await supabase
-    .from("ai_usage")
-    .select("ai_analyses_used")
-    .eq("user_id", billingContext.billingOwnerId)
-    .eq("period_month", currentPeriodMonth())
-    .maybeSingle();
-
-  if (aiUsageError) {
-    console.warn("Analysis usage lookup failed", aiUsageError);
-  }
-
-  const analysesUsedValue = Number(aiUsage?.ai_analyses_used ?? 0);
-  const analysesUsed = Number.isFinite(analysesUsedValue)
-    ? analysesUsedValue
-    : 0;
-  const starterAnalysisLimitReached = isStarterAnalysisLimitReached({
-    analysesLimit,
-    analysesUsed,
-    plan: appPlan,
-  });
-  let analysis: BusinessAnalysis | null = null;
-  let previousAnalysis: BusinessAnalysis | null = null;
-  let automaticAnalysisSchedule: AutomaticAnalysisSchedule | null = null;
-
-  if (isPaid) {
+  const loadAnalyses = async (): Promise<BusinessAnalysis[]> => {
+    if (!isPaid) return [];
     const analysisClient = createAdminClient();
     const selectRecentAnalyses = (columns: string) =>
       analysisClient
@@ -337,29 +304,56 @@ export default async function AnalysisPage({
       );
     }
 
-    analysis = data[0] ?? null;
-    previousAnalysis = data[1] ?? null;
+    return data;
+  };
 
-    if (canUseAutomaticAnalysis) {
-      const { data: schedule, error: scheduleError } = await analysisClient
-        .from("business_analysis_automation")
-        .select("is_enabled, frequency_days, next_run_at, last_skip_reason")
-        .eq("business_id", business.id)
-        .maybeSingle();
+  const [
+    { data: aiUsage, error: aiUsageError },
+    analyses,
+    { data: schedule, error: scheduleError },
+  ] = await Promise.all([
+    supabase
+      .from("ai_usage")
+      .select("ai_analyses_used")
+      .eq("user_id", billingContext.billingOwnerId)
+      .eq("period_month", currentPeriodMonth())
+      .maybeSingle(),
+    loadAnalyses(),
+    isPaid && canUseAutomaticAnalysis
+      ? createAdminClient()
+          .from("business_analysis_automation")
+          .select("is_enabled, frequency_days, next_run_at, last_skip_reason")
+          .eq("business_id", business.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
 
-      if (scheduleError) {
-        console.warn("Automatic analysis settings lookup failed", scheduleError);
-      } else {
-        automaticAnalysisSchedule = schedule as AutomaticAnalysisSchedule | null;
-      }
-    }
+  if (aiUsageError) {
+    console.warn("Analysis usage lookup failed", aiUsageError);
   }
+  if (scheduleError) {
+    console.warn("Automatic analysis settings lookup failed", scheduleError);
+  }
+
+  const analysesUsedValue = Number(aiUsage?.ai_analyses_used ?? 0);
+  const analysesUsed = Number.isFinite(analysesUsedValue)
+    ? analysesUsedValue
+    : 0;
+  const starterAnalysisLimitReached = isStarterAnalysisLimitReached({
+    analysesLimit,
+    analysesUsed,
+    plan: appPlan,
+  });
+  const analysis = analyses[0] ?? null;
+  const previousAnalysis = analyses[1] ?? null;
+  const automaticAnalysisSchedule = scheduleError
+    ? null
+    : schedule as AutomaticAnalysisSchedule | null;
 
   const plan = getPlanLabel(appPlan);
   const firstName =
     typeof profile.first_name === "string" ? profile.first_name.trim() : "";
   const displayName = firstName || user.email || "NU";
-  const dashboardNotifications = await getDashboardNotifications(supabase, business.id);
   const analysisProjection = analysis
     ? projectAnalysisForPlan(appPlan, analysis)
     : null;
@@ -440,122 +434,8 @@ export default async function AnalysisPage({
   }[snapshotComparison.status];
 
   return (
-    <main className="min-h-screen bg-[#F7F7FA] text-ink">
+<>
       <AnalysisContextAlert feedback={analysisFeedback} />
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col border-r border-black/[0.06] bg-white px-5 py-6 lg:flex">
-        <BrandLogo />
-        <DesktopBusinessSwitcher
-          activeBusiness={business}
-          billingContext={billingContext}
-          plan={plan}
-          userId={user.id}
-        />
-        <nav className="mt-7 space-y-1.5" aria-label="Nawigacja dashboardu">
-          {navigation.map((item) => {
-            const active = item.label === "Analiza";
-            const className = `sidebar-nav-item flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition ${
-              active
-                ? "bg-brand-soft text-brand"
-                : "text-black/45 hover:bg-black/[0.035] hover:text-ink"
-            }`;
-
-            if (item.href) {
-              return (
-                <Link key={item.label} href={item.href} className={className}>
-                  <AppNavigationIcon name={item.icon} className="h-[18px] w-[18px]" />
-                  <span className="min-w-0 flex-1">{item.label}</span>
-                  <BusinessNavBadge
-                    show={
-                      item.label === "Autorzy opinii" &&
-                      !hasPlanCapability(appPlan, "authorVerification")
-                    }
-                  />
-                  {item.label === "Powiadomienia" ? (
-                    <NotificationSidebarBadge unreadCount={dashboardNotifications.unreadCount} />
-                  ) : null}
-                </Link>
-              );
-            }
-
-            return (
-              <button key={item.label} type="button" className={className}>
-                <AppNavigationIcon name={item.icon} className="h-[18px] w-[18px]" />
-                <span className="min-w-0 flex-1">{item.label}</span>
-                <BusinessNavBadge
-                  show={
-                    item.label === "Autorzy opinii" &&
-                    !hasPlanCapability(appPlan, "authorVerification")
-                  }
-                />
-                {item.label === "Powiadomienia" ? (
-                  <NotificationSidebarBadge unreadCount={dashboardNotifications.unreadCount} />
-                ) : null}
-              </button>
-            );
-          })}
-        </nav>
-        <div className="mt-auto">
-          <div className="rounded-2xl bg-ink p-4 text-white">
-            <p className="text-[11px] text-white/45">Aktywny plan</p>
-            <div className="mt-1 flex items-center justify-between">
-              <p className="font-semibold">{plan}</p>
-              <span className="rounded-full bg-brand px-2 py-1 text-[9px] font-semibold uppercase tracking-wider">
-                aktywny
-              </span>
-            </div>
-            {!isBusiness && (
-              <Link href="/checkout?plan=business" className="mt-4 block w-full rounded-xl bg-white/10 px-3 py-2.5 text-center text-xs font-semibold text-white transition hover:bg-white/15">
-                Przejdź na Business
-              </Link>
-            )}
-          </div>
-          <form action={signOut} className="mt-3">
-            <button
-              type="submit"
-              className="flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium text-black/45 transition hover:bg-red-50 hover:text-red-600"
-            >
-              <Icon name="logout" className="h-[18px] w-[18px]" />
-              Wyloguj się
-            </button>
-          </form>
-        </div>
-      </aside>
-
-      <div className="lg:pl-[252px]">
-        <header className="dashboard-topbar sticky top-0 z-20 border-b border-black/[0.06] bg-white/90 backdrop-blur-xl">
-          <div className="flex h-[74px] items-center justify-between gap-4 px-5 sm:px-8 lg:px-9">
-            <div className="lg:hidden">
-              <BrandLogo />
-            </div>
-            <div className="hidden lg:block">
-              <p className="text-xs text-black/35">{business.name}</p>
-              <p className="mt-0.5 text-sm font-semibold">Analiza reputacji</p>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <NotificationBell initialNotifications={dashboardNotifications.latest} />
-              <div className="hidden items-center gap-3 rounded-xl border border-black/[0.08] bg-white py-1.5 pl-1.5 pr-3 sm:flex">
-                <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft text-xs font-bold uppercase text-brand">
-                  {displayName.slice(0, 2)}
-                </span>
-                <div className="max-w-[150px]">
-                  <p className="truncate text-xs font-semibold">{user.email}</p>
-                  <p className="text-[10px] text-black/35">Plan {plan}</p>
-                </div>
-              </div>
-              <form action={signOut} className="lg:hidden">
-                <button
-                  type="submit"
-                  className="grid h-11 w-11 place-items-center rounded-xl border border-black/[0.08] bg-white text-black/50"
-                  aria-label="Wyloguj się"
-                >
-                  <Icon name="logout" className="h-[18px] w-[18px]" />
-                </button>
-              </form>
-            </div>
-          </div>
-        </header>
-
-        <MobileBottomNavigation unreadCount={dashboardNotifications.unreadCount} />
 
         <div className="px-5 py-8 sm:px-8 lg:px-9 lg:py-10">
           <div className="mx-auto max-w-[1450px]">
@@ -889,7 +769,6 @@ export default async function AnalysisPage({
             )}
           </div>
         </div>
-      </div>
-    </main>
+    </>
   );
 }

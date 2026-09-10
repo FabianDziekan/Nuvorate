@@ -151,6 +151,11 @@ test("Active location pages resolve their displayed plan through the billing con
     "app/(dashboard)/notifications/page.tsx",
     "app/(dashboard)/settings/page.tsx",
   ]) {
-    assert.match(source(path), /getActiveBusinessBillingContext/);
+    if (path.startsWith("app/(dashboard)/")) {
+      assert.match(source(path), /getDashboardRequestContext\(user.id\)/);
+      assert.match(source(path), /billingContext\.plan/);
+    } else {
+      assert.match(source(path), /getActiveBusinessBillingContext/);
+    }
   }
 });
