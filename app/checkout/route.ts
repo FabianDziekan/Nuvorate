@@ -15,7 +15,13 @@ function redirectWithError(path: string, message: string) {
   const url = new URL(path, appUrl);
   url.searchParams.set("error", message);
 
-  return NextResponse.redirect(url);
+  return privateRedirect(url);
+}
+
+function privateRedirect(url: URL | string) {
+  const response = NextResponse.redirect(url);
+  response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  return response;
 }
 
 export async function GET(request: Request) {
@@ -50,7 +56,7 @@ export async function GET(request: Request) {
       `/checkout?plan=${encodeURIComponent(selectedPlan)}&billing=${encodeURIComponent(selectedBillingCycle)}`,
     );
 
-    return NextResponse.redirect(loginUrl);
+    return privateRedirect(loginUrl);
   }
 
   const { data: profile, error: profileError } = await supabase
@@ -95,7 +101,7 @@ export async function GET(request: Request) {
       throw new Error("Stripe nie zwrócił adresu Checkout.");
     }
 
-    return NextResponse.redirect(session.url);
+    return privateRedirect(session.url);
   } catch (error) {
     const message =
       error instanceof Error

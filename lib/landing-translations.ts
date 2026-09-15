@@ -74,7 +74,7 @@ export const landingTranslations = {
       titleHighlight: "lepsze decyzje.",
       titleEnd: "",
       description:
-        "NuvoRate porządkuje opinie, pokazuje najważniejsze sygnały i pomaga szybciej reagować — z jednego przejrzystego miejsca.",
+        "NuvoRate to centrum zarządzania opiniami Google: porządkuje opinie, pokazuje najważniejsze sygnały i pomaga szybciej reagować — z jednego przejrzystego miejsca.",
       primaryCta: "Załóż konto",
       secondaryCta: "Zobacz jak działa",
       bullets: ["Opinie pod kontrolą", "Wnioski gotowe do działania", "Jedno centrum reputacji"],

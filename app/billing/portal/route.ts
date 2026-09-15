@@ -4,13 +4,15 @@ import { createStripePortalSession, getAppUrl } from "@/lib/stripe";
 import { billingPortalGet, billingPortalPost } from "@/lib/billing-portal";
 
 export function GET() {
-  return billingPortalGet(getAppUrl());
+  const response = billingPortalGet(getAppUrl());
+  response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  return response;
 }
 
 export async function POST(request: Request) {
   // Reject cross-origin requests before session/DB work.
   let client: Awaited<ReturnType<typeof createClient>>;
-  return billingPortalPost(request, getAppUrl(), {
+  const response = await billingPortalPost(request, getAppUrl(), {
     async getUser() {
       client = await createClient();
       const { data, error } = await client.auth.getUser();
@@ -25,4 +27,6 @@ export async function POST(request: Request) {
     },
     createPortal: createStripePortalSession,
   });
+  response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  return response;
 }

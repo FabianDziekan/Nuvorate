@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { LegalDocument } from "@/components/legal/legal-document";
 
 export const metadata: Metadata = {
-  title: "Polityka prywatności | NuvoRate",
+  title: "Polityka prywatności",
   description: "Polityka prywatności usługi NuvoRate.",
+  alternates: { canonical: "/privacy" },
+  robots: { index: true, follow: true },
 };
 
 export default function PrivacyPage() {

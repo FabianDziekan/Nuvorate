@@ -3,7 +3,8 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { RegisterForm } from "@/components/auth/register-form";
 
 export const metadata: Metadata = {
-  title: "Załóż konto | NuvoRate",
+  title: "Załóż konto",
+  robots: { index: false, follow: false },
 };
 
 export default async function RegisterPage({

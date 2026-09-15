@@ -9,7 +9,11 @@ function inactiveLinkResponse() {
     `<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Link NFC nieaktywny | NuvoRate</title><style>body{margin:0;background:#f7f7fa;color:#0f0f10;font-family:Inter,ui-sans-serif,system-ui,sans-serif}.card{max-width:440px;margin:18vh auto;padding:36px;border:1px solid rgba(15,15,16,.08);border-radius:24px;background:#fff;box-shadow:0 18px 48px rgba(15,15,16,.08)}.mark{display:grid;place-items:center;width:42px;height:42px;border-radius:14px;background:#f1f1ff;color:#5b5cf6;font-weight:700}p{color:rgba(15,15,16,.58);line-height:1.6}</style></head><body><main class="card"><div class="mark">N</div><h1>Ten link NFC nie jest już aktywny</h1><p>Poproś obsługę firmy o aktualny link do wystawienia opinii.</p></main></body></html>`,
     {
       status: 404,
-      headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+        "X-Robots-Tag": "noindex, nofollow",
+      },
     },
   );
 }
@@ -50,5 +54,7 @@ export async function GET(
     console.error("NFC scan could not be recorded", scanError);
   }
 
-  return NextResponse.redirect(destinationUrl, 307);
+  const response = NextResponse.redirect(destinationUrl, 307);
+  response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  return response;
 }

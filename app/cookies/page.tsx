@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { LegalDocument } from "@/components/legal/legal-document";
 
 export const metadata: Metadata = {
-  title: "Polityka cookies | NuvoRate",
+  title: "Polityka cookies",
   description: "Polityka cookies usługi NuvoRate.",
+  alternates: { canonical: "/cookies" },
+  robots: { index: true, follow: true },
 };
 
 export default function CookiesPage() {

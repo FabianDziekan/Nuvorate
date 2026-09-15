@@ -3,7 +3,8 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { UpdatePasswordForm } from "@/components/auth/update-password-form";
 
 export const metadata: Metadata = {
-  title: "Nowe hasło | NuvoRate",
+  title: "Nowe hasło",
+  robots: { index: false, follow: false },
 };
 
 export default function UpdatePasswordPage() {

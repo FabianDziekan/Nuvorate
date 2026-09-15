@@ -24,7 +24,9 @@ test("GET only redirects to settings; route has no auth or Stripe operation in G
   const response = billingPortalGet(appUrl);
   assert.equal(response.status, 303);
   assert.equal(response.headers.get("location"), appUrl + "/settings");
-  assert.match(source("app/billing/portal/route.ts"), /export function GET\(\) \{\s*return billingPortalGet\(getAppUrl\(\)\);\s*\}/);
+  const route = source("app/billing/portal/route.ts");
+  assert.match(route, /const response = billingPortalGet\(getAppUrl\(\)\);/);
+  assert.match(route, /response\.headers\.set\("X-Robots-Tag", "noindex, nofollow"\);/);
 });
 for (const headers of [{}, { origin: "null" }, { origin: "https://evil.example" }, { origin: appUrl, "sec-fetch-site": "cross-site" }]) {
   test("invalid origin is rejected before dependencies: " + JSON.stringify(headers), async () => {

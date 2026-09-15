@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { LegalDocument } from "@/components/legal/legal-document";
 
 export const metadata: Metadata = {
-  title: "Regulamin | NuvoRate",
+  title: "Regulamin",
   description: "Regulamin korzystania z usługi NuvoRate.",
+  alternates: { canonical: "/terms" },
+  robots: { index: true, follow: true },
 };
 
 export default function TermsPage() {

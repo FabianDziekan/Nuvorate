@@ -13,13 +13,17 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      return NextResponse.redirect(`${origin}${safeNext}`);
+      const response = NextResponse.redirect(`${origin}${safeNext}`);
+      response.headers.set("X-Robots-Tag", "noindex, nofollow");
+      return response;
     }
   }
 
-  return NextResponse.redirect(
+  const response = NextResponse.redirect(
     `${origin}/login?error=${encodeURIComponent(
       "Link logowania wygasł lub jest nieprawidłowy.",
     )}`,
   );
+  response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  return response;
 }

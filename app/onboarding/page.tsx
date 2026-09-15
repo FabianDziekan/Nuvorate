@@ -6,7 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveBusinessForUser } from "@/lib/active-business";
 
 export const metadata: Metadata = {
-  title: "Konfiguracja firmy | NuvoRate",
+  title: "Konfiguracja firmy",
+  robots: { index: false, follow: false },
 };
 
 export default async function OnboardingPage() {
