@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { signOut } from "@/app/dashboard/actions";
 import { AppNavigationIcon } from "./app-navigation-icon";
 
@@ -33,6 +33,7 @@ const morePaths = moreItems.map((item) => item.href);
 export function MobileBottomNavigationClient({ unreadCount }: { unreadCount: number }) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
   const moreActive = morePaths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
   const moreHighlighted = moreActive || moreOpen;
 
@@ -43,7 +44,23 @@ export function MobileBottomNavigationClient({ unreadCount }: { unreadCount: num
 
   useEffect(() => {
     setMoreOpen(false);
+    setPendingHref(null);
   }, [pathname]);
+
+  function handleNavigation(href: string, event: MouseEvent<HTMLAnchorElement>) {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    setPendingHref(href);
+  }
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -59,9 +76,10 @@ export function MobileBottomNavigationClient({ unreadCount }: { unreadCount: num
       <nav className="mobile-bottom-navigation fixed inset-x-0 bottom-0 z-50 border-t border-black/[0.08] bg-white/95 pb-[max(8px,env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden" aria-label="Główna nawigacja">
         <div className="mx-auto flex h-16 max-w-md items-stretch">
           {primaryItems.map((item) => {
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const routeActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const active = routeActive || pendingHref === item.href;
             return (
-              <Link key={item.href} href={item.href} className={`mobile-bottom-navigation-item flex min-w-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-xl text-[10.5px] leading-none transition-[color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 ${active ? "mobile-bottom-navigation-item-active font-semibold text-brand" : "mobile-bottom-navigation-item-inactive font-medium text-black/55 active:scale-[0.98]"}`} aria-current={active ? "page" : undefined}>
+              <Link key={item.href} href={item.href} onClick={(event) => handleNavigation(item.href, event)} data-dashboard-navigation-pending={pendingHref === item.href ? "true" : undefined} className={`mobile-bottom-navigation-item flex min-w-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-xl text-[10.5px] leading-none transition-[color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 ${active ? "mobile-bottom-navigation-item-active font-semibold text-brand" : "mobile-bottom-navigation-item-inactive font-medium text-black/55 active:scale-[0.98]"}`} aria-current={routeActive ? "page" : undefined} aria-busy={pendingHref === item.href}>
                 <span className={`grid h-7 w-7 place-items-center rounded-lg transition-[background-color,transform] duration-200 ${active ? "scale-[1.04] bg-brand-soft" : "bg-transparent"}`}>
                   <AppNavigationIcon name={item.icon} className="h-[19px] w-[19px]" />
                 </span>
@@ -92,9 +110,10 @@ export function MobileBottomNavigationClient({ unreadCount }: { unreadCount: num
             </div>
             <div className="space-y-1">
               {moreItems.map((item) => {
-                const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const routeActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const active = routeActive || pendingHref === item.href;
                 return (
-                  <Link key={item.href} href={item.href} onClick={() => setMoreOpen(false)} className={`flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition ${active ? "bg-brand-soft text-brand" : "text-ink hover:bg-black/[0.035]"}`}>
+                  <Link key={item.href} href={item.href} onClick={(event) => { handleNavigation(item.href, event); setMoreOpen(false); }} data-dashboard-navigation-pending={pendingHref === item.href ? "true" : undefined} className={`flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition ${active ? "bg-brand-soft text-brand" : "text-ink hover:bg-black/[0.035]"}`}>
                     <AppNavigationIcon name={item.icon} className="h-5 w-5" />
                     <span className="flex-1">{item.label}</span>
                     {item.href === "/notifications" && unreadCount > 0 ? <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}

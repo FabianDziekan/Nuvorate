@@ -38,13 +38,13 @@ export function parseNotificationPreview(message: string | null) {
         typeof parsed.authorName === "string" ? parsed.authorName : undefined,
       content:
         typeof parsed.contentPreview === "string"
-          ? truncate(parsed.contentPreview)
+          ? truncate(normalizeGoogleReviewContent(parsed.contentPreview) ?? "")
           : typeof parsed.content === "string"
-            ? truncate(parsed.content)
+            ? truncate(normalizeGoogleReviewContent(parsed.content) ?? "")
             : undefined,
       contentPreview:
         typeof parsed.contentPreview === "string"
-          ? truncate(parsed.contentPreview)
+          ? truncate(normalizeGoogleReviewContent(parsed.contentPreview) ?? "")
           : undefined,
       rating:
         typeof parsed.rating === "number" && Number.isFinite(parsed.rating)
@@ -123,3 +123,4 @@ export function formatNotificationMessage(type: string, message: string | null) 
     text: message,
   };
 }
+import { normalizeGoogleReviewContent } from "@/lib/google-review-content";

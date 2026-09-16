@@ -20,6 +20,7 @@ import {
   getPlanLabel,
   hasPlanCapability,
 } from "@/lib/plans";
+import { getPaginationWindow } from "@/lib/list-pagination";
 import { getDashboardRequestClient as createClient, getDashboardUser, getDashboardRequestContext } from "@/lib/dashboard-request-context";
 import { getDashboardNotifications } from "@/lib/dashboard-notifications";
 import { signOut } from "@/app/dashboard/actions";
@@ -183,7 +184,11 @@ export default async function NotificationsPage({
   }
 
   const dashboardContext = await getDashboardRequestContext(user.id);
-  const { billingContext, profileResult: { data: profile, error: profileError } } = dashboardContext;
+  const {
+    billingContext,
+    notifications,
+    profileResult: { data: profile, error: profileError },
+  } = dashboardContext;
 
   const business = billingContext?.activeBusiness.business;
 
@@ -204,35 +209,69 @@ export default async function NotificationsPage({
   const firstName =
     typeof profile.first_name === "string" ? profile.first_name.trim() : "";
   const displayName = firstName || user.email || "NU";
-  let notificationsQuery = supabase
-    .from("notifications")
-    .select("id, type, title, message, is_read, created_at")
-    .eq("business_id", business.id)
-    .eq("type", "new_review")
-    .order("created_at", { ascending: false });
+  const buildNotificationsQuery = (
+    columns: string,
+    options?: { count?: "exact"; head?: boolean },
+  ) => {
+    const query = supabase
+      .from("notifications")
+      .select(columns, options)
+      .eq("business_id", business.id)
+      .eq("type", "new_review");
 
-  if (filter === "unread") {
-    notificationsQuery = notificationsQuery.eq("is_read", false);
-  }
+    if (filter === "unread") {
+      return query.eq("is_read", false);
+    }
 
-  const { data: notifications, error: notificationsError } = await notificationsQuery;
+    return query;
+  };
+  const requestedPagination = getPaginationWindow({
+    pageSize: notificationsPerPage,
+    requestedPage,
+    totalItems: Number.MAX_SAFE_INTEGER,
+  });
+  const [
+    { count: notificationsCount, error: notificationsCountError },
+    { data: requestedNotifications, error: requestedNotificationsError },
+  ] = await Promise.all([
+    buildNotificationsQuery("id", { count: "exact", head: true }),
+    buildNotificationsQuery("id, type, title, message, is_read, created_at")
+      .order("created_at", { ascending: false })
+      .range(requestedPagination.start, requestedPagination.end),
+  ]);
 
-  if (notificationsError) {
+  if (notificationsCountError || requestedNotificationsError) {
     throw new Error("Nie udało się pobrać powiadomień.");
   }
 
-  const notificationItems = (notifications ?? []) as Notification[];
-  const unreadCount = notificationItems.filter((item) => !item.is_read).length;
-  const totalPages = Math.max(
-    1,
-    Math.ceil(notificationItems.length / notificationsPerPage),
-  );
-  const currentPage = Number.isInteger(requestedPage)
-    ? Math.min(Math.max(requestedPage, 1), totalPages)
-    : 1;
-  const pageStart = (currentPage - 1) * notificationsPerPage;
-  const pageEnd = pageStart + notificationsPerPage;
-  const paginatedNotifications = notificationItems.slice(pageStart, pageEnd);
+  const totalItems = notificationsCount ?? 0;
+  const pagination = getPaginationWindow({
+    pageSize: notificationsPerPage,
+    requestedPage,
+    totalItems,
+  });
+  let paginatedNotifications =
+    (requestedNotifications ?? []) as unknown as Notification[];
+
+  if (pagination.currentPage !== requestedPagination.currentPage) {
+    const { data, error } = await buildNotificationsQuery(
+      "id, type, title, message, is_read, created_at",
+    )
+      .order("created_at", { ascending: false })
+      .range(pagination.start, pagination.end);
+
+    if (error) {
+      throw new Error("Nie udało się pobrać powiadomień.");
+    }
+
+    paginatedNotifications = (data ?? []) as unknown as Notification[];
+  }
+
+  const notificationItems = paginatedNotifications;
+  const unreadCount = filter === "unread" ? totalItems : notifications.unreadCount;
+  const currentPage = pagination.currentPage;
+  const totalPages = pagination.totalPages;
+  const pageEnd = pagination.end + 1;
   const buildNotificationsHref = (page: number) => {
     const query = new URLSearchParams();
 
@@ -265,7 +304,7 @@ export default async function NotificationsPage({
               </p>
             </div>
             <NotificationHistoryActions
-              totalCount={notificationItems.length}
+              totalCount={totalItems}
               unreadCount={unreadCount}
             />
           </div>
@@ -294,7 +333,7 @@ export default async function NotificationsPage({
           </div>
 
           <div className="overflow-hidden rounded-[28px] border border-black/[0.06] bg-white shadow-[0_18px_50px_rgba(15,15,16,0.04)] max-[768px]:rounded-2xl">
-            {notificationItems.length > 0 ? (
+            {totalItems > 0 ? (
               paginatedNotifications.map((notification) => {
                 const view = getNotificationView(
                   notification.type,
@@ -361,7 +400,7 @@ export default async function NotificationsPage({
                 </p>
               </div>
             )}
-            {notificationItems.length > 0 ? (
+            {totalItems > 0 ? (
               <>
                 <div className="hidden px-5 py-5 min-[769px]:block">
                   <Pagination
@@ -369,12 +408,12 @@ export default async function NotificationsPage({
                     currentPage={currentPage}
                     itemLabel="powiadomień"
                     pageSize={notificationsPerPage}
-                    totalItems={notificationItems.length}
+                    totalItems={totalItems}
                   />
                 </div>
                 <div className="px-4 py-4 text-center min-[769px]:hidden">
                   {currentPage < totalPages ? <Link href={buildNotificationsHref(currentPage + 1)} className="inline-flex rounded-xl border border-black/[0.08] px-4 py-2.5 text-xs font-semibold text-brand">Załaduj więcej</Link> : null}
-                  <p className="mt-2 text-[11px] text-black/40">Wyświetlono {Math.min(pageEnd, notificationItems.length)} z {notificationItems.length} powiadomień</p>
+                  <p className="mt-2 text-[11px] text-black/40">Wyświetlono {Math.min(pageEnd, totalItems)} z {totalItems} powiadomień</p>
                 </div>
               </>
             ) : null}

@@ -7,6 +7,7 @@ import { generateReviewResponseText } from "@/lib/review-response-generation";
 import { hasPlanCapability, normalizePlan, getAiLimit } from "@/lib/plans";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { openAIModel } from "@/lib/openai";
+import { normalizeGoogleReviewContent } from "@/lib/google-review-content";
 
 const LEASE_SECONDS = 10 * 60;
 
@@ -195,7 +196,7 @@ export async function processAutomaticReviewResponseJob(job: ClaimedAutomaticRev
       businessName: business.name,
       idempotencyKey: `automatic-review-response:${job.job_id}`,
       responseTone: settings.response_tone,
-      review: { author_name: review.author_name, content: review.content, rating: Number(review.rating) },
+      review: { author_name: review.author_name, content: normalizeGoogleReviewContent(review.content) ?? "", rating: Number(review.rating) },
     });
 
     // Fence again after the external call. A stale worker must not write a draft.

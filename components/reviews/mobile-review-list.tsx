@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 import { ReviewResponseForm } from "@/components/dashboard/review-response-form";
+import { normalizeGoogleReviewContent } from "@/lib/google-review-content";
 
 type MobileReview = {
   authorName: string;
@@ -13,14 +15,20 @@ type MobileReview = {
   sourceLabel: string;
 };
 
-const reviewsPerBatch = 10;
-
-export function MobileReviewList({ reviews }: { reviews: MobileReview[] }) {
+export function MobileReviewList({
+  currentPage,
+  nextPageHref,
+  pageSize,
+  reviews,
+  totalItems,
+}: {
+  currentPage: number;
+  nextPageHref: string;
+  pageSize: number;
+  reviews: MobileReview[];
+  totalItems: number;
+}) {
   const [selectedReview, setSelectedReview] = useState<MobileReview | null>(null);
-  const [visibleCount, setVisibleCount] = useState(reviewsPerBatch);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const visibleReviews = reviews.slice(0, visibleCount);
-  const hasMoreReviews = visibleCount < reviews.length;
 
   useEffect(() => {
     if (!selectedReview) {
@@ -70,20 +78,16 @@ export function MobileReviewList({ reviews }: { reviews: MobileReview[] }) {
     };
   }, [selectedReview]);
 
-  function loadMoreReviews() {
-    if (isLoadingMore || !hasMoreReviews) return;
-
-    setIsLoadingMore(true);
-    window.requestAnimationFrame(() => {
-      setVisibleCount((current) => Math.min(current + reviewsPerBatch, reviews.length));
-      setIsLoadingMore(false);
-    });
-  }
+  const visibleEnd = Math.min(
+    (currentPage - 1) * pageSize + reviews.length,
+    totalItems,
+  );
+  const hasMoreReviews = visibleEnd < totalItems;
 
   return (
     <>
       <div className="mt-4 space-y-2 min-[769px]:hidden">
-        {visibleReviews.map((review) => (
+        {reviews.map((review) => (
           <article
             key={review.id}
             role="button"
@@ -113,7 +117,7 @@ export function MobileReviewList({ reviews }: { reviews: MobileReview[] }) {
               </span>
             </div>
             <p className="mt-1.5 text-[11px] text-black/35">{review.createdAtLabel}</p>
-            <p className="mt-2 line-clamp-2 text-sm leading-5 text-black/60">{review.content}</p>
+            <p className="mt-2 line-clamp-2 text-sm leading-5 text-black/60">{normalizeGoogleReviewContent(review.content)}</p>
             <button
               type="button"
               onClick={(event) => {
@@ -128,17 +132,15 @@ export function MobileReviewList({ reviews }: { reviews: MobileReview[] }) {
         ))}
         <div className="border-t border-black/[0.06] pt-4 text-center">
           {hasMoreReviews ? (
-            <button
-              type="button"
-              disabled={isLoadingMore}
-              onClick={loadMoreReviews}
+            <Link
+              href={nextPageHref}
               className="inline-flex rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-xs font-semibold text-black/55 transition hover:border-brand/30 hover:text-brand disabled:cursor-wait disabled:opacity-60"
             >
-              {isLoadingMore ? "Ładowanie..." : "Załaduj więcej"}
-            </button>
+              Załaduj więcej
+            </Link>
           ) : null}
           <p className="mt-3 text-xs font-medium text-black/35">
-            Wyświetlono {Math.min(visibleCount, reviews.length)} z {reviews.length} opinii
+            Wyświetlono {visibleEnd} z {totalItems} opinii
           </p>
         </div>
       </div>
@@ -192,7 +194,7 @@ export function MobileReviewList({ reviews }: { reviews: MobileReview[] }) {
                     })} ★
                   </span>
                 </div>
-                <p className="mt-5 text-sm leading-6 text-black/60">{selectedReview.content}</p>
+                <p className="mt-5 text-sm leading-6 text-black/60">{normalizeGoogleReviewContent(selectedReview.content)}</p>
 
                 <div className="mt-5 border-t border-black/[0.06] pt-4">
                   <ReviewResponseForm

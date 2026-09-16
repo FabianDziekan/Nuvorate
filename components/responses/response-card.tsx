@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { createPortal } from "react-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AiGenerationProgress,
   type AiGenerationProgressStatus,
   responseProgressMessages,
 } from "@/components/ui/ai-generation-progress";
+import { normalizeGoogleReviewContent } from "@/lib/google-review-content";
 
 type ResponseStatus = "pending" | "ready" | "responded";
 
@@ -99,6 +100,7 @@ export function ResponseCard({
     typeof initialResponseText === "string"
       ? initialResponseText.trim()
       : "";
+  const normalizedReviewContent = normalizeGoogleReviewContent(content) ?? "";
   const [currentStatus, setCurrentStatus] = useState<ResponseStatus>(status);
   const [isEditorOpen, setIsEditorOpen] = useState(Boolean(trimmedInitialResponse));
   const [responseText, setResponseText] = useState(trimmedInitialResponse);
@@ -111,6 +113,9 @@ export function ResponseCard({
   const [isMarkingResponded, setIsMarkingResponded] = useState(false);
   const [isDeletingPublishedReply, setIsDeletingPublishedReply] = useState(false);
   const [isMobileEditorOpen, setIsMobileEditorOpen] = useState(false);
+  const [shouldFocusEditor, setShouldFocusEditor] = useState(false);
+  const desktopEditorRef = useRef<HTMLTextAreaElement>(null);
+  const mobileEditorRef = useRef<HTMLTextAreaElement>(null);
   const [publishedAt, setPublishedAt] = useState<string | null>(initialResponsePublishedAt ?? null);
   const details = getStatusDetails(currentStatus, responseText, savedResponseText);
   const isPublishedResponse = currentStatus === "responded";
@@ -187,6 +192,28 @@ export function ResponseCard({
       document.body.style.overscrollBehavior = previousOverscrollBehavior;
     };
   }, [isMobileEditorOpen]);
+
+  useEffect(() => {
+    if (!shouldFocusEditor) {
+      return;
+    }
+
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+    const frame = window.requestAnimationFrame(() => {
+      (isMobile ? mobileEditorRef : desktopEditorRef).current?.focus();
+      setShouldFocusEditor(false);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [isEditorOpen, isMobileEditorOpen, shouldFocusEditor]);
+
+  function handleEditResponse() {
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+
+    setIsEditorOpen(true);
+    setIsMobileEditorOpen(isMobile);
+    setShouldFocusEditor(true);
+  }
 
   async function handleGenerate() {
     setError("");
@@ -372,7 +399,7 @@ export function ResponseCard({
         </div>
       </div>
 
-      <p className="mt-3 line-clamp-2 pr-4 text-sm leading-5 text-black/60 min-[769px]:mt-5 min-[769px]:pr-0 min-[769px]:leading-6">{content}</p>
+      <p className="mt-3 line-clamp-2 pr-4 text-sm leading-5 text-black/60 min-[769px]:mt-5 min-[769px]:pr-0 min-[769px]:leading-6">{normalizedReviewContent}</p>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 min-[769px]:mt-6">
         <button
@@ -385,19 +412,18 @@ export function ResponseCard({
         </button>
         <button
           type="button"
+          onClick={handleEditResponse}
+          className="inline-flex h-10 items-center justify-center rounded-xl border border-black/[0.08] bg-white px-4 text-xs font-semibold text-black/55 transition duration-200 hover:-translate-y-0.5 hover:border-brand/30 hover:text-brand"
+        >
+          Edytuj odpowiedź
+        </button>
+        <button
+          type="button"
           disabled={!responseText}
           onClick={handleCopy}
           className="hidden h-10 items-center justify-center rounded-xl border border-black/[0.08] bg-white px-4 text-xs font-semibold text-black/55 transition duration-200 hover:-translate-y-0.5 hover:border-brand/30 hover:text-brand disabled:cursor-not-allowed disabled:opacity-40 min-[769px]:inline-flex"
         >
           Kopiuj
-        </button>
-        <button
-          type="button"
-          onClick={() => setIsMobileEditorOpen(true)}
-          className="ml-auto grid h-10 w-10 place-items-center rounded-xl border border-black/[0.08] bg-white text-lg text-black/40 transition hover:border-brand/30 hover:text-brand min-[769px]:hidden"
-          aria-label="Otwórz szczegóły odpowiedzi"
-        >
-          ›
         </button>
       </div>
 
@@ -432,6 +458,7 @@ export function ResponseCard({
       {isEditorOpen && (
         <div className="mt-4 hidden transition duration-300 min-[769px]:block">
           <textarea
+            ref={desktopEditorRef}
             name="responseText"
             value={responseText}
             onChange={(event) => setResponseText(event.target.value)}
@@ -440,14 +467,11 @@ export function ResponseCard({
             placeholder="Wpisz odpowiedź dla klienta..."
           />
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <div className="text-[11px] leading-5 text-black/35">
-              <p>Odpowiedź możesz edytować przed publikacją.</p>
-              {currentStatus === "responded" && publishedAt ? (
-                <p className="mt-0.5 text-emerald-700">
-                  Opublikowano w Google: {formatDate(publishedAt)}
-                </p>
-              ) : null}
-            </div>
+            {currentStatus === "responded" && publishedAt ? (
+              <p className="text-[11px] leading-5 text-emerald-700">
+                Opublikowano w Google: {formatDate(publishedAt)}
+              </p>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -500,13 +524,10 @@ export function ResponseCard({
                       <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${details.className}`}>{details.label}</span>
                       <span className="rounded-full bg-brand-soft px-2.5 py-1 text-xs font-semibold text-brand">{rating.toLocaleString("pl-PL", { maximumFractionDigits: 1, minimumFractionDigits: 1 })} ★</span>
                     </div>
-                    <p className="mt-3 text-sm leading-6 text-black/60">{content}</p>
+                    <p className="mt-3 text-sm leading-6 text-black/60">{normalizedReviewContent}</p>
                   </div>
-                  <textarea name="responseText" value={responseText} onChange={(event) => setResponseText(event.target.value)} rows={5} className="mt-4 w-full resize-none scroll-mb-6 rounded-2xl border border-black/[0.08] bg-white p-4 text-base leading-6 text-ink outline-none transition placeholder:text-black/30 focus:border-brand/30 focus:ring-4 focus:ring-brand/10" placeholder="Wpisz odpowiedź dla klienta..." />
-                  <div className="mt-2 text-[11px] leading-5 text-black/35">
-                    <p>Odpowiedź możesz edytować przed publikacją.</p>
-                    {currentStatus === "responded" && publishedAt ? <p className="mt-0.5 text-emerald-700">Opublikowano w Google: {formatDate(publishedAt)}</p> : null}
-                  </div>
+                  <textarea ref={mobileEditorRef} name="responseText" value={responseText} onChange={(event) => setResponseText(event.target.value)} rows={5} className="mt-4 w-full resize-none scroll-mb-6 rounded-2xl border border-black/[0.08] bg-white p-4 text-base leading-6 text-ink outline-none transition placeholder:text-black/30 focus:border-brand/30 focus:ring-4 focus:ring-brand/10" placeholder="Wpisz odpowiedź dla klienta..." />
+                  {currentStatus === "responded" && publishedAt ? <p className="mt-2 text-[11px] leading-5 text-emerald-700">Opublikowano w Google: {formatDate(publishedAt)}</p> : null}
                   {error ? <div className="mt-3 rounded-xl border border-red-100 bg-red-50 p-3 text-xs font-medium leading-5 text-red-600">{error}</div> : null}
                 </div>
                 <div className="grid shrink-0 grid-cols-1 gap-2 border-t border-black/[0.06] bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">

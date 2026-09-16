@@ -23,12 +23,17 @@ test("responses filters use management-oriented labels consistently", () => {
   assert.match(mobileFilters, /"Wszystkie opinie"/);
 });
 
-test("response card keeps direct editing and removes the separate manual-writing action", () => {
+test("response card exposes a focused edit action without a second response form", () => {
   assert.doesNotMatch(responseCard, /Napisz ręcznie/);
   assert.doesNotMatch(responseCard, /Zapisywanie\.\.\.|>\s*Zapisz\s*</);
   assert.match(responseCard, /<textarea[\s\S]*?value=\{responseText\}[\s\S]*?onChange=/);
   assert.match(responseCard, /Wygeneruj ponownie/);
+  assert.match(responseCard, /Edytuj odpowiedź/);
+  assert.match(responseCard, /function handleEditResponse\(\)/);
+  assert.match(responseCard, /desktopEditorRef.*?\.current\?\.focus\(\)/s);
+  assert.match(responseCard, /mobileEditorRef.*?\.current\?\.focus\(\)/s);
   assert.match(responseCard, />\s*Kopiuj\s*</);
+  assert.doesNotMatch(responseCard, /Odpowiedź możesz edytować przed publikacją\./);
 });
 
 test("response card exposes draft, AI-ready and Google publication states", () => {

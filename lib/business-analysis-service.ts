@@ -15,6 +15,7 @@ import {
   reserveAiUsage,
 } from "@/lib/ai-usage";
 import { generateStructuredOutput, openAIModel } from "@/lib/openai";
+import { normalizeGoogleReviewContent } from "@/lib/google-review-content";
 import type { AppPlan } from "@/lib/plans";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -78,7 +79,7 @@ export async function generateBusinessAnalysisSnapshot({
       period: { start: periodStart.toISOString(), end: periodEnd.toISOString() },
       reviews: reviews.map((review) => ({
         rating: Number(review.rating),
-        content: review.content,
+        content: normalizeGoogleReviewContent(review.content),
         created_at: review.created_at,
       })),
     });

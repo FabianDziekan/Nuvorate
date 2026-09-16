@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -40,8 +40,28 @@ export function DashboardShellScrollArea({ children }: { children: ReactNode }) 
 
 export function DashboardShellNavItem({ href, children }: { href: string; children: ReactNode }) {
   const pathname = usePathname();
-  const active = pathname === href || pathname.startsWith(`${href}/`);
-  return <Link href={href} className={`sidebar-nav-item flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition ${active ? "bg-brand-soft text-brand" : "text-black/45 hover:bg-black/[0.035] hover:text-ink"}`} aria-current={active ? "page" : undefined}>{children}</Link>;
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const routeActive = pathname === href || pathname.startsWith(`${href}/`);
+  const active = routeActive || pendingHref === href;
+
+  useEffect(() => setPendingHref(null), [pathname]);
+
+  function handleNavigation(event: MouseEvent<HTMLAnchorElement>) {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    setPendingHref(href);
+  }
+
+  return <Link href={href} onClick={handleNavigation} data-dashboard-navigation-pending={pendingHref === href ? "true" : undefined} className={`sidebar-nav-item flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition ${active ? "bg-brand-soft text-brand" : "text-black/45 hover:bg-black/[0.035] hover:text-ink"}`} aria-current={routeActive ? "page" : undefined} aria-busy={pendingHref === href}>{children}</Link>;
 };
 export function DashboardShellTitle({ businessName }: { businessName: string }) {
   const pathname = usePathname();

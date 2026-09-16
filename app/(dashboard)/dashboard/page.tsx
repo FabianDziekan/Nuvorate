@@ -43,6 +43,7 @@ import {
   type StoredBusinessAnalysis,
 } from "@/lib/analysis-projection";
 import { getReviewTrendBarHeight } from "@/lib/review-trend-bar-height";
+import { normalizeGoogleReviewContent } from "@/lib/google-review-content";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getDashboardRequestClient as createClient, getDashboardUser, getDashboardRequestContext } from "@/lib/dashboard-request-context";
 import { getDashboardNotifications } from "@/lib/dashboard-notifications";
@@ -178,11 +179,9 @@ type Review = {
   rating: number;
   content: string;
   created_at: string;
-};
-
-type ReviewResponse = {
-  review_id: string;
-  response_text: string | null;
+  ai_review_responses?: Array<{
+    response_text: string | null;
+  }> | null;
 };
 
 type ReviewInsightSource = {
@@ -1007,14 +1006,13 @@ export default async function DashboardPage({
     { data: insightReviews, error: insightReviewsError },
     { data: currentMonthReviews, error: currentMonthReviewsError },
     { data: previousMonthReviews, error: previousMonthReviewsError },
-    { data: reviewResponses, error: reviewResponsesError },
     { data: businessAnalysis, error: businessAnalysisError },
     { count: nfcScans, error: nfcScansError },
   ] = await Promise.all([
     loadOverview(),
     supabase
       .from("reviews")
-      .select("id, author_name, rating, content, created_at")
+      .select("id, author_name, rating, content, created_at, ai_review_responses(response_text)")
       .eq("business_id", business.id)
       .gte("created_at", selectedRange.start.toISOString())
       .lte("created_at", selectedRange.end.toISOString())
@@ -1051,10 +1049,6 @@ export default async function DashboardPage({
           .gte("created_at", previousMonthStart.toISOString())
           .lte("created_at", previousMonthEnd.toISOString())
       : Promise.resolve({ data: [], error: null }),
-    supabase
-      .from("ai_review_responses")
-      .select("review_id, response_text")
-      .eq("business_id", business.id),
     createAdminClient()
       .from("ai_business_analyses")
       .select(
@@ -1084,7 +1078,7 @@ export default async function DashboardPage({
     );
   }
 
-  if (reviewResponsesError || businessAnalysisError || nfcScansError) {
+  if (businessAnalysisError || nfcScansError) {
     throw new Error(
       "Nie udało się odczytać danych dashboardu. Uruchom wymagane migracje Supabase.",
     );
@@ -1107,19 +1101,7 @@ export default async function DashboardPage({
   const ratings = (reviewRatings ?? [])
     .map((review) => Number(review.rating))
     .filter((rating) => Number.isFinite(rating));
-  const latestReviews = [...((reviews ?? []) as Review[])]
-    .sort((firstReview, secondReview) => {
-      const createdAtDifference =
-        new Date(secondReview.created_at).getTime() -
-        new Date(firstReview.created_at).getTime();
-
-      if (createdAtDifference !== 0) {
-        return createdAtDifference;
-      }
-
-      return secondReview.id.localeCompare(firstReview.id);
-    })
-    .slice(0, 3);
+  const latestReviews = (reviews ?? []) as Review[];
   const totalReviews = reviewsCount ?? ratings.length;
   const averageRating =
     totalReviews > 0
@@ -1184,16 +1166,6 @@ export default async function DashboardPage({
     },
   ];
 
-  const responsesByReviewId = new Map<string, string | null>(
-    ((reviewResponses ?? []) as ReviewResponse[])
-      .filter((response) => typeof response.review_id === "string")
-      .map((response) => [
-        response.review_id,
-        typeof response.response_text === "string"
-          ? response.response_text
-          : null,
-      ]),
-  );
   const latestAnalysis = businessAnalysis as StoredBusinessAnalysis | null;
   const dashboardAnalysis = latestAnalysis
     ? projectAnalysisForPlan(appPlan, latestAnalysis)
@@ -1503,10 +1475,12 @@ export default async function DashboardPage({
                           {formatRating(review.rating)} ★
                         </span>
                       </div>
-                      <p className="mt-4 min-h-12 text-sm leading-6 text-black/55 max-[768px]:mt-3 max-[768px]:min-h-0 max-[768px]:line-clamp-2 max-[768px]:leading-5">{review.content}</p>
+                      <p className="mt-4 min-h-12 text-sm leading-6 text-black/55 max-[768px]:mt-3 max-[768px]:min-h-0 max-[768px]:line-clamp-2 max-[768px]:leading-5">{normalizeGoogleReviewContent(review.content)}</p>
                       <ReviewResponseForm
                         reviewId={review.id}
-                        initialResponseText={responsesByReviewId.get(review.id)}
+                        initialResponseText={
+                          review.ai_review_responses?.[0]?.response_text ?? null
+                        }
                         isReplyLimitReached={remainingReplies <= 0}
                       />
                     </article>

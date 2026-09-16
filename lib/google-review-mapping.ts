@@ -1,3 +1,5 @@
+import { normalizeGoogleReviewContent } from "./google-review-content.ts";
+
 export type GoogleReviewPayload = {
   name?: string;
   reviewId?: string;
@@ -51,7 +53,7 @@ export function mapGoogleReview(review: GoogleReviewPayload): GoogleReviewPrevie
       profilePhotoUrl: review.reviewer?.profilePhotoUrl ?? null,
     },
     rating: mapRating(review.starRating),
-    comment: review.comment ?? null,
+    comment: normalizeGoogleReviewContent(review.comment ?? null),
     createdAt: review.createTime ?? null,
     updatedAt: review.updateTime ?? null,
     ownerReply: review.reviewReply

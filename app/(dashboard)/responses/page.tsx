@@ -17,6 +17,7 @@ import {
   getPlanLabel,
   hasPlanCapability,
 } from "@/lib/plans";
+import { getPaginationWindow } from "@/lib/list-pagination";
 import { getDashboardRequestClient as createClient, getDashboardUser, getDashboardRequestContext } from "@/lib/dashboard-request-context";
 import { getDashboardNotifications } from "@/lib/dashboard-notifications";
 import { signOut } from "@/app/dashboard/actions";
@@ -181,24 +182,6 @@ function normalizeStatus(value: string | null): ResponseStatus {
   return "pending";
 }
 
-function filterReviews(reviews: Review[], selectedFilter: string) {
-  if (selectedFilter === "pending") {
-    return reviews.filter((review) => normalizeStatus(review.response_status) === "pending");
-  }
-
-  if (selectedFilter === "answered") {
-    return reviews.filter((review) =>
-      ["ready", "responded"].includes(normalizeStatus(review.response_status)),
-    );
-  }
-
-  if (["1", "2", "3", "4", "5"].includes(selectedFilter)) {
-    return reviews.filter((review) => review.rating === Number(selectedFilter));
-  }
-
-  return reviews;
-}
-
 function buildResponsesHref(filter: string, page: number) {
   const params = new URLSearchParams();
 
@@ -301,15 +284,40 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
     );
   }
 
+  const buildReviewsQuery = (
+    columns: string,
+    options?: { count?: "exact"; head?: boolean },
+  ) => {
+    const query = supabase
+      .from("reviews")
+      .select(columns, options)
+      .eq("business_id", business.id);
+
+    if (selectedFilter === "pending") {
+      return query.or("response_status.eq.pending,response_status.is.null");
+    } else if (selectedFilter === "answered") {
+      return query.in("response_status", ["ready", "responded"]);
+    } else if (["1", "2", "3", "4", "5"].includes(selectedFilter)) {
+      return query.eq("rating", Number(selectedFilter));
+    }
+
+    return query;
+  };
+  const requestedPagination = getPaginationWindow({
+    pageSize: reviewsPerPage,
+    requestedPage,
+    totalItems: Number.MAX_SAFE_INTEGER,
+  });
   const [
-    { data: reviews, error: reviewsError },
+    { count: reviewsCount, error: reviewsCountError },
+    { data: requestedReviews, error: requestedReviewsError },
     { data: settings, error: settingsError },
   ] = await Promise.all([
-    supabase
-      .from("reviews")
-      .select("id, author_name, rating, content, created_at, source, response_text, response_published_at, response_status")
-      .eq("business_id", business.id)
-      .order("created_at", { ascending: false }),
+    buildReviewsQuery("id", { count: "exact", head: true }),
+    buildReviewsQuery("id, author_name, rating, content, created_at, source, response_text, response_published_at, response_status")
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(requestedPagination.start, requestedPagination.end),
     supabase
       .from("business_response_settings")
       .select("auto_generate, auto_publish, enabled_ratings, response_tone")
@@ -317,27 +325,43 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
       .maybeSingle(),
   ]);
 
-  if (reviewsError || settingsError) {
+  if (reviewsCountError || requestedReviewsError || settingsError) {
     throw new Error(
       "Nie udało się odczytać odpowiedzi. Uruchom migrację 008_review_responses.sql w Supabase.",
     );
   }
 
-  const allReviews = (reviews ?? []) as Review[];
   const responseSettings = settings as ResponseSettings | null;
   const enabledRatings = Array.isArray(responseSettings?.enabled_ratings)
     ? responseSettings.enabled_ratings
     : [];
   const responseTone =
     responseToneLabels[responseSettings?.response_tone ?? ""] ?? "Profesjonalny";
-  const filteredReviews = filterReviews(allReviews, selectedFilter);
-  const totalPages = Math.max(1, Math.ceil(filteredReviews.length / reviewsPerPage));
-  const currentPage = Number.isInteger(requestedPage)
-    ? Math.min(Math.max(requestedPage, 1), totalPages)
-    : 1;
-  const pageStart = (currentPage - 1) * reviewsPerPage;
-  const pageEnd = pageStart + reviewsPerPage;
-  const paginatedReviews = filteredReviews.slice(pageStart, pageEnd);
+  const totalItems = reviewsCount ?? 0;
+  const pagination = getPaginationWindow({
+    pageSize: reviewsPerPage,
+    requestedPage,
+    totalItems,
+  });
+  let paginatedReviews = (requestedReviews ?? []) as unknown as Review[];
+
+  if (pagination.currentPage !== requestedPagination.currentPage) {
+    const { data, error } = await buildReviewsQuery(
+      "id, author_name, rating, content, created_at, source, response_text, response_published_at, response_status",
+    )
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(pagination.start, pagination.end);
+
+    if (error) {
+      throw new Error(
+        "Nie udało się odczytać odpowiedzi. Uruchom migrację 008_review_responses.sql w Supabase.",
+      );
+    }
+
+    paginatedReviews = (data ?? []) as unknown as Review[];
+  }
+  const currentPage = pagination.currentPage;
 
   return (
     <>
@@ -440,8 +464,8 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
                     Lista odpowiedzi
                   </p>
                   <h2 className="mt-1 text-xl font-semibold tracking-tight">
-                    {filteredReviews.length}{" "}
-                    {filteredReviews.length === 1 ? "opinia" : "opinii"}
+                    {totalItems}{" "}
+                    {totalItems === 1 ? "opinia" : "opinii"}
                   </h2>
                 </div>
                 <MobileResponseFilters filters={filters} selectedFilter={selectedFilter} />
@@ -470,7 +494,7 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
                 </div>
               </div>
 
-              {filteredReviews.length > 0 ? (
+              {totalItems > 0 ? (
                 <div className="mt-6 space-y-3 max-[768px]:mt-4 max-[768px]:space-y-2">
                   {paginatedReviews.map((review) => (
                     <ResponseCard
@@ -492,7 +516,7 @@ export default async function ResponsesPage({ searchParams }: ResponsesPageProps
                     currentPage={currentPage}
                     mobileLoadMore
                     pageSize={reviewsPerPage}
-                    totalItems={filteredReviews.length}
+                    totalItems={totalItems}
                   />
                 </div>
               ) : (

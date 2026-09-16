@@ -148,7 +148,7 @@ export function NotificationDropdown({
             </button>
           </div>
 
-          <div className="max-h-[390px] overflow-y-auto max-[768px]:min-h-0 max-[768px]:max-h-none max-[768px]:flex-1">
+          <div className="min-w-0 max-h-[390px] overflow-x-hidden overflow-y-auto max-[768px]:min-h-0 max-[768px]:max-h-none max-[768px]:flex-1">
             {notifications.length > 0 ? (
               notifications.map((notification, index) => {
                 const view = getNotificationView(
@@ -163,7 +163,7 @@ export function NotificationDropdown({
                 return (
                   <NotificationLink
                     key={notification.id}
-                    className={`notification-list-item group relative flex w-full cursor-pointer gap-3 border-b border-black/[0.04] px-4 py-3.5 text-left transition min-[769px]:hover:bg-black/[0.025] max-[768px]:px-3 max-[768px]:py-3 ${
+                    className={`notification-list-item group relative flex min-w-0 w-full cursor-pointer gap-3 border-b border-black/[0.04] px-4 py-3.5 text-left transition min-[769px]:hover:bg-black/[0.025] max-[768px]:px-3 max-[768px]:py-3 ${
                       notification.is_read ? "bg-white" : "bg-brand/[0.035]"
                     } ${
                       index > 2 ? "max-[768px]:hidden" : ""
@@ -185,7 +185,7 @@ export function NotificationDropdown({
                       }`}
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="flex items-start justify-between gap-3">
+                      <span className="flex min-w-0 items-start justify-between gap-3">
                         <span className="min-w-0 break-words text-sm font-semibold text-ink">
                           {notification.title}
                         </span>
@@ -194,7 +194,7 @@ export function NotificationDropdown({
                         </span>
                       </span>
                       {content.meta ? (
-                        <span className="mt-1 block text-xs font-semibold text-black/60">
+                        <span className="mt-1 block break-words text-xs font-semibold text-black/60">
                           {content.meta}
                         </span>
                       ) : null}

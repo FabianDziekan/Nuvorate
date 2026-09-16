@@ -18,6 +18,8 @@ import {
   getPlanLabel,
   hasPlanCapability,
 } from "@/lib/plans";
+import { getPaginationWindow } from "@/lib/list-pagination";
+import { normalizeGoogleReviewContent } from "@/lib/google-review-content";
 import { getDashboardRequestClient as createClient, getDashboardUser, getDashboardRequestContext } from "@/lib/dashboard-request-context";
 import { getDashboardNotifications } from "@/lib/dashboard-notifications";
 import { signOut } from "@/app/dashboard/actions";
@@ -284,41 +286,128 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
     );
   }
 
-  const { data: reviews, error: reviewsError } = await supabase
+  const buildReviewsQuery = (
+    columns: string,
+    options?: { count?: "exact"; head?: boolean },
+  ) => {
+    const query = supabase
       .from("reviews")
-      .select("id, author_name, rating, content, source, created_at")
-      .eq("business_id", business.id)
-      .order("created_at", { ascending: false });
+      .select(columns, options)
+      .eq("business_id", business.id);
 
-  if (reviewsError) {
+    if (selectedRating !== "all") {
+      return query.eq("rating", Number(selectedRating));
+    }
+
+    return query;
+  };
+
+  const requestedPagination = getPaginationWindow({
+    pageSize: reviewsPerPage,
+    requestedPage,
+    totalItems: Number.MAX_SAFE_INTEGER,
+  });
+  const [
+    { count: filteredReviewsCount, error: reviewsCountError },
+    { data: requestedReviews, error: requestedReviewsError },
+  ] = await Promise.all([
+    buildReviewsQuery("id", { count: "exact", head: true }),
+    buildReviewsQuery("id, author_name, rating, content, source, created_at")
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(requestedPagination.start, requestedPagination.end),
+  ]);
+
+  if (reviewsCountError || requestedReviewsError) {
     throw new Error(
       "Nie udało się odczytać opinii. Sprawdź konfigurację Supabase.",
     );
   }
 
-  const allReviews = reviews as Review[];
-  const filteredReviews =
-    selectedRating === "all"
-      ? allReviews
-      : allReviews.filter(
-          (review) => review.rating === Number(selectedRating),
+  const totalItems = filteredReviewsCount ?? 0;
+  let pagination = getPaginationWindow({
+    pageSize: reviewsPerPage,
+    requestedPage,
+    totalItems,
+  });
+  let paginatedReviews = (requestedReviews ?? []) as unknown as Review[];
+
+  if (highlightedReviewId) {
+    const { data: highlightedReviewData, error: highlightedReviewError } =
+      await buildReviewsQuery("id, created_at")
+        .eq("id", highlightedReviewId)
+        .maybeSingle();
+    const highlightedReview = highlightedReviewData as unknown as
+      | { created_at: string; id: string }
+      | null;
+
+    if (highlightedReviewError) {
+      throw new Error(
+        "Nie udało się odczytać opinii. Sprawdź konfigurację Supabase.",
+      );
+    }
+
+    if (highlightedReview) {
+      const [newerReviewsResult, sameTimestampReviewsResult] = await Promise.all([
+        buildReviewsQuery("id", { count: "exact", head: true })
+          .gt("created_at", highlightedReview.created_at),
+        buildReviewsQuery("id", { count: "exact", head: true })
+          .eq("created_at", highlightedReview.created_at)
+          .gt("id", highlightedReview.id),
+      ]);
+
+      if (newerReviewsResult.error || sameTimestampReviewsResult.error) {
+        throw new Error(
+          "Nie udało się odczytać opinii. Sprawdź konfigurację Supabase.",
         );
-  const totalPages = Math.max(1, Math.ceil(filteredReviews.length / reviewsPerPage));
-  const highlightedReviewIndex = highlightedReviewId
-    ? filteredReviews.findIndex((review) => review.id === highlightedReviewId)
-    : -1;
-  const highlightedReviewPage =
-    highlightedReviewIndex >= 0
-      ? Math.floor(highlightedReviewIndex / reviewsPerPage) + 1
-      : null;
-  const currentPage = highlightedReviewPage
-    ? highlightedReviewPage
-    : Number.isInteger(requestedPage)
-      ? Math.min(Math.max(requestedPage, 1), totalPages)
-      : 1;
-  const pageStart = (currentPage - 1) * reviewsPerPage;
-  const pageEnd = pageStart + reviewsPerPage;
-  const paginatedReviews = filteredReviews.slice(pageStart, pageEnd);
+      }
+
+      const highlightedReviewPage = Math.floor(
+        ((newerReviewsResult.count ?? 0) +
+          (sameTimestampReviewsResult.count ?? 0)) /
+          reviewsPerPage,
+      ) + 1;
+      pagination = getPaginationWindow({
+        pageSize: reviewsPerPage,
+        requestedPage: highlightedReviewPage,
+        totalItems,
+      });
+
+      if (pagination.currentPage !== requestedPagination.currentPage) {
+        const { data, error } = await buildReviewsQuery(
+          "id, author_name, rating, content, source, created_at",
+        )
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(pagination.start, pagination.end);
+
+        if (error) {
+          throw new Error(
+            "Nie udało się odczytać opinii. Sprawdź konfigurację Supabase.",
+          );
+        }
+
+        paginatedReviews = (data ?? []) as unknown as Review[];
+      }
+    }
+  } else if (pagination.currentPage !== requestedPagination.currentPage) {
+    const { data, error } = await buildReviewsQuery(
+      "id, author_name, rating, content, source, created_at",
+    )
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(pagination.start, pagination.end);
+
+    if (error) {
+      throw new Error(
+        "Nie udało się odczytać opinii. Sprawdź konfigurację Supabase.",
+      );
+    }
+
+    paginatedReviews = (data ?? []) as unknown as Review[];
+  }
+
+  const currentPage = pagination.currentPage;
 
   return (
     <>
@@ -344,8 +433,8 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                   </p>
                   <div className="mt-1 flex items-center gap-2">
                     <h2 className="text-xl font-semibold tracking-tight">
-                      {filteredReviews.length}{" "}
-                      {filteredReviews.length === 1 ? "opinia" : "opinii"}
+                      {totalItems}{" "}
+                      {totalItems === 1 ? "opinia" : "opinii"}
                     </h2>
                   </div>
                 </div>
@@ -357,18 +446,22 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                 />
               </div>
 
-              {filteredReviews.length > 0 ? (
+              {totalItems > 0 ? (
                 <>
                 <MobileReviewList
-                  key={selectedRating}
-                  reviews={filteredReviews.map((review) => ({
+                  key={`${selectedRating}-${currentPage}`}
+                  currentPage={currentPage}
+                  nextPageHref={buildReviewsHref(selectedRating, currentPage + 1)}
+                  pageSize={reviewsPerPage}
+                  reviews={paginatedReviews.map((review) => ({
                     id: review.id,
                     authorName: review.author_name,
-                    content: review.content,
+                    content: normalizeGoogleReviewContent(review.content) ?? "",
                     createdAtLabel: formatReviewDate(review.created_at),
                     rating: review.rating,
                     sourceLabel: formatSource(review.source),
                   }))}
+                  totalItems={totalItems}
                 />
                 <div className="mt-6 hidden space-y-3 min-[769px]:block">
                   {paginatedReviews.map((review) => (
@@ -411,7 +504,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                         </div>
                       </div>
                       <p className="mt-5 break-words text-sm leading-6 text-black/60 max-[768px]:mt-3 max-[768px]:leading-5">
-                        {review.content}
+                        {normalizeGoogleReviewContent(review.content)}
                       </p>
                     </article>
                   ))}
@@ -419,7 +512,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                     buildHref={(page) => buildReviewsHref(selectedRating, page)}
                     currentPage={currentPage}
                     pageSize={reviewsPerPage}
-                    totalItems={filteredReviews.length}
+                    totalItems={totalItems}
                   />
                 </div>
                 </>
@@ -429,7 +522,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                     <Icon name="reviews" className="h-5 w-5" />
                   </span>
                   <p className="mt-4 text-sm font-semibold">
-                    {allReviews.length === 0
+                    {selectedRating === "all"
                       ? "Brak opinii. Pierwsze opinie pojawią się tutaj."
                       : "Brak opinii dla wybranej oceny."}
                   </p>

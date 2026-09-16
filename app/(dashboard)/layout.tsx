@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import type { Metadata } from "next";
+import { DashboardContentSkeleton } from "@/components/dashboard/dashboard-content-skeleton";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 
 export const metadata: Metadata = {
@@ -12,5 +13,11 @@ export const metadata: Metadata = {
  * Page-specific chrome is migrated into this boundary incrementally.
  */
 export default function DashboardLayout({ children }: { children: ReactNode }) {
-  return <DashboardShell>{children}</DashboardShell>;
+  return (
+    <DashboardShell>
+      <Suspense fallback={<DashboardContentSkeleton />}>
+        {children}
+      </Suspense>
+    </DashboardShell>
+  );
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { GenerateReviewResponseState } from "@/components/dashboard/review-response-state";
 import { openAIModel } from "@/lib/openai";
+import { normalizeGoogleReviewContent } from "@/lib/google-review-content";
 import { generateReviewResponseText, normalizeResponseTone } from "@/lib/review-response-generation";
 import {
   hasPlanCapability,
@@ -106,7 +107,7 @@ export async function generateReviewResponseForReview(
       review: {
         author_name: review.author_name,
         rating: Number(review.rating),
-        content: review.content,
+        content: normalizeGoogleReviewContent(review.content) ?? "",
       },
     });
 
