@@ -30,19 +30,29 @@ type AnalysisBusiness = {
 
 type AnalysisResult =
   | { ok: true }
-  | { ok: false; reason: "limit" | "no_reviews" | "technical" };
+  | { ok: false; reason: "cancelled" | "limit" | "no_reviews" | "technical" };
 
 export async function generateBusinessAnalysisSnapshot({
   business,
   executionType,
   plan,
   userId,
+  canProceed,
 }: {
   business: AnalysisBusiness;
   executionType: AnalysisExecutionType;
   plan: AppPlan;
   userId: string;
+  /**
+   * Automatic work supplies a durable lease fence. Manual analysis deliberately
+   * omits it, preserving the existing user-initiated flow.
+   */
+  canProceed?: () => Promise<boolean>;
 }): Promise<AnalysisResult> {
+  if (canProceed && !(await canProceed())) {
+    return { ok: false, reason: "cancelled" };
+  }
+
   const reservation = await reserveAiUsage({
     plan,
     usageKind: "analysis",
@@ -86,6 +96,12 @@ export async function generateBusinessAnalysisSnapshot({
     let result: GeneratedBusinessAnalysis | null = null;
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
+      // Never spend an OpenAI request after an automatic schedule was disabled,
+      // rescheduled, or reclaimed by another worker.
+      if (canProceed && !(await canProceed())) {
+        return { ok: false, reason: "cancelled" };
+      }
+
       const candidate = await generateStructuredOutput<GeneratedBusinessAnalysis>({
         schemaName: "business_review_analysis",
         schema: businessAnalysisSchema,
@@ -105,6 +121,12 @@ export async function generateBusinessAnalysisSnapshot({
     if (!result) {
       console.error("Business analysis rejected by language-quality validation");
       return { ok: false, reason: "technical" };
+    }
+
+    // Fence again after the provider call so a stale worker cannot persist an
+    // automatic snapshot after settings changed while OpenAI was running.
+    if (canProceed && !(await canProceed())) {
+      return { ok: false, reason: "cancelled" };
     }
 
     const ratings = reviews

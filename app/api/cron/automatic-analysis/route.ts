@@ -1,110 +1,64 @@
 import { NextResponse } from "next/server";
-import { getNextAutomaticAnalysisDate } from "@/lib/analysis-snapshot";
-import { generateBusinessAnalysisSnapshot } from "@/lib/business-analysis-service";
-import { normalizePlan } from "@/lib/plans";
-import { createAdminClient } from "@/lib/supabase/admin";
+
+import {
+  AUTOMATIC_ANALYSIS_BATCH_SIZE,
+  claimAutomaticAnalysisSchedules,
+  getDueAutomaticAnalysisScheduleCount,
+  processAutomaticAnalysisSchedule,
+} from "@/lib/automatic-business-analysis-worker";
 
 export const dynamic = "force-dynamic";
 
 function isAuthorized(request: Request) {
-  const secret = process.env.CRON_SECRET;
+  const secret = process.env.AUTOMATIC_ANALYSIS_WORKER_SECRET?.trim();
   const authorization = request.headers.get("authorization");
   return Boolean(secret && authorization === `Bearer ${secret}`);
 }
 
-export async function GET(request: Request) {
+export async function POST(request: Request) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const admin = createAdminClient();
-  const now = new Date();
-  const { data: schedules, error: schedulesError } = await admin
-    .from("business_analysis_automation")
-    .select("business_id, frequency_days")
-    .eq("is_enabled", true)
-    .lte("next_run_at", now.toISOString())
-    .limit(100);
-
-  if (schedulesError) {
-    console.error("Automatic analysis schedule lookup failed", schedulesError);
-    return NextResponse.json({ error: "Unable to read schedules" }, { status: 500 });
-  }
-
+  let schedules;
   let completed = 0;
+  let failed = 0;
+  let due = 0;
+  let retried = 0;
   let skippedForLimit = 0;
+  let skipped = 0;
 
-  for (const schedule of schedules ?? []) {
-    const { data: business } = await admin
-      .from("businesses")
-      .select("id, name, industry, city, owner_id")
-      .eq("id", schedule.business_id)
-      .maybeSingle();
-    const { data: profile } = business?.owner_id
-      ? await admin
-          .from("profiles")
-          .select("plan")
-          .eq("user_id", business.owner_id)
-          .maybeSingle()
-      : { data: null };
-
-    const ownerId = business?.owner_id;
-    const plan = normalizePlan(profile?.plan);
-
-    if (!business || !ownerId || plan !== "business") {
-      await admin
-        .from("business_analysis_automation")
-        .update({
-          is_enabled: false,
-          last_skip_reason: "Plan Business nie jest aktywny.",
-          next_run_at: null,
-        })
-        .eq("business_id", schedule.business_id);
-      continue;
-    }
-
-    const result = await generateBusinessAnalysisSnapshot({
-      business,
-      executionType: "automatic",
-      plan,
-      userId: ownerId,
-    });
-
-    if (result.ok) {
-      completed += 1;
-      await admin
-        .from("business_analysis_automation")
-        .update({
-          last_run_at: now.toISOString(),
-          last_skip_reason: null,
-          next_run_at: getNextAutomaticAnalysisDate(schedule.frequency_days, now).toISOString(),
-        })
-        .eq("business_id", schedule.business_id);
-      continue;
-    }
-
-    if (result.reason === "limit") {
-      skippedForLimit += 1;
-      await admin
-        .from("business_analysis_automation")
-        .update({
-          last_skip_reason: "Automatyczna analiza została pominięta — wykorzystano miesięczny limit analiz.",
-        })
-        .eq("business_id", schedule.business_id);
-      continue;
-    }
-
-    await admin
-      .from("business_analysis_automation")
-      .update({
-        last_skip_reason:
-          result.reason === "no_reviews"
-            ? "Automatyczna analiza została pominięta — brak opinii do analizy."
-            : "Automatyczna analiza nie została wykonana. Spróbujemy ponownie przy kolejnym terminie.",
-        next_run_at: getNextAutomaticAnalysisDate(schedule.frequency_days, now).toISOString(),
-      })
-      .eq("business_id", schedule.business_id);
+  try {
+    due = await getDueAutomaticAnalysisScheduleCount();
+    schedules = await claimAutomaticAnalysisSchedules(AUTOMATIC_ANALYSIS_BATCH_SIZE);
+  } catch {
+    return NextResponse.json(
+      { error: "Unable to prepare automatic analyses." },
+      { status: 500 },
+    );
   }
 
-  return NextResponse.json({ completed, skippedForLimit });
+  for (const schedule of schedules) {
+    try {
+      const result = await processAutomaticAnalysisSchedule(schedule);
+      if (result === "completed") completed += 1;
+      else if (result === "retry") retried += 1;
+      else if (result === "limit") skippedForLimit += 1;
+      else skipped += 1;
+    } catch {
+      failed += 1;
+    }
+  }
+
+  const summary = {
+    claimed: schedules.length,
+    completed,
+    due,
+    failed,
+    retried,
+    skipped,
+    skippedForLimit,
+  };
+  console.info("Automatic analysis worker finished", summary);
+  return NextResponse.json({ ...summary, success: true });
 }
