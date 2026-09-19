@@ -243,7 +243,15 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const pendingRaw = (await cookies()).get("google_pending_connection")?.value;
   let pendingLocations: Array<{ locationName: string; locationTitle: string }> = [];
   try { const pending = pendingRaw ? JSON.parse(Buffer.from(pendingRaw, "base64url").toString("utf8")) : null; if (pending?.businessId === business.id && Array.isArray(pending.locations)) pendingLocations = pending.locations.map((location: { locationName: string; locationTitle: string }) => ({ locationName: location.locationName, locationTitle: location.locationTitle })); } catch {}
-  const googleMessage = params.google === "connected" ? "Profil Google został połączony." : params.google_error === "no_locations" ? "Nie znaleźliśmy lokalizacji Google Business Profile na tym koncie." : params.google_error ? "Nie udało się dokończyć połączenia z Google. Spróbuj ponownie." : undefined;
+  const googleMessages: Record<string, string> = {
+    cancelled: "Połączenie z Google zostało anulowane.",
+    missing_business_scope: "Google nie przyznał dostępu do Profilu Firmy. Połącz konto ponownie i zaakceptuj wymagane uprawnienia.",
+    session_expired: "Sesja połączenia wygasła. Rozpocznij łączenie ponownie.",
+    no_locations: "Nie znaleźliśmy lokalizacji Google Business Profile na tym koncie.",
+    google_unavailable: "Google chwilowo nie odpowiedział. Spróbuj ponownie za chwilę.",
+    save: "Nie udało się zapisać połączenia. Spróbuj ponownie.",
+  };
+  const googleMessage = params.google === "connected" ? "Profil Google został połączony." : params.google_error ? (googleMessages[params.google_error] ?? "Nie udało się dokończyć połączenia z Google. Spróbuj ponownie.") : undefined;
 
   return (
 <>
@@ -276,7 +284,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               />
               <div className="max-[768px]:mt-4">
                 <p className="mb-3 hidden text-[11px] font-semibold uppercase tracking-[0.14em] text-black/35 max-[768px]:block">Integracje</p>
-                <GoogleConnectionCard configured={googleConfigured()} connection={googleConnection} message={googleMessage} locations={pendingLocations} />
+                <GoogleConnectionCard configured={googleConfigured()} connection={googleConnection} message={googleMessage} retry={Boolean(params.google_error)} locations={pendingLocations} />
               </div>
             </div>
 
