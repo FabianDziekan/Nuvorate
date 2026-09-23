@@ -6,6 +6,7 @@ import { FormEvent, useState } from "react";
 import { FormField, FormMessage } from "@/components/auth/form-controls";
 import { createClient } from "@/lib/supabase/client";
 import { checkoutIntentQuery, type CheckoutIntent } from "@/lib/checkout-intent";
+import { getAppUrl } from "@/lib/app-url";
 
 type Plan = "starter" | "business";
 
@@ -53,7 +54,7 @@ export function RegisterForm({ initialIntent }: { initialIntent: CheckoutIntent 
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+          emailRedirectTo: `${getAppUrl()}/auth/callback?next=${encodeURIComponent(
             next,
           )}`,
           data: {

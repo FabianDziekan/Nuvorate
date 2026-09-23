@@ -1,6 +1,9 @@
 import "server-only";
 
 import { createHmac, timingSafeEqual } from "crypto";
+import { getAppUrl } from "@/lib/app-url";
+
+export { getAppUrl } from "@/lib/app-url";
 
 export type BillingPlan = "starter" | "business";
 export type BillingCycle = "monthly" | "yearly";
@@ -131,10 +134,6 @@ async function stripeRequest<T>({
   }
 
   return payload as T;
-}
-
-export function getAppUrl() {
-  return requireEnv("NEXT_PUBLIC_APP_URL").replace(/\/$/, "");
 }
 
 export function getWebhookSecret() {
