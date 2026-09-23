@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { RegisterForm } from "@/components/auth/register-form";
+import { parseCheckoutIntent } from "@/lib/checkout-intent";
 
 export const metadata: Metadata = {
   title: "Załóż konto",
@@ -10,10 +11,10 @@ export const metadata: Metadata = {
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ plan?: string }>;
+  searchParams: Promise<{ plan?: string; billing?: string }>;
 }) {
   const params = await searchParams;
-  const initialPlan = params.plan === "business" ? "business" : "starter";
+  const initialIntent = parseCheckoutIntent(params.plan, params.billing ?? "monthly");
 
   return (
     <AuthShell
@@ -21,7 +22,7 @@ export default async function RegisterPage({
       title="Załóż konto"
       description="Wybierz plan i utwórz konto. Plakietki NFC pozostają opcjonalnym dodatkiem."
     >
-      <RegisterForm initialPlan={initialPlan} />
+      <RegisterForm initialIntent={initialIntent} />
     </AuthShell>
   );
 }

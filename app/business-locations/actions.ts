@@ -19,7 +19,7 @@ export type CreateBusinessLocationInput = {
   name: string;
   industry: string;
   city: string;
-  googleReviewUrl: string;
+  googleReviewUrl: string | null;
 };
 
 export type CreateBusinessLocationResult =
@@ -43,16 +43,18 @@ function normalizeInput(input: unknown): CreateBusinessLocationInput | null {
   const googleReviewUrl =
     typeof values.googleReviewUrl === "string" ? values.googleReviewUrl.trim() : "";
 
-  if (!name || !industry || !city || !googleReviewUrl) return null;
+  if (!name || !industry || !city) return null;
 
-  try {
-    const url = new URL(googleReviewUrl);
-    if (!['http:', 'https:'].includes(url.protocol)) return null;
-  } catch {
-    return null;
+  if (googleReviewUrl) {
+    try {
+      const url = new URL(googleReviewUrl);
+      if (!["http:", "https:"].includes(url.protocol)) return null;
+    } catch {
+      return null;
+    }
   }
 
-  return { name, industry, city, googleReviewUrl };
+  return { name, industry, city, googleReviewUrl: googleReviewUrl || null };
 }
 
 /**

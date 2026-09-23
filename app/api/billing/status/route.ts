@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { isPaidPlan, normalizePlan } from "@/lib/plans";
+import { normalizePlan } from "@/lib/plans";
+import { hasPaidAccess } from "@/lib/billing-access";
 import { createClient } from "@/lib/supabase/server";
-
-const activeSubscriptionStatuses = ["active", "trialing"];
 
 export async function GET() {
   const supabase = await createClient();
@@ -35,9 +34,7 @@ export async function GET() {
 
   const plan = normalizePlan(profile?.plan);
   const subscriptionStatus = profile?.subscription_status ?? null;
-  const isActivated =
-    isPaidPlan(plan) &&
-    activeSubscriptionStatuses.includes(subscriptionStatus ?? "");
+  const isActivated = hasPaidAccess(plan, subscriptionStatus);
 
   return NextResponse.json(
     {

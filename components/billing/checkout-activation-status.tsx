@@ -70,9 +70,9 @@ export function CheckoutActivationStatus() {
       </h2>
       <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-black/55">
         {isTimedOut
-          ? "Płatność została przyjęta, ale aktywacja trwa dłużej niż zwykle."
+          ? "Czekamy na potwierdzenie subskrypcji. Aktywacja trwa dłużej niż zwykle."
           : isDelayed
-          ? "Płatność została przyjęta, ale aktywacja planu może potrwać chwilę."
+          ? "Czekamy na potwierdzenie subskrypcji. Aktywacja planu może potrwać chwilę."
           : "Czekamy na potwierdzenie płatności ze Stripe. To zwykle trwa kilka sekund."}
       </p>
       {errorMessage && (

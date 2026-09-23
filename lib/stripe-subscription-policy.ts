@@ -1,6 +1,9 @@
 export type SubscriptionCachePlan = "starter" | "business" | "unpaid";
 
 const entitledStatuses = new Set(["active", "trialing", "past_due"]);
+export function isEntitledStripeStatus(status: string | null | undefined) {
+  return typeof status === "string" && entitledStatuses.has(status);
+}
 const nonEntitledStatuses = new Set([
   "canceled",
   "unpaid",
@@ -13,7 +16,7 @@ export function planForStripeSubscriptionStatus(
   status: string,
   pricePlan: "starter" | "business" | null,
 ): SubscriptionCachePlan {
-  if (entitledStatuses.has(status)) {
+  if (isEntitledStripeStatus(status)) {
     if (!pricePlan) {
       throw new Error(
         "Subskrypcja z prawem dostępu nie zawiera rozpoznawalnego Price ID.",

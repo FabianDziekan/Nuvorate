@@ -4,13 +4,18 @@ import { BrandLogo } from "@/components/brand/logo";
 import { BusinessForm } from "@/components/onboarding/business-form";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveBusinessForUser } from "@/lib/active-business";
+import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
+import { hasPaidAccess } from "@/lib/billing-access";
+import { checkoutIntentQuery, parseCheckoutIntent } from "@/lib/checkout-intent";
 
 export const metadata: Metadata = {
   title: "Konfiguracja firmy",
   robots: { index: false, follow: false },
 };
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({ searchParams }: { searchParams: Promise<{ plan?: string; billing?: string }> }) {
+  const params = await searchParams;
+  const intent = parseCheckoutIntent(params.plan, params.billing ?? "monthly");
   const supabase = await createClient();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   const user = userData.user;
@@ -23,7 +28,9 @@ export default async function OnboardingPage() {
   const business = activeBusiness?.business;
 
   if (business) {
-    redirect("/dashboard");
+    const billing = await getActiveBusinessBillingContext(supabase, user.id, "id");
+    redirect(billing && hasPaidAccess(billing.plan, billing.subscriptionStatus)
+      ? "/dashboard" : intent ? `/checkout${checkoutIntentQuery(intent)}` : "/activate");
   }
 
   return (
@@ -40,7 +47,7 @@ export default async function OnboardingPage() {
             <span className="grid h-6 w-6 place-items-center rounded-full bg-black/[0.05] text-[10px] font-bold text-black/30">
               2
             </span>
-            Dashboard
+            Aktywacja planu
           </div>
         </div>
       </header>
@@ -58,9 +65,9 @@ export default async function OnboardingPage() {
 
           <div className="mt-9 space-y-4">
             {[
-              "Jedno konto ownera i jedna firma",
+              "Jedno konto właściciela i jedna firma",
               "Dane możesz później zaktualizować",
-              "Link Google wykorzystamy do kierowania klientów do opinii",
+              "Połączysz Google później w ustawieniach",
             ].map((item, index) => (
               <div key={item} className="flex items-center gap-3">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-soft text-sm font-bold text-brand">
@@ -88,10 +95,10 @@ export default async function OnboardingPage() {
               Skonfiguruj profil biznesu
             </h2>
             <p className="mt-2 text-sm leading-6 text-black/45">
-              Wszystkie pola są wymagane, aby zakończyć konfigurację.
+              Podaj podstawowe dane firmy, aby zakończyć konfigurację.
             </p>
           </div>
-          <BusinessForm />
+          <BusinessForm intent={intent} />
         </section>
       </div>
     </main>

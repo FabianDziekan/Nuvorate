@@ -246,8 +246,8 @@ export async function createStripeCheckoutSession({
   params.set("client_reference_id", userId);
   params.set("line_items[0][price]", getPriceIdForPlan(plan, cycle));
   params.set("line_items[0][quantity]", "1");
-  params.set("success_url", `${appUrl}/dashboard?checkout=success`);
-  params.set("cancel_url", `${appUrl}/?checkout=cancel`);
+  params.set("success_url", `${appUrl}/activate?checkout=success`);
+  params.set("cancel_url", `${appUrl}/activate?checkout=cancel&plan=${plan}&billing=${cycle}`);
   params.set("metadata[user_id]", userId);
   params.set("metadata[plan]", plan);
   params.set("metadata[billing_cycle]", cycle);

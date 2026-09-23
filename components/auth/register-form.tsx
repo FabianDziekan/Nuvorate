@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { FormField, FormMessage } from "@/components/auth/form-controls";
 import { createClient } from "@/lib/supabase/client";
+import { checkoutIntentQuery, type CheckoutIntent } from "@/lib/checkout-intent";
 
 type Plan = "starter" | "business";
 
-export function RegisterForm({ initialPlan = "starter" }: { initialPlan?: Plan }) {
+export function RegisterForm({ initialIntent }: { initialIntent: CheckoutIntent | null }) {
   const router = useRouter();
-  const [plan, setPlan] = useState<Plan>(initialPlan);
+  const [plan, setPlan] = useState<Plan | null>(initialIntent?.plan ?? null);
+  const [billing, setBilling] = useState<"monthly" | "yearly">(initialIntent?.billing ?? "monthly");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -45,12 +47,14 @@ export function RegisterForm({ initialPlan = "starter" }: { initialPlan?: Plan }
 
     try {
       const supabase = createClient();
+      const intent = plan ? { plan, billing } : null;
+      const next = `/onboarding${checkoutIntentQuery(intent)}`;
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
-            `/checkout?plan=${plan}`,
+            next,
           )}`,
           data: {
             first_name: firstName,
@@ -69,13 +73,13 @@ export function RegisterForm({ initialPlan = "starter" }: { initialPlan?: Plan }
       }
 
       if (data.session) {
-        router.push(`/checkout?plan=${plan}`);
+        router.push(next);
         router.refresh();
         return;
       }
 
       setSuccess(
-        "Konto zostało utworzone. Sprawdź skrzynkę e-mail i potwierdź adres, aby przejść do płatności.",
+        "Konto zostało utworzone. Sprawdź skrzynkę e-mail i potwierdź adres, aby skonfigurować firmę.",
       );
     } catch {
       setError("Nie udało się połączyć z usługą rejestracji. Spróbuj ponownie.");
@@ -93,8 +97,8 @@ export function RegisterForm({ initialPlan = "starter" }: { initialPlan?: Plan }
         <legend className="mb-3 text-sm font-semibold text-ink">Wybierz plan</legend>
         <div className="grid grid-cols-2 gap-3">
           {[
-            { id: "starter" as const, name: "Starter", price: "49,99 zł / mies." },
-            { id: "business" as const, name: "Business", price: "229,99 zł / mies." },
+            { id: "starter" as const, name: "Starter", price: billing === "yearly" ? "499,99 zł / rok" : "49,99 zł / mies." },
+            { id: "business" as const, name: "Business", price: billing === "yearly" ? "2299,99 zł / rok" : "229,99 zł / mies." },
           ].map((item) => {
             const selected = plan === item.id;
             return (
@@ -126,6 +130,10 @@ export function RegisterForm({ initialPlan = "starter" }: { initialPlan?: Plan }
               </label>
             );
           })}
+        </div>
+        <div className="mt-3 flex gap-3 text-sm">
+          <label><input type="radio" name="billing" checked={billing === "monthly"} onChange={() => setBilling("monthly")} /> Miesięcznie</label>
+          <label><input type="radio" name="billing" checked={billing === "yearly"} onChange={() => setBilling("yearly")} /> Rocznie</label>
         </div>
       </fieldset>
 
@@ -170,7 +178,7 @@ export function RegisterForm({ initialPlan = "starter" }: { initialPlan?: Plan }
       </button>
       <p className="text-center text-sm text-black/50">
         Masz już konto?{" "}
-        <Link href="/login" className="font-semibold text-brand hover:underline">
+        <Link href={plan ? `/login?next=${encodeURIComponent(`/onboarding${checkoutIntentQuery({ plan, billing })}`)}` : "/login"} className="font-semibold text-brand hover:underline">
           Zaloguj się
         </Link>
       </p>

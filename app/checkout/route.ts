@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
+import { hasPaidAccess } from "@/lib/billing-access";
+import { checkoutIntentQuery } from "@/lib/checkout-intent";
 import {
   createStripeCheckoutSession,
   createStripeCustomer,
@@ -31,11 +34,11 @@ export async function GET(request: Request) {
   const appUrl = getAppUrl();
 
   if (!isBillingPlan(selectedPlan)) {
-    return redirectWithError("/dashboard", "Nieprawidłowy plan subskrypcji.");
+    return redirectWithError("/activate", "Nieprawidłowy plan subskrypcji.");
   }
 
   if (!isBillingCycle(selectedBillingCycle)) {
-    return redirectWithError("/dashboard", "Nieprawidłowy okres rozliczeniowy.");
+    return redirectWithError("/activate", "Nieprawidłowy okres rozliczeniowy.");
   }
 
   if (!hasPriceIdForPlan(selectedPlan, selectedBillingCycle)) {
@@ -50,13 +53,17 @@ export async function GET(request: Request) {
   const user = userData.user;
 
   if (userError || !user) {
-    const loginUrl = new URL("/login", appUrl);
-    loginUrl.searchParams.set(
-      "next",
-      `/checkout?plan=${encodeURIComponent(selectedPlan)}&billing=${encodeURIComponent(selectedBillingCycle)}`,
-    );
+    return privateRedirect(new URL(`/register${checkoutIntentQuery({ plan: selectedPlan, billing: selectedBillingCycle })}`, appUrl));
+  }
 
-    return privateRedirect(loginUrl);
+  const intentQuery = checkoutIntentQuery({ plan: selectedPlan, billing: selectedBillingCycle });
+  const billingContext = await getActiveBusinessBillingContext(supabase, user.id, "id");
+  if (!billingContext) return privateRedirect(new URL(`/onboarding${intentQuery}`, appUrl));
+  if (hasPaidAccess(billingContext.plan, billingContext.subscriptionStatus)) {
+    return privateRedirect(new URL("/dashboard", appUrl));
+  }
+  if (billingContext.billingOwnerId !== user.id) {
+    return redirectWithError("/activate", "Tylko właściciel może aktywować subskrypcję.");
   }
 
   const { data: profile, error: profileError } = await supabase
@@ -66,7 +73,7 @@ export async function GET(request: Request) {
     .maybeSingle();
 
   if (profileError || !profile) {
-    return redirectWithError("/dashboard", "Nie znaleziono profilu użytkownika.");
+    return redirectWithError("/activate", "Nie znaleziono profilu użytkownika.");
   }
 
   try {
@@ -108,6 +115,6 @@ export async function GET(request: Request) {
         ? error.message
         : "Nie udało się uruchomić płatności Stripe.";
 
-    return redirectWithError("/dashboard", message);
+    return redirectWithError(`/activate${intentQuery}`, message);
   }
 }

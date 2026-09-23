@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { createBusiness } from "@/app/onboarding/actions";
 import { initialOnboardingState } from "@/app/onboarding/state";
+import type { CheckoutIntent } from "@/lib/checkout-intent";
 
 const industries = [
   "Restauracja i gastronomia",
@@ -21,7 +22,7 @@ function FieldError({ message }: { message?: string }) {
   return <p className="mt-2 text-xs font-medium text-red-600">{message}</p>;
 }
 
-export function BusinessForm() {
+export function BusinessForm({ intent }: { intent: CheckoutIntent | null }) {
   const [state, formAction, pending] = useActionState(
     createBusiness,
     initialOnboardingState,
@@ -29,6 +30,8 @@ export function BusinessForm() {
 
   return (
     <form action={formAction} className="space-y-5">
+      <input type="hidden" name="plan" value={intent?.plan ?? ""} />
+      <input type="hidden" name="billing" value={intent?.billing ?? ""} />
       {state.error && (
         <div
           role="alert"
@@ -89,32 +92,12 @@ export function BusinessForm() {
         <FieldError message={state.fieldErrors?.city} />
       </label>
 
-      <label className="block">
-        <span className="mb-2 block text-sm font-semibold text-ink">
-          Google review URL
-        </span>
-        <input
-          name="googleReviewUrl"
-          type="url"
-          inputMode="url"
-          autoComplete="url"
-          placeholder="https://g.page/r/..."
-          required
-          aria-invalid={Boolean(state.fieldErrors?.googleReviewUrl)}
-          className="h-[52px] w-full rounded-2xl border border-black/10 bg-white px-4 text-base text-ink outline-none transition placeholder:text-black/25 focus:border-brand focus:ring-4 focus:ring-brand/10"
-        />
-        <p className="mt-2 text-xs leading-5 text-black/40">
-          Link, pod którym klienci mogą bezpośrednio wystawić opinię Google.
-        </p>
-        <FieldError message={state.fieldErrors?.googleReviewUrl} />
-      </label>
-
       <button
         type="submit"
         disabled={pending}
         className="button-primary mt-2 w-full disabled:cursor-wait disabled:opacity-65"
       >
-        {pending ? "Zapisywanie firmy..." : "Zapisz i przejdź do dashboardu"}
+        {pending ? "Zapisywanie firmy..." : "Zapisz i przejdź dalej"}
       </button>
     </form>
   );

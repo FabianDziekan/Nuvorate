@@ -1,7 +1,7 @@
 export type OnboardingState = {
   error?: string;
   fieldErrors?: Partial<
-    Record<"name" | "industry" | "city" | "googleReviewUrl", string>
+    Record<"name" | "industry" | "city", string>
   >;
 };
 

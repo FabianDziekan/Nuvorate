@@ -6,6 +6,9 @@ import { createBusinessLocationAction } from "@/app/business-locations/actions";
 import type { OnboardingState } from "@/app/onboarding/state";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveBusinessForUser } from "@/lib/active-business";
+import { getActiveBusinessBillingContext } from "@/lib/active-business-billing";
+import { hasPaidAccess } from "@/lib/billing-access";
+import { checkoutIntentQuery, parseCheckoutIntent } from "@/lib/checkout-intent";
 
 export async function createBusiness(
   _previousState: OnboardingState,
@@ -14,7 +17,7 @@ export async function createBusiness(
   const name = String(formData.get("name") ?? "").trim();
   const industry = String(formData.get("industry") ?? "").trim();
   const city = String(formData.get("city") ?? "").trim();
-  const googleReviewUrl = String(formData.get("googleReviewUrl") ?? "").trim();
+  const intent = parseCheckoutIntent(formData.get("plan"), formData.get("billing"));
 
   const fieldErrors: OnboardingState["fieldErrors"] = {};
 
@@ -30,19 +33,6 @@ export async function createBusiness(
     fieldErrors.city = "Podaj miasto.";
   }
 
-  if (!googleReviewUrl) {
-    fieldErrors.googleReviewUrl = "Podaj link do opinii Google.";
-  } else {
-    try {
-      const url = new URL(googleReviewUrl);
-      if (!["http:", "https:"].includes(url.protocol)) {
-        fieldErrors.googleReviewUrl = "Link musi zaczynać się od http:// lub https://.";
-      }
-    } catch {
-      fieldErrors.googleReviewUrl = "Podaj prawidłowy adres URL.";
-    }
-  }
-
   if (Object.keys(fieldErrors).length > 0) {
     return { fieldErrors };
   }
@@ -54,18 +44,25 @@ export async function createBusiness(
   if (userError || !user) {
     redirect("/login?next=/onboarding");
   }
+  const userId = user.id;
 
-  const existingBusiness = (await getActiveBusinessForUser(supabase, user.id, "id"))?.business;
+  const existingBusiness = (await getActiveBusinessForUser(supabase, userId, "id"))?.business;
+
+  async function nextDestination() {
+    const billing = await getActiveBusinessBillingContext(supabase, userId, "id");
+    return billing && hasPaidAccess(billing.plan, billing.subscriptionStatus)
+      ? "/dashboard" : intent ? `/checkout${checkoutIntentQuery(intent)}` : "/activate";
+  }
 
   if (existingBusiness) {
-    redirect("/dashboard");
+    redirect(await nextDestination());
   }
 
   const result = await createBusinessLocationAction({
     name,
     industry,
     city,
-    googleReviewUrl,
+    googleReviewUrl: null,
   });
 
   if (!result.success) {
@@ -73,16 +70,16 @@ export async function createBusiness(
     // while this request was waiting for the database entitlement lock.
     const activeAfterAttempt = await getActiveBusinessForUser(
       supabase,
-      user.id,
+      userId,
       "id",
     );
     if (activeAfterAttempt) {
-      redirect("/dashboard");
+      redirect(await nextDestination());
     }
 
     return { error: result.error };
   }
 
   revalidatePath("/dashboard");
-  redirect("/dashboard");
+  redirect(await nextDestination());
 }
