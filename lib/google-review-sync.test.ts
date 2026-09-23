@@ -41,7 +41,7 @@ test("Google review sync preserves a local draft when a published Google reply w
   assert.match(service, /const googleReviewIdsInSync = result\.reviews\.flatMap/);
   assert.match(service, /const googleReviewIdsWithOwnerReplies = new Set\(reviewsWithGoogleReplies\.map/);
   assert.match(service, /\.eq\("response_status", "responded"\)/);
-  assert.match(service, /const repliesRemovedInGoogle = \(respondedGoogleReviews \?\? \[\]\)/);
+  assert.match(service, /const repliesRemovedInGoogle = removedGoogleReplyReviewIds\(respondedGoogleReviews, googleReviewIdsWithOwnerReplies\)/);
   assert.match(service, /response_published_at: null/);
   assert.match(service, /response_status: "ready"/);
   assert.doesNotMatch(
@@ -52,7 +52,7 @@ test("Google review sync preserves a local draft when a published Google reply w
 
 test("Google review sync never changes ready or pending drafts when Google has no owner reply", () => {
   const reconciliation = service.slice(
-    service.indexOf("const { data: respondedGoogleReviews"),
+    service.indexOf("respondedGoogleReviews = await collectBatchedGoogleReviews"),
     service.indexOf("return {\n      skipped:"),
   );
 
@@ -66,7 +66,8 @@ test("Google review sync reconciles only review IDs returned by Google", () => {
     service.indexOf("return {\n      skipped:"),
   );
 
-  assert.match(reconciliation, /\.in\("google_review_id", googleReviewIdsInSync\)/);
+  assert.match(reconciliation, /\.in\("google_review_id", reviewIdBatch\)/);
+  assert.match(reconciliation, /diagnosticCode: "reply_sync_select_failed"/);
   assert.match(reconciliation, /\.in\("id", repliesRemovedInGoogle\)/);
 });
 

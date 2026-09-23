@@ -1,6 +1,7 @@
 import "server-only";
 
 import { GoogleReviewSyncError } from "@/lib/google-review-sync-error";
+import { collectBatchedGoogleReviews, removedGoogleReplyReviewIds } from "@/lib/google-review-id-batches";
 import { fetchGoogleLocationReviews } from "@/lib/google-reviews";
 import { enqueueAutomaticReviewResponseJobs } from "@/lib/automatic-review-response-service";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -221,23 +222,26 @@ export async function syncClaimedGoogleReviewConnection(connection: ClaimedGoogl
     // Only reviews returned by the fully paginated Google response can prove that
     // a previously published reply was removed outside NuvoRate. Local drafts stay untouched.
     if (googleReviewIdsInSync.length > 0) {
-      const { data: respondedGoogleReviews, error: respondedGoogleReviewsError } = await admin
-        .from("reviews")
-        .select("id, google_review_id")
-        .eq("business_id", connection.business_id)
-        .eq("source", "google")
-        .eq("response_status", "responded")
-        .in("google_review_id", googleReviewIdsInSync);
-
-      if (respondedGoogleReviewsError) {
+      let respondedGoogleReviews: { id: string; google_review_id: string | null }[];
+      try {
+        respondedGoogleReviews = await collectBatchedGoogleReviews(googleReviewIdsInSync, async (reviewIdBatch) => {
+          const { data, error } = await admin
+            .from("reviews")
+            .select("id, google_review_id")
+            .eq("business_id", connection.business_id)
+            .eq("source", "google")
+            .eq("response_status", "responded")
+            .in("google_review_id", reviewIdBatch);
+          if (error) throw error;
+          return data ?? [];
+        });
+      } catch {
         throw new GoogleReviewSyncError("Nie udało się zsynchronizować odpowiedzi z Google.", {
-          diagnosticCode: "reply_sync_failed",
+          diagnosticCode: "reply_sync_select_failed",
         });
       }
 
-      const repliesRemovedInGoogle = (respondedGoogleReviews ?? [])
-        .filter((review) => review.google_review_id && !googleReviewIdsWithOwnerReplies.has(review.google_review_id))
-        .map((review) => review.id);
+      const repliesRemovedInGoogle = removedGoogleReplyReviewIds(respondedGoogleReviews, googleReviewIdsWithOwnerReplies);
 
       if (repliesRemovedInGoogle.length > 0) {
         const { error: replyRemovalSyncError } = await admin
