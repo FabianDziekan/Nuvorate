@@ -26,7 +26,7 @@ import { getDashboardNotifications } from "@/lib/dashboard-notifications";
 import { signOut } from "@/app/dashboard/actions";
 
 export const metadata: Metadata = {
-  title: "Powiadomienia | NuvoRate",
+  title: "Powiadomienia",
 };
 
 type NotificationsPageProps = {
@@ -51,6 +51,7 @@ type Notification = {
   message: string | null;
   is_read: boolean;
   created_at: string;
+  occurred_at: string;
 };
 
 function Icon({
@@ -235,8 +236,10 @@ export default async function NotificationsPage({
     { data: requestedNotifications, error: requestedNotificationsError },
   ] = await Promise.all([
     buildNotificationsQuery("id", { count: "exact", head: true }),
-    buildNotificationsQuery("id, type, title, message, is_read, created_at")
+    buildNotificationsQuery("id, type, title, message, is_read, created_at, occurred_at")
+      .order("occurred_at", { ascending: false })
       .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
       .range(requestedPagination.start, requestedPagination.end),
   ]);
 
@@ -255,9 +258,11 @@ export default async function NotificationsPage({
 
   if (pagination.currentPage !== requestedPagination.currentPage) {
     const { data, error } = await buildNotificationsQuery(
-      "id, type, title, message, is_read, created_at",
+      "id, type, title, message, is_read, created_at, occurred_at",
     )
+      .order("occurred_at", { ascending: false })
       .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
       .range(pagination.start, pagination.end);
 
     if (error) {
@@ -380,7 +385,7 @@ export default async function NotificationsPage({
                           ) : null}
                         </div>
                         <p className="shrink-0 whitespace-nowrap text-[11px] text-black/40 min-[769px]:text-xs">
-                          {formatRelativeNotificationTime(notification.created_at)}
+                          {formatRelativeNotificationTime(notification.occurred_at)}
                         </p>
                       </div>
                     </div>

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { normalizeGoogleReviewContent } from "@/lib/google-review-content";
 
 export type AuthorVerificationReview = { id: string; authorName: string; rating: number; content: string; createdAt: string };
 type Profile = { reviewId: string; authorProfileUri: string | null; googleMapsUri: string | null };
@@ -71,7 +72,7 @@ export function AuthorVerificationList({ reviews, businessId, location }: { revi
       <select aria-label="Sortowanie" value={sort} onChange={e=>setSort(e.target.value)} className="rounded-xl border p-3"><option value="newest">Najnowsze</option><option value="oldest">Najstarsze</option><option value="lowest">Najniższa ocena</option><option value="highest">Najwyższa ocena</option></select>
     </div>
     <div className="space-y-4">{filtered.slice((current-1)*10,current*10).map(review=><article key={review.id} className="min-w-0 rounded-2xl border border-black/5 p-4">
-      <button onClick={()=>setSelected(review)} className="block w-full text-left"><span className="font-semibold break-words">{review.authorName}</span><span className="mt-1 block text-amber-500" aria-label={review.rating+" z 5"}>{"★".repeat(Math.max(0,Math.min(5,review.rating)))}</span><span className="mt-1 block text-xs text-black/45">{date(review.createdAt)} · {location}</span><span className="mt-3 block whitespace-pre-wrap break-words text-sm leading-6">{review.content}</span></button>
+      <button onClick={()=>setSelected(review)} className="block w-full text-left"><span className="font-semibold break-words">{review.authorName}</span><span className="mt-1 block text-amber-500" aria-label={review.rating+" z 5"}>{"★".repeat(Math.max(0,Math.min(5,review.rating)))}</span><span className="mt-1 block text-xs text-black/45">{date(review.createdAt)} · {location}</span><span className="mt-3 block whitespace-pre-wrap break-words text-sm leading-6">{normalizeGoogleReviewContent(review.content)}</span></button>
       <ProfileLinks profile={profiles.find(p=>p.reviewId===review.id)} />
     </article>)}</div>
     {!filtered.length && <p className="py-8 text-center text-black/45">Brak opinii do wyświetlenia.</p>}
@@ -80,7 +81,7 @@ export function AuthorVerificationList({ reviews, businessId, location }: { revi
       <div ref={dialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Szczegóły autora opinii" className="absolute inset-x-0 bottom-0 max-h-[90dvh] overflow-y-auto overscroll-contain rounded-t-3xl bg-white p-6 pb-[max(24px,env(safe-area-inset-bottom))] sm:inset-y-0 sm:left-auto sm:w-[480px] sm:max-w-full sm:max-h-screen sm:rounded-none">
         <button onClick={()=>setSelected(null)} className="float-right rounded-xl p-3" aria-label="Zamknij szczegóły">×</button>
         <p className="text-xs text-black/45">AUTOR</p><h2 className="mt-2 break-words text-xl font-semibold">{selected.authorName}</h2>
-        <p className="mt-8 text-xs text-black/45">OPINIA</p><p className="mt-2 text-amber-500">{selected.rating} ★</p><p className="text-xs text-black/45">{date(selected.createdAt)} · {location}</p><p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6">{selected.content}</p>
+        <p className="mt-8 text-xs text-black/45">OPINIA</p><p className="mt-2 text-amber-500">{selected.rating} ★</p><p className="text-xs text-black/45">{date(selected.createdAt)} · {location}</p><p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6">{normalizeGoogleReviewContent(selected.content)}</p>
         <p className="mt-8 text-xs text-black/45">PROFIL GOOGLE</p><ProfileLinks profile={profiles.find(p=>p.reviewId===selected.id)} />
         <p className="mt-6 text-xs leading-5 text-black/45">Profil otwierany jest bezpośrednio w Google Maps. NuvoRate nie potwierdza tożsamości autora.</p>
       </div>

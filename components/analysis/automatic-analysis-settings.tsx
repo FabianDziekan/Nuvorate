@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateAutomaticAnalysisSettings } from "@/app/dashboard/actions";
 
@@ -31,12 +31,36 @@ export function AutomaticAnalysisSettings({
   const [message, setMessage] = useState<string | null>(null);
   const [isEditingFrequency, setIsEditingFrequency] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const cardRef = useRef<HTMLElement>(null);
   const router = useRouter();
 
   useEffect(() => {
     setEnabled(initialEnabled);
     setFrequencyDays(initialFrequencyDays);
   }, [initialEnabled, initialFrequencyDays]);
+
+  useEffect(() => {
+    if (!isEditingFrequency) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (event.target instanceof Node && !cardRef.current?.contains(event.target)) {
+        setIsEditingFrequency(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsEditingFrequency(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isEditingFrequency]);
 
   function save(nextEnabled: boolean, nextFrequencyDays: number) {
     setMessage(null);
@@ -60,7 +84,7 @@ export function AutomaticAnalysisSettings({
   }
 
   return (
-    <section className="rounded-[22px] border border-black/[0.06] bg-white px-5 py-4 shadow-sm">
+    <section ref={cardRef} className="rounded-[22px] border border-black/[0.06] bg-white px-5 py-4 shadow-sm">
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-black/35">

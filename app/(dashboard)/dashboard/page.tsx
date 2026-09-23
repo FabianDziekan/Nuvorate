@@ -48,9 +48,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getDashboardRequestClient as createClient, getDashboardUser, getDashboardRequestContext } from "@/lib/dashboard-request-context";
 import { getDashboardNotifications } from "@/lib/dashboard-notifications";
 import { signOut } from "@/app/dashboard/actions";
+import { formatDateRangeDisplayDay } from "@/lib/date-range-picker";
 
 export const metadata: Metadata = {
-  title: "Dashboard | NuvoRate",
+  title: "Dashboard",
 };
 
 export const dynamic = "force-dynamic";
@@ -325,14 +326,6 @@ function formatTooltipDate(date: Date) {
   });
 }
 
-function formatDisplayDate(date: Date) {
-  return date.toLocaleDateString("pl-PL", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
 function formatTooltipRange(startDate: Date, endDate: Date) {
   if (formatDateKey(startDate) === formatDateKey(endDate)) {
     return formatTooltipDate(startDate);
@@ -420,7 +413,7 @@ function getDashboardDateRange({
   if (customFrom && customTo && customFrom <= customTo) {
     return {
       bestDayTitle: "Najlepszy dzień okresu",
-      displayLabel: `${formatDisplayDate(customFrom)} – ${formatDisplayDate(customTo)}`,
+      displayLabel: `${formatDateRangeDisplayDay(customFrom)} – ${formatDateRangeDisplayDay(customTo)}`,
       from: formatDateKey(customFrom),
       isCustom: true,
       preset: normalizeTrendRange(range),

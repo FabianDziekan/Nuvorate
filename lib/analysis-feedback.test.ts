@@ -42,6 +42,9 @@ test("Analysis errors map to distinct, safe feedback", () => {
   assert.match(limit.description, /1 z 1/);
   assert.equal(noReviews.showBusinessCta, false);
   assert.match(noReviews.description, /Brak opinii/);
+  assert.match(noReviews.description, /wybranym okresie/);
+  assert.match(getAnalysisFeedback("invalid_range", "business").description, /12 miesięcy/);
+  assert.match(getAnalysisFeedback("too_many_reviews", "business").description, /części opinii/);
   assert.equal(technical.showBusinessCta, false);
   assert.equal(
     technical.description,
@@ -53,5 +56,7 @@ test("Only supported URL error codes are accepted", () => {
   assert.equal(normalizeAnalysisErrorCode("limit"), "limit");
   assert.equal(normalizeAnalysisErrorCode("no_reviews"), "no_reviews");
   assert.equal(normalizeAnalysisErrorCode("technical"), "technical");
+  assert.equal(normalizeAnalysisErrorCode("invalid_range"), "invalid_range");
+  assert.equal(normalizeAnalysisErrorCode("too_many_reviews"), "too_many_reviews");
   assert.equal(normalizeAnalysisErrorCode("database exploded"), null);
 });

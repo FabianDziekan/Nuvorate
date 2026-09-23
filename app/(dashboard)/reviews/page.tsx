@@ -25,7 +25,7 @@ import { getDashboardNotifications } from "@/lib/dashboard-notifications";
 import { signOut } from "@/app/dashboard/actions";
 
 export const metadata: Metadata = {
-  title: "Opinie | NuvoRate",
+  title: "Opinie",
 };
 
 type ReviewsPageProps = {

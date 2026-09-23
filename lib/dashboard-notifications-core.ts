@@ -19,10 +19,12 @@ export async function getDashboardNotifications(
   const [latestResult, unreadResult] = await Promise.all([
     supabase
       .from("notifications")
-      .select("id, business_id, type, title, message, is_read, created_at")
+      .select("id, business_id, type, title, message, is_read, created_at, occurred_at")
       .eq("business_id", businessId)
       .eq("type", "new_review")
+      .order("occurred_at", { ascending: false })
       .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
       .limit(10),
     supabase
       .from("notifications")

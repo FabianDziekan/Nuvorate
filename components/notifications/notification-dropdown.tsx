@@ -18,6 +18,7 @@ type AppNotification = {
   message: string | null;
   is_read: boolean;
   created_at: string;
+  occurred_at: string;
 };
 
 function BellIcon({ className = "h-[18px] w-[18px]" }: { className?: string }) {
@@ -190,7 +191,7 @@ export function NotificationDropdown({
                           {notification.title}
                         </span>
                         <span className="shrink-0 text-[11px] text-black/35">
-                          {formatRelativeNotificationTime(notification.created_at)}
+                          {formatRelativeNotificationTime(notification.occurred_at)}
                         </span>
                       </span>
                       {content.meta ? (

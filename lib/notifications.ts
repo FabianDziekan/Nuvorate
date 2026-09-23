@@ -12,6 +12,7 @@ export type AppNotification = {
   message: string | null;
   is_read: boolean;
   created_at: string;
+  occurred_at: string;
 };
 
 export async function createNotification({

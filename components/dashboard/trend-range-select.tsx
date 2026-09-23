@@ -3,16 +3,21 @@
 import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { customDateRangeParams, presetDateRangeParams } from "@/lib/date-range-picker";
 
 export type TrendRange = "30d" | "3m" | "12m";
 
 type TrendRangeSelectProps = {
+  customValue?: string;
+  fromParam?: string;
   from?: string;
   isCustom: boolean;
   label: string;
   to?: string;
+  toParam?: string;
   value: TrendRange;
   variant?: "default" | "icon";
+  rangeParam?: string;
 };
 
 const trendRangeOptions: Array<{ label: string; value: TrendRange }> = [
@@ -284,12 +289,16 @@ function CalendarDateField({
 }
 
 export function TrendRangeSelect({
+  customValue,
   from,
+  fromParam = "from",
   isCustom,
   label,
   to,
+  toParam = "to",
   value,
   variant = "default",
+  rangeParam = "trend_range",
 }: TrendRangeSelectProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -305,9 +314,9 @@ export function TrendRangeSelect({
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setCustomFrom(formatInputDate(from));
-    setCustomTo(formatInputDate(to));
-  }, [from, to]);
+    setCustomFrom(isCustom ? formatInputDate(from) : "");
+    setCustomTo(isCustom ? formatInputDate(to) : "");
+  }, [from, to, isCustom]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 768px)");
@@ -378,10 +387,11 @@ export function TrendRangeSelect({
   }
 
   function selectPreset(nextValue: TrendRange) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("trend_range", nextValue);
-    params.delete("from");
-    params.delete("to");
+    const params = presetDateRangeParams(searchParams.toString(), {
+      rangeParam, fromParam, toParam,
+    }, nextValue);
+    setCustomFrom("");
+    setCustomTo("");
     setError("");
     setOpenCalendar(null);
     setIsOpen(false);
@@ -394,10 +404,9 @@ export function TrendRangeSelect({
       return;
     }
 
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("trend_range");
-    params.set("from", customFrom);
-    params.set("to", customTo);
+    const params = customDateRangeParams(searchParams.toString(), {
+      rangeParam, fromParam, toParam, customValue,
+    }, customFrom, customTo);
     setError("");
     setOpenCalendar(null);
     setIsOpen(false);

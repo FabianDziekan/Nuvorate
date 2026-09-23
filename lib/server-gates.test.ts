@@ -36,11 +36,12 @@ test("Business routes contain server-side capability gates", () => {
 test("Automatic analysis is Business-gated and the scheduler is protected", () => {
   const scheduler = source("app/api/cron/automatic-analysis/route.ts");
   const migration = source("docs/database/019_automatic_business_analysis.sql");
-  assert.match(scheduler, /process\.env\.CRON_SECRET/);
+  const worker = source("lib/automatic-business-analysis-worker.ts");
+  assert.match(scheduler, /process\.env\.AUTOMATIC_ANALYSIS_WORKER_SECRET/);
   assert.match(scheduler, /authorization === `Bearer \$\{secret\}`/);
-  assert.match(scheduler, /plan !== "business"/);
-  assert.match(scheduler, /executionType: "automatic"/);
-  assert.match(scheduler, /last_skip_reason/);
+  assert.match(scheduler, /export async function POST/);
+  assert.match(worker, /plan !== "business"/);
+  assert.match(worker, /executionType: "automatic"/);
   assert.match(migration, /analysis_type in \('manual', 'automatic'\)/);
   assert.match(migration, /business_analysis_automation/);
   assert.match(migration, /frequency_days in \(7, 14, 30\)/);

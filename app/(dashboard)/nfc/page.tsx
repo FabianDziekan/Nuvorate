@@ -20,7 +20,7 @@ import { getDashboardNotifications } from "@/lib/dashboard-notifications";
 import { signOut } from "@/app/dashboard/actions";
 
 export const metadata: Metadata = {
-  title: "NFC | NuvoRate",
+  title: "NFC",
 };
 
 type NfcIcon =

@@ -18,6 +18,7 @@ import { generateStructuredOutput, openAIModel } from "@/lib/openai";
 import { normalizeGoogleReviewContent } from "@/lib/google-review-content";
 import type { AppPlan } from "@/lib/plans";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { classifyManualReviewCount, isCompleteManualReviewBatch, isWithinManualAnalysisContentBudget } from "@/lib/manual-analysis-range";
 
 type AnalysisExecutionType = "automatic" | "manual";
 
@@ -30,7 +31,7 @@ type AnalysisBusiness = {
 
 type AnalysisResult =
   | { ok: true }
-  | { ok: false; reason: "cancelled" | "limit" | "no_reviews" | "technical" };
+  | { ok: false; reason: "cancelled" | "limit" | "no_reviews" | "technical" | "too_many_reviews" };
 
 export async function generateBusinessAnalysisSnapshot({
   business,
@@ -38,6 +39,7 @@ export async function generateBusinessAnalysisSnapshot({
   plan,
   userId,
   canProceed,
+  manualPeriod,
 }: {
   business: AnalysisBusiness;
   executionType: AnalysisExecutionType;
@@ -48,6 +50,7 @@ export async function generateBusinessAnalysisSnapshot({
    * omits it, preserving the existing user-initiated flow.
    */
   canProceed?: () => Promise<boolean>;
+  manualPeriod?: { start: Date; end: Date };
 }): Promise<AnalysisResult> {
   if (canProceed && !(await canProceed())) {
     return { ok: false, reason: "cancelled" };
@@ -64,17 +67,33 @@ export async function generateBusinessAnalysisSnapshot({
   }
 
   try {
-    const periodEnd = new Date();
-    const periodStart = new Date(periodEnd);
-    periodStart.setUTCDate(periodStart.getUTCDate() - 30);
+    const periodEnd = manualPeriod?.end ?? new Date();
+    const periodStart = manualPeriod?.start ?? new Date(periodEnd);
+    if (!manualPeriod) periodStart.setUTCDate(periodStart.getUTCDate() - 30);
     const admin = createAdminClient();
-    const { data: reviews, error: reviewsError } = await admin
+    let expectedReviewCount: number | null = null;
+    if (manualPeriod) {
+      const { count, error: countError } = await admin
+        .from("reviews")
+        .select("id", { count: "exact", head: true })
+        .eq("business_id", business.id)
+        .gte("created_at", periodStart.toISOString())
+        .lt("created_at", periodEnd.toISOString());
+      if (countError || count === null) return { ok: false, reason: "technical" };
+      const countOutcome = classifyManualReviewCount(count);
+      if (countOutcome !== "ok") return { ok: false, reason: countOutcome };
+      expectedReviewCount = count;
+    }
+    let reviewsQuery = admin
       .from("reviews")
       .select("rating, content, created_at")
       .eq("business_id", business.id)
       .gte("created_at", periodStart.toISOString())
-      .lte("created_at", periodEnd.toISOString())
       .order("created_at", { ascending: false });
+    reviewsQuery = manualPeriod
+      ? reviewsQuery.lt("created_at", periodEnd.toISOString())
+      : reviewsQuery.lte("created_at", periodEnd.toISOString());
+    const { data: reviews, error: reviewsError } = await reviewsQuery;
 
     if (reviewsError) {
       return { ok: false, reason: "technical" };
@@ -82,6 +101,13 @@ export async function generateBusinessAnalysisSnapshot({
 
     if (!reviews?.length) {
       return { ok: false, reason: "no_reviews" };
+    }
+    if (manualPeriod && expectedReviewCount !== null &&
+      !isCompleteManualReviewBatch(expectedReviewCount, reviews.map((review) => review.content))) {
+      return { ok: false, reason: "technical" };
+    }
+    if (manualPeriod && !isWithinManualAnalysisContentBudget(reviews.map((review) => review.content))) {
+      return { ok: false, reason: "too_many_reviews" };
     }
 
     const userInput = JSON.stringify({
@@ -102,13 +128,16 @@ export async function generateBusinessAnalysisSnapshot({
         return { ok: false, reason: "cancelled" };
       }
 
+      const systemPrompt = manualPeriod
+        ? businessAnalysisSystemPrompt.replace("z ostatnich 30 dni", "z podanego okresu")
+        : businessAnalysisSystemPrompt;
       const candidate = await generateStructuredOutput<GeneratedBusinessAnalysis>({
         schemaName: "business_review_analysis",
         schema: businessAnalysisSchema,
         system:
           attempt === 0
-            ? businessAnalysisSystemPrompt
-            : `${businessAnalysisSystemPrompt}\n\n${businessAnalysisQualityRetryInstruction}`,
+            ? systemPrompt
+            : `${systemPrompt}\n\n${businessAnalysisQualityRetryInstruction}`,
         user: userInput,
       });
 

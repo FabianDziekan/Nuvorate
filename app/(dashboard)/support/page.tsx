@@ -14,7 +14,7 @@ import { getPlanLabel, hasPlanCapability } from "@/lib/plans";
 import { signOut } from "@/app/dashboard/actions";
 
 export const metadata: Metadata = {
-  title: "Pomoc i kontakt | NuvoRate",
+  title: "Pomoc i kontakt",
 };
 
 const navigation = [

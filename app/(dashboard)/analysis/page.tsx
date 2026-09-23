@@ -11,6 +11,8 @@ import { AutomaticAnalysisSettings } from "@/components/analysis/automatic-analy
 import { MobileBottomNavigation } from "@/components/navigation/mobile-bottom-navigation";
 import { AppNavigationIcon } from "@/components/navigation/app-navigation-icon";
 import { AnalysisActionForm } from "@/components/dashboard/analysis-action-form";
+import { DashboardHeaderAction } from "@/components/dashboard/dashboard-header-action";
+import { TrendRangeSelect } from "@/components/dashboard/trend-range-select";
 import { AnalysisContextAlert } from "@/components/dashboard/analysis-context-alert";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationSidebarBadge } from "@/components/notifications/notification-sidebar-badge";
@@ -34,9 +36,10 @@ import { getDashboardRequestClient as createClient, getDashboardUser, getDashboa
 import { getDashboardNotifications } from "@/lib/dashboard-notifications";
 import { signOut } from "@/app/dashboard/actions";
 import { compareAnalysisSnapshots } from "@/lib/analysis-snapshot";
+import { analysisPickerSelection } from "@/lib/date-range-picker";
 
 export const metadata: Metadata = {
-  title: "Analiza reputacji | NuvoRate",
+  title: "Analiza reputacji",
 };
 
 type AnalysisIcon =
@@ -209,6 +212,18 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function formatAnalysisPeriodEnd(value: string) {
+  // Manual custom ranges use an exclusive UTC midnight upper bound.
+  const date = new Date(value);
+  if (value.endsWith("T00:00:00.000Z")) date.setTime(date.getTime() - 1);
+  return new Intl.DateTimeFormat("pl-PL", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
 function isMissingScoreTrendColumnError(error: { message?: string; code?: string }) {
   const message = error.message ?? "";
 
@@ -223,9 +238,19 @@ function isMissingScoreTrendColumnError(error: { message?: string; code?: string
 export default async function AnalysisPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ai_error?: string }>;
+  searchParams: Promise<{
+    ai_error?: string;
+    analysis_range?: string;
+    analysis_from?: string;
+    analysis_to?: string;
+  }>;
 }) {
   const params = await searchParams;
+  const selectedRange = analysisPickerSelection({
+    range: params.analysis_range,
+    from: params.analysis_from,
+    to: params.analysis_to,
+  });
   const supabase = await createClient();
   const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
 
@@ -437,6 +462,20 @@ export default async function AnalysisPage({
 <>
       <AnalysisContextAlert feedback={analysisFeedback} />
 
+      <DashboardHeaderAction>
+        <TrendRangeSelect
+          customValue="custom"
+          from={selectedRange.from}
+          fromParam="analysis_from"
+          isCustom={selectedRange.preset === "custom"}
+          label={selectedRange.label}
+          rangeParam="analysis_range"
+          to={selectedRange.to}
+          toParam="analysis_to"
+          value={selectedRange.preset === "custom" ? "30d" : selectedRange.preset}
+        />
+      </DashboardHeaderAction>
+
         <div className="px-5 py-8 sm:px-8 lg:px-9 lg:py-10">
           <div className="mx-auto max-w-[1450px]">
             <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
@@ -449,11 +488,26 @@ export default async function AnalysisPage({
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-black/45">
                   Konsultingowe podsumowanie opinii klientów firmy{" "}
-                  {business.name} z ostatnich 30 dni.
+                  {business.name} z okresu: {selectedRange.label}.
                 </p>
+                <div className="mt-3 min-[769px]:hidden">
+                  <TrendRangeSelect
+                    customValue="custom"
+                    from={selectedRange.from}
+                    fromParam="analysis_from"
+                    isCustom={selectedRange.preset === "custom"}
+                    label={selectedRange.label}
+                    rangeParam="analysis_range"
+                    to={selectedRange.to}
+                    toParam="analysis_to"
+                    value={selectedRange.preset === "custom" ? "30d" : selectedRange.preset}
+                    variant="icon"
+                  />
+                </div>
               </div>
               {isPaid && (
                 <AnalysisActionForm
+                  analysisRange={{ preset: selectedRange.preset, from: selectedRange.from, to: selectedRange.to }}
                   hasSummary={Boolean(analysisProjection)}
                   isLimitReached={starterAnalysisLimitReached}
                   redirectTo="/analysis"
@@ -695,7 +749,7 @@ export default async function AnalysisPage({
                         </p>
                         <p className="mt-1 text-xs font-semibold">
                           {formatDate(completeAnalysis.period_start)} –{" "}
-                          {formatDate(completeAnalysis.period_end)}
+                          {formatAnalysisPeriodEnd(completeAnalysis.period_end)}
                         </p>
                         <p className="mt-1 text-[11px] text-black/35">
                           {completeAnalysis.review_count} opinii

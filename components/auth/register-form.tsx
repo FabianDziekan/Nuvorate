@@ -143,7 +143,7 @@ export function RegisterForm({ initialIntent }: { initialIntent: CheckoutIntent 
         name="firstName"
         type="text"
         autoComplete="given-name"
-        placeholder="Fabian"
+        placeholder="Imię"
         minLength={2}
         maxLength={40}
         required

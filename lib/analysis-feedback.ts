@@ -1,6 +1,6 @@
 import type { AppPlan } from "./plans.ts";
 
-export type AnalysisErrorCode = "limit" | "no_reviews" | "technical";
+export type AnalysisErrorCode = "limit" | "no_reviews" | "technical" | "invalid_range" | "too_many_reviews";
 
 export type AnalysisFeedback = {
   code: AnalysisErrorCode;
@@ -12,7 +12,7 @@ export type AnalysisFeedback = {
 export function normalizeAnalysisErrorCode(
   value: unknown,
 ): AnalysisErrorCode | null {
-  return value === "limit" || value === "no_reviews" || value === "technical"
+  return value === "limit" || value === "no_reviews" || value === "technical" || value === "invalid_range" || value === "too_many_reviews"
     ? value
     : null;
 }
@@ -37,9 +37,17 @@ export function getAnalysisFeedback(
     return {
       code,
       title: "Brak opinii do analizy",
-      description: "Brak opinii z ostatnich 30 dni do przeanalizowania.",
+      description: "Brak opinii w wybranym okresie do przeanalizowania.",
       showBusinessCta: false,
     };
+  }
+
+  if (code === "invalid_range") {
+    return { code, title: "Nieprawidłowy zakres dat", description: "Wybierz poprawne daty nieprzekraczające 12 miesięcy i spróbuj ponownie.", showBusinessCta: false };
+  }
+
+  if (code === "too_many_reviews") {
+    return { code, title: "Zbyt wiele opinii w okresie", description: "Wybierz krótszy zakres dat. Nie generujemy analizy tylko z części opinii.", showBusinessCta: false };
   }
 
   return {

@@ -15,6 +15,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveBusinessForUser } from "@/lib/active-business";
 import { requireActiveBusinessBillingContext } from "@/lib/active-business-billing";
+import { manualAnalysisRangeQuery, parseManualAnalysisRange } from "@/lib/manual-analysis-range";
 
 export async function signOut() {
   const supabase = await createClient();
@@ -93,6 +94,19 @@ export async function generateBusinessAnalysis(formData?: FormData) {
       : "/dashboard";
   const redirectPath =
     requestedRedirectPath === "/analysis" ? "/analysis" : "/dashboard";
+  const manualRange = redirectPath === "/analysis"
+    ? parseManualAnalysisRange({
+        preset: formData?.get("analysisRange") as string | null,
+        from: formData?.get("analysisFrom") as string | null,
+        to: formData?.get("analysisTo") as string | null,
+      })
+    : null;
+  if (redirectPath === "/analysis" && !manualRange) {
+    aiErrorRedirect(redirectPath, "invalid_range");
+  }
+  const feedbackPath = manualRange
+    ? `${redirectPath}?${manualAnalysisRangeQuery(manualRange)}`
+    : redirectPath;
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
   const user = userData.user;
@@ -120,7 +134,7 @@ export async function generateBusinessAnalysis(formData?: FormData) {
   const plan = billingContext.plan;
 
   if (!hasPlanCapability(plan, "basicAnalysis")) {
-    aiErrorRedirect(redirectPath, "technical");
+    aiErrorRedirect(feedbackPath, "technical");
   }
 
   const result = await generateBusinessAnalysisSnapshot({
@@ -128,15 +142,18 @@ export async function generateBusinessAnalysis(formData?: FormData) {
     executionType: "manual",
     plan,
     userId: billingContext.billingOwnerId,
+    manualPeriod: manualRange ? { start: manualRange.start, end: manualRange.end } : undefined,
   });
 
   if (!result.ok) {
     aiErrorRedirect(
-      redirectPath,
+      feedbackPath,
       result.reason === "limit"
         ? "limit"
         : result.reason === "no_reviews"
           ? "no_reviews"
+          : result.reason === "too_many_reviews"
+            ? "too_many_reviews"
           : "technical",
     );
   }

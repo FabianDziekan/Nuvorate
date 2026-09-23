@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { generateBusinessAnalysis } from "@/app/dashboard/actions";
+import type { ManualAnalysisRangeInput } from "@/lib/manual-analysis-range";
 import {
   AiGenerationProgress,
   analysisProgressMessages,
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/ai-generation-progress";
 
 type AnalysisActionFormProps = {
+  analysisRange?: ManualAnalysisRangeInput;
   buttonClassName?: string;
   hasSummary: boolean;
   isLimitReached?: boolean;
@@ -22,6 +24,7 @@ type AnalysisActionFormProps = {
 };
 
 export function AnalysisActionForm({
+  analysisRange,
   buttonClassName = "button-primary",
   hasSummary,
   isLimitReached = false,
@@ -81,6 +84,13 @@ export function AnalysisActionForm({
   return (
     <form ref={formRef} onSubmit={handleSubmit}>
       <input type="hidden" name="redirectTo" value={redirectTo} />
+      {analysisRange ? (
+        <>
+          <input type="hidden" name="analysisRange" value={analysisRange.preset ?? "30d"} />
+          <input type="hidden" name="analysisFrom" value={analysisRange.from ?? ""} />
+          <input type="hidden" name="analysisTo" value={analysisRange.to ?? ""} />
+        </>
+      ) : null}
       <AiGenerationProgress
         className={progressClassName}
         completeMessage="Analiza gotowa"
