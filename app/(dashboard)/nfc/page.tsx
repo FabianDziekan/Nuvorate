@@ -18,6 +18,7 @@ import {
 import { getDashboardRequestClient as createClient, getDashboardUser, getDashboardRequestContext } from "@/lib/dashboard-request-context";
 import { getDashboardNotifications } from "@/lib/dashboard-notifications";
 import { signOut } from "@/app/dashboard/actions";
+import { formatNfcScanTime } from "@/lib/nfc-scan-time";
 
 export const metadata: Metadata = {
   title: "NFC",
@@ -233,16 +234,8 @@ export default async function NfcPage() {
 
   const nfcBaseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
   const scans = nfcScanRows ?? [];
-  const formatScan = (scannedAt?: string) => {
-    if (!scannedAt) return "Brak skanów";
-    const date = new Date(scannedAt);
-    const now = new Date();
-    const time = new Intl.DateTimeFormat("pl-PL", { hour: "2-digit", minute: "2-digit" }).format(date);
-    const dayDifference = Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()) / 86_400_000);
-    if (dayDifference === 0) return `Dzisiaj, ${time}`;
-    if (dayDifference === 1) return `Wczoraj, ${time}`;
-    return new Intl.DateTimeFormat("pl-PL", { dateStyle: "medium", timeStyle: "short" }).format(date);
-  };
+  const scanLabelNow = new Date();
+  const formatScan = (scannedAt?: string) => formatNfcScanTime(scannedAt, scanLabelNow);
   const scansTotal = scans.length;
   const scansLast30Days = scans.filter((scan) => new Date(scan.scanned_at) >= thirtyDaysAgo).length;
   const lastScanLabel = formatScan(scans[0]?.scanned_at);
