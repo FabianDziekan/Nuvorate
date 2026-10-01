@@ -2,7 +2,7 @@ export function ThemeScript() {
   const script = `
     (function () {
       try {
-        var appPaths = ["/dashboard", "/reviews", "/analysis", "/responses", "/author-verification", "/nfc", "/notifications", "/settings"];
+        var appPaths = ["/dashboard", "/reviews", "/analysis", "/responses", "/author-verification", "/nfc", "/notifications", "/settings", "/support"];
         var pathname = window.location.pathname;
         var isAppRoute = appPaths.some(function (path) {
           return pathname === path || pathname.indexOf(path + "/") === 0;

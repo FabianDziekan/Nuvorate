@@ -177,7 +177,7 @@ export function MonthlyGoalCard({
               </span>
             )}
           </div>
-          <div className={`mt-3 h-2 overflow-hidden rounded-full bg-black/[0.07] ${carousel ? "" : "max-[768px]:mt-1 max-[768px]:h-1"}`}>
+          <div className={`dashboard-progress-track mt-3 h-2 overflow-hidden rounded-full bg-black/[0.07] ${carousel ? "" : "max-[768px]:mt-1 max-[768px]:h-1"}`}>
             <div
               className="h-full rounded-full bg-brand"
               style={{ width: `${progress}%` }}

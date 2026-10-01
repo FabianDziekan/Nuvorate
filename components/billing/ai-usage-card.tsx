@@ -10,7 +10,7 @@ function usagePercent(used: number, limit: number) {
 
 function UsageProgress({ used, limit }: { used: number; limit: number }) {
   return (
-    <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/[0.06]">
+    <div className="dashboard-progress-track mt-2 h-2 overflow-hidden rounded-full bg-black/[0.06]">
       <div
         className="h-full rounded-full bg-brand"
         style={{ width: `${usagePercent(used, limit)}%` }}

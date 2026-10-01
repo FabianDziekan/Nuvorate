@@ -776,6 +776,15 @@ html.dark body {
     background-color: rgba(91, 92, 246, 0.16);
   }
 
+  /* Preserve the light-mode track while keeping unfilled progress visible on dark cards. */
+  html.dark .dashboard-progress-track {
+    background-color: rgba(247, 247, 250, 0.16);
+  }
+
+  html.dark .dashboard-skeleton-pulse {
+    background-color: rgba(247, 247, 250, 0.11);
+  }
+
   /* Shared treatment for locally controlled switches. OFF remains clearly
      interactive in dark mode, while the brand state stays visually clean. */
   html.dark .nuvorate-switch-track:not(.nuvorate-switch-track-on) {

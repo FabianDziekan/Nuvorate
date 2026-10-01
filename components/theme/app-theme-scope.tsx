@@ -12,6 +12,7 @@ const appThemePaths = [
   "/nfc",
   "/notifications",
   "/settings",
+  "/support",
 ];
 
 function isAppThemePath(pathname: string) {
