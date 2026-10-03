@@ -1448,7 +1448,7 @@ export default async function DashboardPage({
                   {latestReviews.map((review, index) => (
                     <article
                       key={review.id}
-                      className={`rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4 max-[768px]:p-3 ${
+                      className={`flex h-full flex-col rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-4 lg:min-h-[236px] max-[768px]:p-3 ${
                         index > 1 ? "max-[768px]:hidden" : ""
                       }`}
                     >
@@ -1468,14 +1468,16 @@ export default async function DashboardPage({
                           {formatRating(review.rating)} ★
                         </span>
                       </div>
-                      <p className="mt-4 min-h-12 text-sm leading-6 text-black/55 max-[768px]:mt-3 max-[768px]:min-h-0 max-[768px]:line-clamp-2 max-[768px]:leading-5">{normalizeGoogleReviewContent(review.content)}</p>
-                      <ReviewResponseForm
-                        reviewId={review.id}
-                        initialResponseText={
-                          review.ai_review_responses?.[0]?.response_text ?? null
-                        }
-                        isReplyLimitReached={remainingReplies <= 0}
-                      />
+                      <p className="mt-4 min-h-12 line-clamp-4 text-sm leading-6 text-black/55 max-[768px]:mt-3 max-[768px]:min-h-0 max-[768px]:line-clamp-2 max-[768px]:leading-5">{normalizeGoogleReviewContent(review.content)}</p>
+                      <div className="mt-auto">
+                        <ReviewResponseForm
+                          reviewId={review.id}
+                          initialResponseText={
+                            review.ai_review_responses?.[0]?.response_text ?? null
+                          }
+                          isReplyLimitReached={remainingReplies <= 0}
+                        />
+                      </div>
                     </article>
                   ))}
                 </div>
