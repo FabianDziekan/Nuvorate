@@ -133,7 +133,7 @@ export function DesktopBusinessSwitcherClient({
     <div ref={rootRef} className="relative mt-9">
       <p className="px-3.5 text-[11px] font-medium uppercase tracking-[0.12em] text-black/35">Twoja firma</p>
       {canOpenMenu ? (
-        <button type="button" onClick={() => setOpen((current) => !current)} disabled={isPending} aria-haspopup="menu" aria-expanded={open} className="mt-1.5 flex w-full items-center gap-3 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-3.5 text-left transition duration-200 hover:border-brand/20 hover:bg-brand-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-70">
+        <button type="button" onClick={() => setOpen((current) => !current)} disabled={isPending} aria-haspopup="menu" aria-expanded={open} className="business-location-trigger mt-1.5 flex w-full items-center gap-3 rounded-2xl border border-black/[0.06] bg-[#FAFAFC] p-3.5 text-left transition duration-200 hover:border-brand/20 hover:bg-brand-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 disabled:cursor-wait disabled:opacity-70">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-soft text-sm font-bold text-brand">{activeName.slice(0, 1).toUpperCase()}</span>
           <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-ink">{activeName}</span><span className="mt-0.5 block truncate text-xs text-black/40">{businessSubtitle(activeBusiness)}</span></span>
           <ChevronIcon open={open} />
@@ -155,8 +155,8 @@ export function DesktopBusinessSwitcherClient({
             const active = business.id === activeBusiness.id;
             const name = business.name?.trim() || "Firma bez nazwy";
             return (
-              <button key={business.id} type="button" role="menuitemradio" aria-checked={active} disabled={isPending} onClick={() => selectBusiness(business.id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 disabled:cursor-default ${active ? "bg-brand-soft/70 text-brand" : "text-ink hover:bg-black/[0.035] disabled:opacity-60"}`}>
-                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-bold ${active ? "bg-white text-brand" : "bg-[#FAFAFC] text-black/45"}`}>{name.slice(0, 1).toUpperCase()}</span>
+              <button key={business.id} type="button" role="menuitemradio" aria-checked={active} disabled={isPending} onClick={() => selectBusiness(business.id)} className={`business-location-option flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 disabled:cursor-default ${active ? "business-location-option-selected bg-brand-soft/70 text-brand" : "text-ink hover:bg-black/[0.035] disabled:opacity-60"}`}>
+                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-bold ${active ? "business-location-avatar-selected bg-white text-brand" : "bg-[#FAFAFC] text-black/45"}`}>{name.slice(0, 1).toUpperCase()}</span>
                 <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{name}</span><span className="mt-0.5 block truncate text-xs text-black/40">{businessSubtitle(business)}</span></span>
                 {active ? <CheckIcon /> : null}
               </button>
@@ -164,7 +164,7 @@ export function DesktopBusinessSwitcherClient({
           })}
           {isBillingOwner ? (
             <div className="mt-1 border-t border-black/[0.06] pt-1.5">
-              <button type="button" role="menuitem" disabled={isPending || !canCreateLocation} onClick={() => { setCreateError(""); setCreateOpen(true); setOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-brand transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:text-black/35 disabled:hover:bg-transparent">
+              <button type="button" role="menuitem" disabled={isPending || !canCreateLocation} onClick={() => { setCreateError(""); setCreateOpen(true); setOpen(false); }} className="business-location-add flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-brand transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:text-black/35 disabled:hover:bg-transparent">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft"><PlusIcon /></span>
                 <span className="min-w-0 flex-1">Dodaj lokalizację</span>
               </button>

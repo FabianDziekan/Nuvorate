@@ -71,3 +71,24 @@ test("desktop switcher preserves its desktop layout with long names", () => {
   assert.match(clientSource, /className="block truncate text-sm font-semibold"/);
   assert.match(clientSource, /className="mt-0\.5 block truncate text-xs text-black\/40"/);
 });
+
+test("location menus keep selected, hover, focus and add-location surfaces dark without changing light mode", () => {
+  const mobileSource = readFileSync(join(process.cwd(), "components/business/mobile-business-switcher-client.tsx"), "utf8");
+  const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
+  for (const source of [clientSource, mobileSource]) {
+    assert.match(source, /business-location-option-selected bg-brand-soft\/70 text-brand/);
+    assert.match(source, /business-location-avatar-selected bg-white text-brand/);
+    assert.match(source, /focus-visible:ring-2 focus-visible:ring-brand\/35/);
+    assert.match(source, /aria-checked=\{active\}/);
+  }
+  assert.match(clientSource, /business-location-trigger/);
+  assert.match(clientSource, /business-location-add/);
+  assert.match(css, /html\.dark \.business-location-option-selected\s*\{\s*background-color: rgba\(91, 92, 246, 0\.16\)/);
+  assert.match(css, /html\.dark \.business-location-option-selected:is\(:hover, :focus-visible\)/);
+  assert.match(css, /html\.dark \.business-location-option-selected:focus-visible\s*\{\s*outline: 2px solid/);
+  assert.match(css, /html\.dark \.business-location-option:not\(\.business-location-option-selected\):is\(:hover, :focus-visible\)/);
+  assert.match(css, /html\.dark \.business-location-add:not\(:disabled\):is\(:hover, :focus-visible\)/);
+  assert.match(css, /html\.dark \.business-location-trigger:is\(:hover, :focus-visible\)/);
+  assert.match(css, /html\.dark \.business-location-avatar-selected/);
+  assert.doesNotMatch(css, /(?:^|\n)\s*\.business-location-option-selected\s*\{/);
+});

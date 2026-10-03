@@ -1023,6 +1023,33 @@ html.dark body {
       inset 0 0 0 1px rgba(143, 144, 255, 0.18);
   }
 
+  /* Location menus use a light lavender selected utility in light mode. Keep
+     its dark treatment local to the switchers, not every brand-soft surface. */
+  html.dark .business-location-option-selected {
+    background-color: rgba(91, 92, 246, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(143, 144, 255, 0.2);
+  }
+
+  html.dark .business-location-option-selected:is(:hover, :focus-visible) {
+    background-color: rgba(91, 92, 246, 0.23);
+    box-shadow: inset 0 0 0 1px rgba(143, 144, 255, 0.32);
+  }
+
+  html.dark .business-location-option-selected:focus-visible {
+    outline: 2px solid rgba(143, 144, 255, 0.7);
+    outline-offset: 2px;
+  }
+
+  html.dark .business-location-option:not(.business-location-option-selected):is(:hover, :focus-visible),
+  html.dark .business-location-add:not(:disabled):is(:hover, :focus-visible),
+  html.dark .business-location-trigger:is(:hover, :focus-visible) {
+    background-color: rgba(91, 92, 246, 0.12);
+  }
+
+  html.dark .business-location-avatar-selected {
+    background-color: rgba(91, 92, 246, 0.22);
+  }
+
   html.dark :where(section, article, div)[class*="rounded"][class*="border"][class*="bg-white"],
   html.dark :where(section, article, div)[class*="rounded"][class*="border"][class*="bg-[#FAFAFC]"] {
     border-color: rgba(255, 255, 255, 0.1);

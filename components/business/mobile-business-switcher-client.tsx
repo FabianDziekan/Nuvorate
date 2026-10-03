@@ -122,9 +122,9 @@ export function MobileBusinessSwitcherClient({
                 aria-checked={active}
                 disabled={isPending}
                 onClick={() => selectBusiness(business.id)}
-                className={`flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 disabled:cursor-wait ${active ? "bg-brand-soft/70 text-brand" : "text-ink active:scale-[0.99]"}`}
+                className={`business-location-option flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 disabled:cursor-wait ${active ? "business-location-option-selected bg-brand-soft/70 text-brand" : "text-ink active:scale-[0.99]"}`}
               >
-                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-bold ${active ? "bg-white text-brand" : "bg-[#FAFAFC] text-black/45"}`}>
+                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-bold ${active ? "business-location-avatar-selected bg-white text-brand" : "bg-[#FAFAFC] text-black/45"}`}>
                   {name.slice(0, 1).toUpperCase()}
                 </span>
                 <span className="min-w-0 flex-1">
