@@ -1439,7 +1439,12 @@ function Footer({ t, nav }: { t: LandingTranslations["footer"]; nav: LandingTran
           </div>
         </div>
         <div className="flex flex-col justify-between gap-4 pt-7 text-xs text-white/35 sm:flex-row">
-          <p>{t.copyright}</p>
+          <div>
+            <p>{t.copyright}</p>
+            <p className="mt-2 max-w-xl leading-5 text-white/55">
+              NuvoRate to platforma SaaS do zarządzania opiniami Google i reputacją lokalnych firm. Usługa jest świadczona przez CONNECTON sp. z o.o.
+            </p>
+          </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             <Link href="/privacy" className="transition hover:text-white">{t.privacy}</Link>
             <Link href="/terms" className="transition hover:text-white">{t.terms}</Link>
@@ -1451,31 +1456,56 @@ function Footer({ t, nav }: { t: LandingTranslations["footer"]; nav: LandingTran
   );
 }
 
+const siteUrl = "https://www.nuvorate.pl/";
+const organizationId = `${siteUrl}#organization`;
+const brandId = `${siteUrl}#brand`;
+const websiteId = `${siteUrl}#website`;
+const softwareId = `${siteUrl}#software`;
+
 const homepageStructuredData = {
   "@context": "https://schema.org",
   "@graph": [
     {
       "@type": "Organization",
+      "@id": organizationId,
       name: "CONNECTON sp. z o.o.",
-      url: "https://www.nuvorate.pl/",
-      brand: {
-        "@type": "Brand",
-        name: "NuvoRate",
-      },
+      url: siteUrl,
+      brand: { "@id": brandId },
+    },
+    {
+      "@type": "Brand",
+      "@id": brandId,
+      name: "NuvoRate",
+      url: siteUrl,
+      logo: `${siteUrl}brand/nuvorate-logo.png`,
     },
     {
       "@type": "WebSite",
+      "@id": websiteId,
       name: "NuvoRate",
-      url: "https://www.nuvorate.pl/",
+      url: siteUrl,
       inLanguage: "pl-PL",
+      publisher: { "@id": organizationId },
+      about: { "@id": softwareId },
     },
     {
       "@type": "SoftwareApplication",
+      "@id": softwareId,
       name: "NuvoRate",
       applicationCategory: "BusinessApplication",
       operatingSystem: "Web",
-      url: "https://www.nuvorate.pl/",
+      url: siteUrl,
       inLanguage: "pl-PL",
+      description: "Platforma SaaS do zarządzania opiniami Google i reputacją lokalnych firm.",
+      provider: { "@id": organizationId },
+      featureList: [
+        "Monitorowanie opinii Google",
+        "Analiza reputacji",
+        "Generowanie propozycji odpowiedzi na opinie",
+        "Dashboard i statystyki",
+        "Plakietki NFC ułatwiające zbieranie opinii Google",
+        "Statystyki skanów NFC",
+      ],
     },
   ],
 };

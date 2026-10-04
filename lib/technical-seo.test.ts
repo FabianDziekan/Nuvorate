@@ -25,6 +25,18 @@ test("landing images have alt text, including empty alt for repeated logos", () 
   assert.match(homepageClient, /<a href="#top"[^>]*aria-label="NuvoRate"/);
 });
 
+test("landing identifies its SaaS provider and links canonical structured data entities", () => {
+  assert.match(homepageClient, /NuvoRate to platforma SaaS[^<]+CONNECTON sp\. z o\.o\./);
+  assert.match(homepageClient, /const siteUrl = "https:\/\/www\.nuvorate\.pl\/"/);
+  for (const fragment of ["organization", "brand", "website", "software"]) {
+    assert.match(homepageClient, new RegExp("`\\$\\{siteUrl\\}#" + fragment + "`"));
+  }
+  assert.match(homepageClient, /brand: \{ "@id": brandId \}/);
+  assert.match(homepageClient, /publisher: \{ "@id": organizationId \}/);
+  assert.match(homepageClient, /about: \{ "@id": softwareId \}/);
+  assert.match(homepageClient, /provider: \{ "@id": organizationId \}/);
+});
+
 test("public metadata uses the canonical production host and social metadata", () => {
   assert.match(rootLayout, /metadataBase: new URL\("https:\/\/www\.nuvorate\.pl"\)/);
   assert.match(rootLayout, /template: "%s \| NuvoRate"/);
