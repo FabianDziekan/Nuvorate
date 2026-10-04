@@ -1446,6 +1446,7 @@ function Footer({ t, nav }: { t: LandingTranslations["footer"]; nav: LandingTran
             </p>
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <Link href="/wiedza" className="transition hover:text-white">Centrum wiedzy</Link>
             <Link href="/privacy" className="transition hover:text-white">{t.privacy}</Link>
             <Link href="/terms" className="transition hover:text-white">{t.terms}</Link>
             <Link href="/cookies" className="transition hover:text-white">{t.cookies}</Link>

@@ -10,6 +10,8 @@ const robots = readFileSync("app/robots.ts", "utf8");
 const sitemap = readFileSync("app/sitemap.ts", "utf8");
 const dashboardLayout = readFileSync("app/(dashboard)/layout.tsx", "utf8");
 const nfcRedirect = readFileSync("app/r/[token]/route.ts", "utf8");
+const knowledgeIndex = readFileSync("app/wiedza/page.tsx", "utf8");
+const knowledgeArticle = readFileSync("app/wiedza/jak-zdobyc-wiecej-opinii-google/page.tsx", "utf8");
 
 test("landing images have alt text, including empty alt for repeated logos", () => {
   const landingSources = [homepageClient, readFileSync("components/dashboard/dashboard-demo.tsx", "utf8")];
@@ -48,12 +50,42 @@ test("public metadata uses the canonical production host and social metadata", (
 });
 
 test("sitemap exposes only intended public pages", () => {
-  for (const pathname of ["/", "/privacy", "/terms", "/cookies"]) {
+  for (const pathname of ["/", "/privacy", "/terms", "/cookies", "/wiedza", "/wiedza/jak-zdobyc-wiecej-opinii-google"]) {
     assert.match(sitemap, new RegExp(`\\$\\{siteUrl\\}${pathname === "/" ? "\\/" : pathname}`));
   }
   for (const privatePath of ["/dashboard", "/reviews", "/login", "/api/"]) {
     assert.doesNotMatch(sitemap, new RegExp(privatePath.replace("/", "\\/")));
   }
+});
+
+test("knowledge pages are indexable, canonical, and linked through public navigation", () => {
+  assert.match(knowledgeIndex, /canonical: "\/wiedza"/);
+  assert.match(knowledgeArticle, /canonical: pagePath/);
+  assert.match(knowledgeArticle, /const pagePath = "\/wiedza\/jak-zdobyc-wiecej-opinii-google"/);
+  for (const page of [knowledgeIndex, knowledgeArticle]) {
+    assert.match(page, /robots: \{ index: true, follow: true \}/);
+    assert.match(page, /description/);
+    assert.match(page, /openGraph:/);
+    assert.match(page, /<h1\b/);
+  }
+  assert.match(knowledgeIndex, /href=\{articlePath\}/);
+  assert.match(knowledgeArticle, /href="\/wiedza"/);
+  assert.match(knowledgeArticle, /href="\/"/);
+  assert.match(homepageClient, /href="\/wiedza"[^>]*>Centrum wiedzy/);
+  assert.doesNotMatch(robots, /"\/wiedza/);
+});
+
+test("article exposes canonical structured data and visible breadcrumbs", () => {
+  assert.match(knowledgeArticle, /"@type": "Article"/);
+  assert.match(knowledgeArticle, /publisher: \{ "@id": "https:\/\/www\.nuvorate\.pl\/#organization" \}/);
+  assert.match(knowledgeArticle, /"@type": "BreadcrumbList"/);
+  assert.match(knowledgeArticle, /mainEntityOfPage: pageUrl/);
+  assert.match(knowledgeArticle, /aria-label="Ścieżka nawigacji"/);
+  assert.match(knowledgeArticle, /<h2\b/);
+  assert.match(knowledgeArticle, /<h3\b/);
+  assert.match(knowledgeArticle, /datePublished: "2026-10-04"/);
+  assert.match(knowledgeArticle, /dateModified: "2026-10-04"/);
+  assert.doesNotMatch(knowledgeArticle, /new Date\(|Date\.now\(|AggregateRating|Review"/);
 });
 
 test("robots blocks technical paths without blocking Next.js rendering assets", () => {
