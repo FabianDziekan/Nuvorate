@@ -816,7 +816,7 @@ function MobileDashboardProductMockup() {
     <div className="relative mx-auto flex w-full justify-center overflow-visible">
       <img
         src="/landing/a_clean_product_marketing_style_render_a_single_i.png"
-        alt="Mobilny pulpit aplikacji NuvoRate"
+        alt="Mobilny pulpit NuvoRate z podsumowaniem opinii, oceną i wykresem nowych recenzji"
         className="block h-auto w-[min(76vw,300px)] rotate-[-2deg] object-contain drop-shadow-[0_24px_26px_rgba(10,10,22,0.28)]"
       />
     </div>

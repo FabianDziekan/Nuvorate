@@ -11,6 +11,20 @@ const sitemap = readFileSync("app/sitemap.ts", "utf8");
 const dashboardLayout = readFileSync("app/(dashboard)/layout.tsx", "utf8");
 const nfcRedirect = readFileSync("app/r/[token]/route.ts", "utf8");
 
+test("landing images have alt text, including empty alt for repeated logos", () => {
+  const landingSources = [homepageClient, readFileSync("components/dashboard/dashboard-demo.tsx", "utf8")];
+  const images = landingSources.flatMap((source) => source.match(/<img\b[\s\S]*?\/>/g) ?? []);
+  assert.ok(images.length > 0);
+  for (const image of images) {
+    assert.match(image, /\balt="[^"]*"/);
+    if (image.includes("/brand/nuvorate-logo.png")) {
+      assert.match(image, /\balt=""/);
+    }
+  }
+  assert.match(homepageClient, /alt="Mobilny pulpit NuvoRate z podsumowaniem opinii, oceną i wykresem nowych recenzji"/);
+  assert.match(homepageClient, /<a href="#top"[^>]*aria-label="NuvoRate"/);
+});
+
 test("public metadata uses the canonical production host and social metadata", () => {
   assert.match(rootLayout, /metadataBase: new URL\("https:\/\/www\.nuvorate\.pl"\)/);
   assert.match(rootLayout, /template: "%s \| NuvoRate"/);
